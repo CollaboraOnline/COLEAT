@@ -59,6 +59,8 @@ static std::set<std::string> aOnlyTheseInterfaces;
 static std::set<Callback> aCallbacks;
 static std::set<DefaultInterface> aDefaultInterfaces;
 
+static bool bGenerateTracing = false;
+
 static void Generate(const std::string& sLibName, ITypeInfo* pTypeInfo);
 
 inline bool operator<(const Callback& a, const Callback& b)
@@ -1012,6 +1014,8 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
     aCode << "\n";
     aCode << "#include \"C" << sClass << ".hxx\"\n";
     aCode << "\n";
+    if (bGenerateTracing)
+        aCode << "#include <iostream>\n";
     aCode << "#include <vector>\n";
     aCode << "\n";
 
@@ -1037,13 +1041,15 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         aCode << "HRESULT STDMETHODCALLTYPE "
               << "C" << sClass << "::";
 
+        std::string sFuncName;
         if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET)
-            aCode << "get";
+            sFuncName = "get";
         else if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUT)
-            aCode << "put";
+            sFuncName = "put";
         else if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
-            aCode << "putref";
-        aCode << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[0]) << "(";
+            sFuncName = "putref";
+        sFuncName += aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[0]);
+        aCode << sFuncName << "(";
 
         // Parameter list
         for (int nParamIx = 0; nParamIx < vVtblFuncTable[nFunc].mpFuncDesc->cParams; ++nParamIx)
@@ -1058,7 +1064,6 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                 nParam = vVtblFuncTable[nFunc].mpFuncDesc->cParams - nParamIx - 1;
             else
                 nParam = nParamIx;
-
             // FIXME: If a parameter is an enum type that we don't bother generating a C++ enum for,
             // we should just use an integral type for it, not void*. Need to check the type
             // description for the underlying integral type, though.
@@ -1093,7 +1098,12 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
 
         // Code block of the function: Package parameters into an array of VARIANTs, and call our
         // magic CProxiedDispatch::Invoke().
+
         aCode << "{\n";
+
+        if (bGenerateTracing)
+            aCode << "    std::wcout << \"C" << sClass << "::" << sFuncName << "(\";\n";
+
         aCode << "    std::vector<VARIANT> vParams(" << vVtblFuncTable[nFunc].mpFuncDesc->cParams
               << ");\n";
         if (vVtblFuncTable[nFunc].mpFuncDesc->cParams > 0)
@@ -1407,7 +1417,112 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                         std::exit(1);
                     }
             }
+
+            if (bGenerateTracing)
+            {
+                aCode << "    if(!bGotAll)\n";
+                switch (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc.vt)
+                {
+                    case VT_I2:
+                    case VT_I4:
+                    case VT_R4:
+                    case VT_R8:
+                    case VT_BSTR:
+                    case VT_DISPATCH:
+                    case VT_BOOL:
+                    case VT_UI2:
+                    case VT_UI4:
+                    case VT_I8:
+                    case VT_UI8:
+                    case VT_INT:
+                    case VT_UINT:
+                    case VT_INT_PTR:
+                    case VT_UINT_PTR:
+                    case VT_LPSTR:
+                    case VT_LPWSTR:
+                        aCode << "        std::wcout";
+                        if (nParam > 0)
+                            aCode << " << \",\"";
+                        aCode << " << " << sParamName << ";\n";
+                        break;
+                    case VT_VARIANT:
+                        aCode << "        std::wcout";
+                        if (nParam > 0)
+                            aCode << " << \",\"";
+                        aCode << " << \"<VARIANT:\" << " << sParamName << ".vt << \">\";\n";
+                        break;
+                    case VT_PTR:
+                        if (vVtblFuncTable[nFunc]
+                                .mpFuncDesc->lprgelemdescParam[nParam]
+                                .tdesc.lptdesc->vt
+                            == VT_VARIANT)
+                        {
+                            aCode << "        switch(" << sParamName << "->vt)\n";
+                            aCode << "        {\n";
+                            aCode << "        case VT_I2: std::wcout << " << sParamName
+                                  << "->iVal; break;\n";
+                            aCode << "        case VT_I4: std::wcout << " << sParamName
+                                  << "->lVal; break;\n";
+                            aCode << "        case VT_R4: std::wcout << " << sParamName
+                                  << "->fltVal; break;\n";
+                            aCode << "        case VT_R8: std::wcout << " << sParamName
+                                  << "->dblVal; break;\n";
+                            aCode << "        case VT_BSTR: std::wcout << " << sParamName
+                                  << "->bstrVal; break;\n";
+                            aCode << "        case VT_DISPATCH: std::wcout << " << sParamName
+                                  << "->pdispVal; break;\n";
+                            aCode << "        case VT_BOOL: std::wcout << " << sParamName
+                                  << "->boolVal; break;\n";
+                            aCode << "        case VT_UI2: std::wcout << " << sParamName
+                                  << "->uiVal; break;\n";
+                            aCode << "        case VT_UI4: std::wcout << " << sParamName
+                                  << "->ulVal; break;\n";
+                            aCode << "        case VT_I8: std::wcout << " << sParamName
+                                  << "->llVal; break;\n";
+                            aCode << "        case VT_UI8: std::wcout << " << sParamName
+                                  << "->ullVal; break;\n";
+                            aCode << "        case VT_INT: std::wcout << " << sParamName
+                                  << "->intVal; break;\n";
+                            aCode << "        case VT_UINT: std::wcout << " << sParamName
+                                  << "->uintVal; break;\n";
+                            aCode << "        case VT_INT_PTR: std::wcout << " << sParamName
+                                  << "->pintVal; break;\n";
+                            aCode << "        case VT_UINT_PTR: std::wcout << " << sParamName
+                                  << "->puintVal; break;\n";
+                            aCode << "        case VT_LPSTR: std::wcout << " << sParamName
+                                  << "->pcVal; break;\n";
+                            aCode << "        case VT_LPWSTR: std::wcout << (LPWSTR)" << sParamName
+                                  << "->byref; break;\n";
+                            aCode << "        default: std::wcout << " << sParamName
+                                  << "->byref; break;\n";
+                            aCode << "        }\n";
+                        }
+                        else
+                        {
+                            aCode << "        std::wcout << " << sParamName << ";\n";
+                        }
+                        break;
+                    case VT_USERDEFINED:
+                        aCode << "        std::wcout";
+                        if (nParam > 0)
+                            aCode << " << \",\"";
+                        aCode << " << \"<USERDEFINED>\";\n";
+                        break;
+                    default:
+                        if (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc.vt
+                            & VT_BYREF)
+                        {
+                            if (nParam > 0)
+                                aCode << " << \",\";\n";
+                            aCode << " << " << sParamName << ";\n";
+                        }
+                        break;
+                }
+            }
         }
+
+        if (bGenerateTracing)
+            aCode << "    std::wcout << \")\" << std::endl;\n";
 
         // Resize the vParams to match the number of actual ones we have. FIXME: Make it correct
         // size from the start.
@@ -1850,7 +1965,8 @@ static void Usage(char** argv)
                  "interface IIDs\n"
                  "                                 and the other application's source interface "
                  "IIDs in file\n"
-                 "  for instance: "
+                 "    -T                           Generate verbose tracing outout.\n"
+                 "  For instance: "
               << argv[0]
               << " -i _Application,Documents,Document foo.olb:Application bar.exe:SomeInterface\n";
     std::exit(1);
@@ -1960,6 +2076,9 @@ int main(int argc, char** argv)
                 argi++;
                 break;
             }
+            case 'T':
+                bGenerateTracing = true;
+                break;
             default:
                 Usage(argv);
         }
