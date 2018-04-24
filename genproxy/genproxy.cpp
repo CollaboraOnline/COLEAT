@@ -1065,18 +1065,8 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         aCode << sFuncName << "(";
 
         // Parameter list
-        for (int nParamIx = 0; nParamIx < vVtblFuncTable[nFunc].mpFuncDesc->cParams; ++nParamIx)
+        for (int nParam = 0; nParam < vVtblFuncTable[nFunc].mpFuncDesc->cParams; ++nParam)
         {
-            // FIXME: Weird heuristic: If the calling convention is stdcall (well, it always is,
-            // isn't it?), and the interface is not nonextensible, whatever that means, that seems
-            // to indicate that the parameters in the type info are in reverse order. Should find
-            // out whether this is a correct deduction.
-            int nParam;
-            if (vVtblFuncTable[nFunc].mpFuncDesc->callconv == CC_STDCALL
-                && !(pVtblTypeAttr->wTypeFlags & TYPEFLAG_FNONEXTENSIBLE))
-                nParam = vVtblFuncTable[nFunc].mpFuncDesc->cParams - nParamIx - 1;
-            else
-                nParam = nParamIx;
             // FIXME: If a parameter is an enum type that we don't bother generating a C++ enum for,
             // we should just use an integral type for it, not void*. Need to check the type
             // description for the underlying integral type, though.
@@ -1104,7 +1094,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                 aCode << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[nParam + 1u]);
             else
                 aCode << "p" << nParam;
-            if (nParamIx + 1 < vVtblFuncTable[nFunc].mpFuncDesc->cParams)
+            if (nParam + 1 < vVtblFuncTable[nFunc].mpFuncDesc->cParams)
                 aCode << ", ";
         }
         aCode << ")\n";
@@ -1691,15 +1681,8 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         else if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
             aHeader << "putref";
         aHeader << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[0]) << "(";
-        for (int nParamIx = 0; nParamIx < vVtblFuncTable[nFunc].mpFuncDesc->cParams; ++nParamIx)
+        for (int nParam = 0; nParam < vVtblFuncTable[nFunc].mpFuncDesc->cParams; ++nParam)
         {
-            int nParam;
-            if (vVtblFuncTable[nFunc].mpFuncDesc->callconv == CC_STDCALL
-                && !(pVtblTypeAttr->wTypeFlags & TYPEFLAG_FNONEXTENSIBLE))
-                nParam = vVtblFuncTable[nFunc].mpFuncDesc->cParams - nParamIx - 1;
-            else
-                nParam = nParamIx;
-
             if (IsIgnoredUserdefinedType(
                     pVtblTypeInfo,
                     vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc))
@@ -1710,7 +1693,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                     vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc,
                     sReferencedName);
 
-            if (nParamIx + 1 < vVtblFuncTable[nFunc].mpFuncDesc->cParams)
+            if (nParam + 1 < vVtblFuncTable[nFunc].mpFuncDesc->cParams)
                 aHeader << ", ";
         }
         aHeader << ");\n";
