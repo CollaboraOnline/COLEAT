@@ -1184,6 +1184,16 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
             {
                 aCode << "    (void) "
                       << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[nParam + 1u]) << ";\n";
+
+                if (bGenerateTracing)
+                {
+                    aCode << "    if(!bGotAll)\n";
+                    aCode << "        std::wcout";
+                    if (nParam > 0)
+                        aCode << " << \",\"";
+                    aCode << " << " << sParamName << ";\n";
+                }
+
                 continue;
             }
 
@@ -1205,104 +1215,104 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
             switch (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc.vt)
             {
                 case VT_I2:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_I2;\n";
-                    aCode << "        vParams[" << nParam << "].iVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_I2;\n";
+                    aCode << "        vParams[nActualParams].iVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_I4:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_I4;\n";
-                    aCode << "        vParams[" << nParam << "].lVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_I4;\n";
+                    aCode << "        vParams[nActualParams].lVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_R4:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_R4;\n";
-                    aCode << "        vParams[" << nParam << "].fltVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_R4;\n";
+                    aCode << "        vParams[nActualParams].fltVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_R8:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_R8;\n";
-                    aCode << "        vParams[" << nParam << "].dblVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_R8;\n";
+                    aCode << "        vParams[nActualParams].dblVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_BSTR:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_BSTR;\n";
-                    aCode << "        vParams[" << nParam << "].bstrVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_BSTR;\n";
+                    aCode << "        vParams[nActualParams].bstrVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_DISPATCH:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_DISPATCH;\n";
-                    aCode << "        vParams[" << nParam << "].pdispVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_DISPATCH;\n";
+                    aCode << "        vParams[nActualParams].pdispVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_BOOL:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_BOOL;\n";
-                    aCode << "        vParams[" << nParam << "].boolVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_BOOL;\n";
+                    aCode << "        vParams[nActualParams].boolVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_VARIANT:
                     // FIXME: Is this correct? Experimentation will show.
+                    aCode << "        vParams[nActualParams] = " << sParamName << ";\n";
+                    aCode << "        if (vParams[nActualParams].vt == VT_ILLEGAL\n";
+                    aCode << "            || (vParams[nActualParams].vt == VT_ERROR\n";
+                    aCode << "                && vParams[nActualParams].scode == "
+                             "DISP_E_PARAMNOTFOUND))\n";
+                    aCode << "            vParams[nActualParams].vt = VT_EMPTY;\n";
                     aCode << "        nActualParams++;\n";
-                    aCode << "        vParams[" << nParam << "] = " << sParamName << ";\n";
-                    aCode << "        if (vParams[" << nParam << "].vt == VT_ILLEGAL\n";
-                    aCode << "            || (vParams[" << nParam << "].vt == VT_ERROR\n";
-                    aCode << "                && vParams[" << nParam
-                          << "].scode == DISP_E_PARAMNOTFOUND))\n";
-                    aCode << "            vParams[" << nParam << "].vt = VT_EMPTY;\n";
                     break;
                 case VT_UI2:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_UI2;\n";
-                    aCode << "        vParams[" << nParam << "].iVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_UI2;\n";
+                    aCode << "        vParams[nActualParams].iVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_UI4:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_UI4;\n";
-                    aCode << "        vParams[" << nParam << "].lVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_UI4;\n";
+                    aCode << "        vParams[nActualParams].lVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_I8:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_I8;\n";
-                    aCode << "        vParams[" << nParam << "].llVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_I8;\n";
+                    aCode << "        vParams[nActualParams].llVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_UI8:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_UI8;\n";
-                    aCode << "        vParams[" << nParam << "].llVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_UI8;\n";
+                    aCode << "        vParams[nActualParams].llVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_INT:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_INT;\n";
-                    aCode << "        vParams[" << nParam << "].lVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_INT;\n";
+                    aCode << "        vParams[nActualParams].lVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_UINT:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_UINT;\n";
-                    aCode << "        vParams[" << nParam << "].lVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_UINT;\n";
+                    aCode << "        vParams[nActualParams].lVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_INT_PTR:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_INT_PTR;\n";
-                    aCode << "        vParams[" << nParam << "].plVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_INT_PTR;\n";
+                    aCode << "        vParams[nActualParams].plVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_UINT_PTR:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_UINT_PTR;\n";
-                    aCode << "        vParams[" << nParam << "].plVal = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_UINT_PTR;\n";
+                    aCode << "        vParams[nActualParams].plVal = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_PTR:
                     if (vVtblFuncTable[nFunc]
@@ -1310,48 +1320,47 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                             .tdesc.lptdesc->vt
                         == VT_VARIANT)
                     {
+                        aCode << "        vParams[nActualParams] = *" << sParamName << ";\n";
                         aCode << "        nActualParams++;\n";
-                        aCode << "        vParams[" << nParam << "] = *" << sParamName << ";\n";
                     }
                     else
                     {
                         // FIXME: Probably wrong for instance for SAFEARRAY(BSTR)* parameters
-                        aCode << "        nActualParams++;\n";
                         aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                        aCode << "        vParams[" << nParam << "].vt = VT_PTR;\n";
-                        aCode << "        vParams[" << nParam << "].byref = " << sParamName
-                              << ";\n";
+                        aCode << "        vParams[nActualParams].vt = VT_PTR;\n";
+                        aCode << "        vParams[nActualParams].byref = " << sParamName << ";\n";
+                        aCode << "        nActualParams++;\n";
                     }
                     break;
                 case VT_USERDEFINED:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_USERDEFINED;\n";
-                    aCode << "        vParams[" << nParam << "].byref = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_USERDEFINED;\n";
+                    aCode << "        vParams[nActualParams].byref = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_LPSTR:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_LPSTR;\n";
-                    aCode << "        vParams[" << nParam << "].byref = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_LPSTR;\n";
+                    aCode << "        vParams[nActualParams].byref = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 case VT_LPWSTR:
-                    aCode << "        nActualParams++;\n";
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[" << nParam << "].vt = VT_LPWSTR;\n";
-                    aCode << "        vParams[" << nParam << "].byref = " << sParamName << ";\n";
+                    aCode << "        vParams[nActualParams].vt = VT_LPWSTR;\n";
+                    aCode << "        vParams[nActualParams].byref = " << sParamName << ";\n";
+                    aCode << "        nActualParams++;\n";
                     break;
                 default:
                     if (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc.vt
                         & VT_BYREF)
                     {
-                        aCode << "        nActualParams++;\n";
-                        aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
+                        aCode << "        VariantInit(&vParams[nActualParams]);\n";
                         aCode
-                            << "        vParams[" << nParam << "].vt = "
+                            << "        vParams[nActualParams].vt = "
                             << vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc.vt
                             << ";\n";
-                        aCode << "        vParams[" << nParam << "].byref = " << sParamName << ";";
+                        aCode << "        vParams[nActualParams].byref = " << sParamName << ";";
+                        aCode << "        nActualParams++;\n";
                     }
                     else
                     {
