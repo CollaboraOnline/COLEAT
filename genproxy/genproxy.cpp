@@ -1038,8 +1038,21 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         aCode << "// vtbl entry " << (vVtblFuncTable[nFunc].mpFuncDesc->oVft / sizeof(void*))
               << "\n";
 
-        aCode << "HRESULT STDMETHODCALLTYPE "
-              << "C" << sClass << "::";
+        aCode << "HRESULT ";
+        switch (vVtblFuncTable[nFunc].mpFuncDesc->callconv)
+        {
+            case CC_CDECL:
+                aCode << "__cdecl";
+                break;
+            case CC_STDCALL:
+                aCode << "__stdcall";
+                break;
+            default:
+                std::cerr << "Huh, unhandled call convention "
+                          << vVtblFuncTable[nFunc].mpFuncDesc->callconv << "?\n";
+                std::exit(1);
+        }
+        aCode << " C" << sClass << "::";
 
         std::string sFuncName;
         if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET)
@@ -1657,7 +1670,19 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
 
     for (UINT nFunc = 0; nFunc < pVtblTypeAttr->cFuncs; ++nFunc)
     {
-        aHeader << "    virtual HRESULT STDMETHODCALLTYPE ";
+        aHeader << "    virtual HRESULT ";
+        switch (vVtblFuncTable[nFunc].mpFuncDesc->callconv)
+        {
+            case CC_CDECL:
+                aHeader << "__cdecl";
+                break;
+            case CC_STDCALL:
+                aHeader << "__stdcall";
+                break;
+            default:
+                std::abort();
+        }
+        aHeader << " ";
 
         if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET)
             aHeader << "get";
