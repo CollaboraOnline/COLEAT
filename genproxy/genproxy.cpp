@@ -1068,9 +1068,9 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         for (int nParamIx = 0; nParamIx < vVtblFuncTable[nFunc].mpFuncDesc->cParams; ++nParamIx)
         {
             // FIXME: Weird heuristic: If the calling convention is stdcall (well, it always is,
-            // isn't it?), and the interface is nonextensible, whatever that means, that seems to
-            // indicate that the parameters in the type info are in reverse order. Should find out
-            // whether this is a correct deduction.
+            // isn't it?), and the interface is not nonextensible, whatever that means, that seems
+            // to indicate that the parameters in the type info are in reverse order. Should find
+            // out whether this is a correct deduction.
             int nParam;
             if (vVtblFuncTable[nFunc].mpFuncDesc->callconv == CC_STDCALL
                 && !(pVtblTypeAttr->wTypeFlags & TYPEFLAG_FNONEXTENSIBLE))
