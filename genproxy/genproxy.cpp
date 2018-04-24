@@ -1479,17 +1479,25 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         if (bGenerateTracing)
             aCode << "    std::wcout << \")\" << std::endl;\n";
 
-        // Resize the vParams to match the number of actual ones we have. FIXME: Make it correct
-        // size from the start.
+        aCode << "    std::vector<VARIANT> vReverseParams;\n";
 
         if (vVtblFuncTable[nFunc].mpFuncDesc->cParams > 0)
+        {
+            // Resize the vParams to match the number of actual ones we have. FIXME: Make it correct
+            // size from the start.
+
             aCode << "    vParams.resize(nActualParams);\n";
+
+            // Reverse the order of parameters. Just create another vector.
+            aCode << "    for (auto i = vParams.rbegin(); i != vParams.rend(); ++i)\n";
+            aCode << "        vReverseParams.push_back(*i);\n";
+        }
 
         // Call CProxiedDispatch::Invoke()
         aCode << "    HRESULT nResult = Invoke(\""
               << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[0]) << "\", "
               << vVtblFuncTable[nFunc].mpFuncDesc->invkind << ", "
-              << "vParams, " << sRetvalName << ");\n";
+              << "vReverseParams, " << sRetvalName << ");\n";
         if (nRetvalParam >= 0)
         {
             switch (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nRetvalParam].tdesc.vt)
