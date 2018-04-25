@@ -64,6 +64,60 @@ inline std::wstring WindowsErrorString(DWORD nErrorCode)
     return sResult;
 }
 
+inline std::wstring WindowsErrorStringFromHRESULT(HRESULT nResult)
+{
+    // Return common HRESULT codes symbolically. This is for developer use anyway, much easier to
+    // read "E_NOTIMPL" than the English prose description.
+    switch (nResult)
+    {
+        case S_OK:
+            return L"S_OK";
+        case S_FALSE:
+            return L"S_FALSE";
+        case E_UNEXPECTED:
+            return L"E_UNEXPECTED";
+        case E_NOTIMPL:
+            return L"E_NOTIMPL";
+        case E_OUTOFMEMORY:
+            return L"E_OUTOFMEMORY";
+        case E_INVALIDARG:
+            return L"E_INVALIDARG";
+        case E_NOINTERFACE:
+            return L"E_NOINTERFACE";
+        case E_POINTER:
+            return L"E_POINTER";
+        case E_HANDLE:
+            return L"E_HANDLE";
+        case E_ABORT:
+            return L"E_ABORT";
+        case E_FAIL:
+            return L"E_FAIL";
+        case E_ACCESSDENIED:
+            return L"E_ACCESSDENIED";
+    }
+
+    // See https://blogs.msdn.microsoft.com/oldnewthing/20061103-07/?p=29133
+    // Also https://social.msdn.microsoft.com/Forums/vstudio/en-US/c33d9a4a-1077-4efd-99e8-0c222743d2f8
+    // (which refers to https://msdn.microsoft.com/en-us/library/aa382475)
+    // explains why can't we just reinterpret_cast HRESULT to DWORD Win32 error:
+    // we might actually have a Win32 error code converted using HRESULT_FROM_WIN32 macro
+
+    DWORD nErrorCode = DWORD(nResult);
+    if (HRESULT(nResult & 0xFFFF0000) == MAKE_HRESULT(SEVERITY_ERROR, FACILITY_WIN32, 0)
+        || nResult == S_OK)
+    {
+        nErrorCode = (DWORD)HRESULT_CODE(nResult);
+        // https://msdn.microsoft.com/en-us/library/ms679360 mentions that the codes might have
+        // high word bits set (e.g., bit 29 could be set if error comes from a 3rd-party library).
+        // So try to restore the original error code to avoid wrong error messages
+        DWORD nLastError = GetLastError();
+        if ((nLastError & 0xFFFF) == nErrorCode)
+            nErrorCode = nLastError;
+    }
+
+    return WindowsErrorString(nErrorCode);
+}
+
 inline void tryToEnsureStdHandlesOpen()
 {
     // Make sure we have a stdout for debugging output, for now
