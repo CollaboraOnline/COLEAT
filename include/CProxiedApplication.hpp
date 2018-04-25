@@ -22,7 +22,7 @@
 
 #pragma warning(pop)
 
-class CProxiedApplication : public IClassFactory
+class CProxiedApplication : public IClassFactory, public IDispatch
 {
 private:
     const IID maProxiedAppCoclassIID;
@@ -31,6 +31,9 @@ private:
     static bool mbIsActive;
     ULONG mnRefCount;
     IUnknown* mpReplacementAppUnknown;
+    IDispatch* mpReplacementAppDispatch;
+
+    void createReplacementAppPointers();
 
 public:
     CProxiedApplication(const InterfaceMapping& rMapping);
@@ -49,6 +52,18 @@ public:
                                              void** ppvObject) override;
     
     HRESULT STDMETHODCALLTYPE LockServer(BOOL fLock) override;
+
+    // IDispatch
+    HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT* pctinfo) override;
+
+    HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo** ppTInfo) override;
+
+    HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR* rgszNames, UINT cNames,
+                                            LCID lcid, DISPID* rgDispId) override;
+
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags,
+                                     DISPPARAMS* pDispParams, VARIANT* pVarResult,
+                                     EXCEPINFO* pExcepInfo, UINT* puArgErr) override;
 };
 
 #endif // INCLUDED_CPROXIEDAPPLICATION_HPP
