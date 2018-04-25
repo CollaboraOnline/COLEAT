@@ -42,6 +42,8 @@ static std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> aUTF16ToUTF8;
 
 static const ThreadProcParam* pGlobalParamPtr;
 
+static int nHookedFunctions = 0;
+
 static void storeError(ThreadProcParam* pParam, const wchar_t* pPrefix,
                        const wchar_t* pPrefix2 = nullptr, const wchar_t* pPrefix3 = nullptr,
                        const wchar_t* pPrefix4 = nullptr)
@@ -140,10 +142,11 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
 static bool hook(ThreadProcParam* pParam, const wchar_t* sModule, const wchar_t* sDll,
                  const wchar_t* sFunction, PVOID pOwnFunction)
 {
+    const wchar_t* sModuleName = (sModule ? sModule : L".exe file");
     HMODULE hModule = GetModuleHandleW(sModule);
     if (hModule == NULL)
     {
-        storeError(pParam, sModule, L" is not loaded");
+        storeError(pParam, sModuleName, L" is not loaded");
         return false;
     }
 
@@ -153,7 +156,7 @@ static bool hook(ThreadProcParam* pParam, const wchar_t* sModule, const wchar_t*
             hModule, TRUE, IMAGE_DIRECTORY_ENTRY_IMPORT, &nSize, NULL);
     if (pImportDescriptor == NULL)
     {
-        storeError(pParam, L"Could not find import directory in ", sModule);
+        storeError(pParam, L"Could not find import directory in ", sModuleName);
         return false;
     }
 
@@ -174,7 +177,7 @@ static bool hook(ThreadProcParam* pParam, const wchar_t* sModule, const wchar_t*
         wcscpy(pParam->msErrorExplanation, L"Import descriptor for ");
         wcscat(pParam->msErrorExplanation, sDll);
         wcscat(pParam->msErrorExplanation, L" not found in ");
-        wcscat(pParam->msErrorExplanation, sModule);
+        wcscat(pParam->msErrorExplanation, sModuleName);
         return false;
     }
 
@@ -216,6 +219,7 @@ static bool hook(ThreadProcParam* pParam, const wchar_t* sModule, const wchar_t*
                 return false;
             }
 
+            nHookedFunctions++;
             return true;
         }
 
@@ -227,7 +231,7 @@ static bool hook(ThreadProcParam* pParam, const wchar_t* sModule, const wchar_t*
     wcscat(pParam->msErrorExplanation, L" in import table for ");
     wcscat(pParam->msErrorExplanation, sDll);
     wcscat(pParam->msErrorExplanation, L" in ");
-    wcscat(pParam->msErrorExplanation, sModule);
+    wcscat(pParam->msErrorExplanation, sModuleName);
 
     return false;
 }
@@ -244,21 +248,46 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         return FALSE;
     }
 
+    pParam->mbDidEnterInjectedDllMainFunction = true;
+
     tryToEnsureStdHandlesOpen();
 
     // Do our IAT patching. We want to hook CoCreateInstance() and CoCreateInstanceEx().
-    // Msvbvm60.dll seems to import just CoCreateInstance() directly, it looks up
-    // CoCreateInstanceEx() with GetProcAddress(). (But try to hook CoCreateInstanceEx() anyway,
-    // just in case.) Thus we need to hook GetProcAddress() too.
 
-    if (!hook(pParam, L"msvbvm60.dll", L"ole32.dll", L"CoCreateInstance", myCoCreateInstance))
-        return FALSE;
+    HMODULE hMsvbvm60 = GetModuleHandleW(L"msvbvm60.dll");
+    HMODULE hOle32 = GetModuleHandleW(L"ole32.dll");
+    if (hMsvbvm60 != NULL && hOle32 == NULL)
+    {
+        // It is most likely an exe created by VB6. Hook the COM object creation functions in
+        // msvbvm60.dll.
 
-    if (!hook(pParam, L"msvbvm60.dll", L"ole32.dll", L"CoCreateInstanceEx", myCoCreateInstanceEx))
-        (void)FALSE; // Can ignore
+        // Msvbvm60.dll seems to import just CoCreateInstance() directly, it looks up
+        // CoCreateInstanceEx() with GetProcAddress(). (But try to hook CoCreateInstanceEx() anyway,
+        // just in case.) Thus we need to hook GetProcAddress() too.
 
-    if (!hook(pParam, L"msvbvm60.dll", L"kernel32.dll", L"GetProcAddress", myGetProcAddress))
-        return FALSE;
+        if (!hook(pParam, L"msvbvm60.dll", L"ole32.dll", L"CoCreateInstance", myCoCreateInstance))
+            return FALSE;
+
+        hook(pParam, L"msvbvm60.dll", L"ole32.dll", L"CoCreateInstanceEx", myCoCreateInstanceEx);
+
+        if (!hook(pParam, L"msvbvm60.dll", L"kernel32.dll", L"GetProcAddress", myGetProcAddress))
+            return FALSE;
+    }
+    else
+    {
+        // It is some other executable.
+
+        nHookedFunctions = 0;
+        hook(pParam, nullptr, L"kernel32.dll", L"GetProcAddress", myGetProcAddress);
+        hook(pParam, nullptr, L"ole32.dll", L"CoCreateInstance", myCoCreateInstance);
+        hook(pParam, nullptr, L"ole32.dll", L"CoCreateInstanceEx", myCoCreateInstanceEx);
+
+        if (nHookedFunctions == 0)
+        {
+            wcscpy(pParam->msErrorExplanation, L"Could not hook a single ineresting function");
+            return FALSE;
+        }
+    }
 
     // This function returns and the remotely created thread exits, and the wrapper process will
     // copy back the parameter block, but we keep a pointer to it for use by the hook functions.
