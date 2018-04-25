@@ -92,7 +92,7 @@ HRESULT STDMETHODCALLTYPE CProxiedApplication::QueryInterface(REFIID riid, void*
         std::wcout << this << L"@CProxiedApplication::QueryInterface(IID_IClassFactory): self"
                    << std::endl;
         AddRef();
-        *ppvObject = this;
+        *ppvObject = static_cast<IClassFactory*>(this);
         return S_OK;
     }
 
@@ -103,7 +103,7 @@ HRESULT STDMETHODCALLTYPE CProxiedApplication::QueryInterface(REFIID riid, void*
         std::wcout << this << L"@CProxiedApplication::QueryInterface(IID_IDispatch): self"
                    << std::endl;
         AddRef();
-        *ppvObject = this;
+        *ppvObject = static_cast<IDispatch*>(this);
         return S_OK;
     }
 
