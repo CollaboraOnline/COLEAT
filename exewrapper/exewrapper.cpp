@@ -361,6 +361,8 @@ int wmain(int argc, wchar_t** argv)
                            &nBytesRead))
     {
         std::wcerr << L"ReadProcessMemory failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        TerminateProcess(aProcessInfo.hProcess, 1);
+        WaitForSingleObject(aProcessInfo.hThread, INFINITE);
         std::exit(1);
     }
 
@@ -368,17 +370,33 @@ int wmain(int argc, wchar_t** argv)
     if (!GetExitCodeThread(hThread, &nExitCode))
     {
         std::wcerr << L"GetExitCodeThread failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        TerminateProcess(aProcessInfo.hProcess, 1);
+        WaitForSingleObject(aProcessInfo.hThread, INFINITE);
         std::exit(1);
     }
     if (!nExitCode)
     {
-        std::wcerr << L"Injected thread failed";
-        // The only way it can fail without filling in the msErrorExplanation is if the initial
-        // sanity check of ThreadProcParam::mnSize fails.
-        if (aParam.msErrorExplanation[0] == L'\0')
-            std::wcerr << L": Mismatched thread procedure parameter structure?\n";
+        std::wcerr << L"Injected thread failed: ";
+
+        if (aParam.mbInjectedDllMainFunctionDidWriteErrorMessage)
+            std::wcerr << L" See error messages above\n";
         else
-            std::wcerr << L": " << aParam.msErrorExplanation << L"\n";
+        {
+            // The only way it can fail without filling in the msErrorExplanation is if the initial
+            // threadProc() function fails, or it the sanity check of ThreadProcParam::mnSize fails.
+            if (aParam.msErrorExplanation[0] == L'\0')
+            {
+                if (aParam.mnLastError != 0)
+                    std::wcerr << WindowsErrorString(aParam.mnLastError) << L"\n";
+                else
+                    std::wcerr << L"Mismatched thread procedure parameter structure?\n";
+            }
+            else
+                std::wcerr << aParam.msErrorExplanation << L"\n";
+        }
+
+        TerminateProcess(aProcessInfo.hProcess, 1);
+        WaitForSingleObject(aProcessInfo.hThread, INFINITE);
         std::exit(1);
     }
 
@@ -388,6 +406,8 @@ int wmain(int argc, wchar_t** argv)
     if (nPreviousSuspendCount == (DWORD)-1)
     {
         std::wcerr << L"ResumeThread failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        TerminateProcess(aProcessInfo.hProcess, 1);
+        WaitForSingleObject(aProcessInfo.hThread, INFINITE);
         std::exit(1);
     }
     else if (nPreviousSuspendCount == 0)
@@ -397,6 +417,8 @@ int wmain(int argc, wchar_t** argv)
     else if (nPreviousSuspendCount > 1)
     {
         std::wcerr << L"Thread still suspended after ResumeThread\n";
+        TerminateProcess(aProcessInfo.hProcess, 1);
+        WaitForSingleObject(aProcessInfo.hThread, INFINITE);
         std::exit(1);
     }
 

@@ -40,6 +40,9 @@ struct ThreadProcParam
     FunPtr mpGetLastError;
     FunPtr mpGetProcAddress;
 
+    bool mbDidEnterInjectedDllMainFunction;
+    bool mbInjectedDllMainFunctionDidWriteErrorMessage;
+
     char msInjectedDllMainFunction[100];
     wchar_t msFileName[1000];
     wchar_t msErrorExplanation[1000];
