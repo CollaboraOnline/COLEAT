@@ -40,9 +40,14 @@
 
 static std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> aUTF16ToUTF8;
 
-static const ThreadProcParam* pGlobalParamPtr;
+static ThreadProcParam* pGlobalParamPtr;
 
 static int nHookedFunctions = 0;
+
+static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModuleName,
+                 const wchar_t* sDll, const wchar_t* sFunction, PVOID pOwnFunction);
+
+static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags);
 
 static void storeError(ThreadProcParam* pParam, const wchar_t* pPrefix,
                        const wchar_t* pPrefix2 = nullptr, const wchar_t* pPrefix3 = nullptr,
@@ -139,17 +144,55 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
     return GetProcAddress(hModule, lpProcName);
 }
 
-static bool hook(ThreadProcParam* pParam, const wchar_t* sModule, const wchar_t* sDll,
-                 const wchar_t* sFunction, PVOID pOwnFunction)
+static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
 {
-    const wchar_t* sModuleName = (sModule ? sModule : L".exe file");
-    HMODULE hModule = GetModuleHandleW(sModule);
-    if (hModule == NULL)
+    std::wcout << L"myLoadLibraryW(" << lpFileName << L")\n";
+
+    HMODULE hModule = LoadLibraryW(lpFileName);
+
+    if (hModule != NULL)
     {
-        storeError(pParam, sModuleName, L" is not loaded");
-        return false;
+        hook(pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"GetProcAddress",
+             myGetProcAddress);
+        hook(pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"LoadLibraryW",
+             myLoadLibraryW);
+        hook(pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"LoadLibraryExW",
+             myLoadLibraryExW);
+        hook(pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", L"CoCreateInstance",
+             myCoCreateInstance);
+        hook(pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", L"CoCreateInstanceEx",
+             myCoCreateInstanceEx);
     }
 
+    return hModule;
+}
+
+static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags)
+{
+    std::wcout << L"myLoadLibraryExW(" << lpFileName << L")\n";
+
+    HMODULE hModule = LoadLibraryExW(lpFileName, hFile, dwFlags);
+
+    if (hModule != NULL)
+    {
+        hook(pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"GetProcAddress",
+             myGetProcAddress);
+        hook(pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"LoadLibraryW",
+             myLoadLibraryW);
+        hook(pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"LoadLibraryExW",
+             myLoadLibraryExW);
+        hook(pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", L"CoCreateInstance",
+             myCoCreateInstance);
+        hook(pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", L"CoCreateInstanceEx",
+             myCoCreateInstanceEx);
+    }
+
+    return hModule;
+}
+
+static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModuleName,
+                 const wchar_t* sDll, const wchar_t* sFunction, PVOID pOwnFunction)
+{
     ULONG nSize;
     PIMAGE_IMPORT_DESCRIPTOR pImportDescriptor
         = (PIMAGE_IMPORT_DESCRIPTOR)ImageDirectoryEntryToDataEx(
@@ -236,6 +279,20 @@ static bool hook(ThreadProcParam* pParam, const wchar_t* sModule, const wchar_t*
     return false;
 }
 
+static bool hook(ThreadProcParam* pParam, const wchar_t* sModule, const wchar_t* sDll,
+                 const wchar_t* sFunction, PVOID pOwnFunction)
+{
+    const wchar_t* sModuleName = (sModule ? sModule : L".exe file");
+    HMODULE hModule = GetModuleHandleW(sModule);
+    if (hModule == NULL)
+    {
+        storeError(pParam, sModuleName, L" is not loaded");
+        return false;
+    }
+
+    return hook(pParam, hModule, sModuleName, sDll, sFunction, pOwnFunction);
+}
+
 extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
 {
 // Magic to export this function using a plain undecorated name despite it being WINAPI
@@ -248,6 +305,10 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         return FALSE;
     }
 
+    // This function returns and the remotely created thread exits, and the wrapper process will
+    // copy back the parameter block, but we keep a pointer to it for use by the hook functions.
+    pGlobalParamPtr = pParam;
+
     pParam->mbDidEnterInjectedDllMainFunction = true;
 
     tryToEnsureStdHandlesOpen();
@@ -256,7 +317,11 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
 
     HMODULE hMsvbvm60 = GetModuleHandleW(L"msvbvm60.dll");
     HMODULE hOle32 = GetModuleHandleW(L"ole32.dll");
-    if (hMsvbvm60 != NULL && hOle32 == NULL)
+
+    // FIXME: We import ole32.dll ourselves thanks to the IID operator<< in utils.hpp. Would be
+    // better if we didn't.
+    (void)hOle32;
+    if (hMsvbvm60 != NULL /* && hOle32 == NULL */)
     {
         // It is most likely an exe created by VB6. Hook the COM object creation functions in
         // msvbvm60.dll.
@@ -275,23 +340,21 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
     }
     else
     {
-        // It is some other executable.
+        // It is some other executable. We must hook LoadLibraryW().
 
         nHookedFunctions = 0;
         hook(pParam, nullptr, L"kernel32.dll", L"GetProcAddress", myGetProcAddress);
+        hook(pParam, nullptr, L"kernel32.dll", L"LoadLibraryW", myLoadLibraryW);
+        hook(pParam, nullptr, L"kernel32.dll", L"LoadLibraryExW", myLoadLibraryExW);
         hook(pParam, nullptr, L"ole32.dll", L"CoCreateInstance", myCoCreateInstance);
         hook(pParam, nullptr, L"ole32.dll", L"CoCreateInstanceEx", myCoCreateInstanceEx);
 
         if (nHookedFunctions == 0)
         {
-            wcscpy(pParam->msErrorExplanation, L"Could not hook a single ineresting function");
+            wcscpy(pParam->msErrorExplanation, L"Could not hook a single interesting function");
             return FALSE;
         }
     }
-
-    // This function returns and the remotely created thread exits, and the wrapper process will
-    // copy back the parameter block, but we keep a pointer to it for use by the hook functions.
-    pGlobalParamPtr = pParam;
 
     return TRUE;
 }
