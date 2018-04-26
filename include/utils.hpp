@@ -24,6 +24,26 @@
 
 #pragma warning(pop)
 
+inline const wchar_t* baseName(const wchar_t* sPathname)
+{
+    const wchar_t* const pBackslash = wcsrchr(sPathname, L'\\');
+    const wchar_t* const pSlash = wcsrchr(sPathname, L'/');
+    const wchar_t* const pRetval
+        = (pBackslash && pSlash)
+              ? ((pBackslash > pSlash) ? (pBackslash + 1) : (pSlash + 1))
+              : (pBackslash ? (pBackslash + 1) : (pSlash ? (pSlash + 1) : sPathname));
+    return pRetval;
+}
+
+inline wchar_t* programName(const wchar_t* sPathname)
+{
+    wchar_t* pRetval = _wcsdup(baseName(sPathname));
+    wchar_t* const pDot = std::wcsrchr(pRetval, L'.');
+    if (pDot && _wcsicmp(pDot, L".exe") == 0)
+        *pDot = L'\0';
+    return pRetval;
+}
+
 inline std::wstring to_hex(uint64_t n, int w = 0)
 {
     std::wstringstream aStringStream;

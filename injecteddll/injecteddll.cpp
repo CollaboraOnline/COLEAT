@@ -286,7 +286,22 @@ static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModul
 static bool hook(ThreadProcParam* pParam, const wchar_t* sModule, const wchar_t* sDll,
                  const wchar_t* sFunction, PVOID pOwnFunction)
 {
-    const wchar_t* sModuleName = (sModule ? sModule : L".exe file");
+    const wchar_t* sModuleName;
+
+    sModuleName = sModule;
+
+    if (!sModule)
+    {
+        const DWORD NFILENAME = 1000;
+        static wchar_t sFileName[NFILENAME];
+
+        DWORD nSizeOut = GetModuleFileNameW(NULL, sFileName, NFILENAME);
+        if (nSizeOut == 0 || nSizeOut == NFILENAME)
+            sModuleName = L".exe file of the process";
+        else
+            sModuleName = baseName(sFileName);
+    }
+
     HMODULE hModule = GetModuleHandleW(sModule);
     if (hModule == NULL)
     {

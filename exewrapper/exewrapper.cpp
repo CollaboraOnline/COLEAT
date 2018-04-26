@@ -35,15 +35,8 @@ inline bool operator<(const IID& a, const IID& b) { return std::memcmp(&a, &b, s
 
 static void Usage(wchar_t** argv)
 {
-    const wchar_t* const pBackslash = wcsrchr(argv[0], L'\\');
-    const wchar_t* const pSlash = wcsrchr(argv[0], L'/');
-    const wchar_t* const pProgram
-        = (pBackslash && pSlash)
-              ? ((pBackslash > pSlash) ? (pBackslash + 1) : (pSlash + 1))
-              : (pBackslash ? (pBackslash + 1) : (pSlash ? (pSlash + 1) : argv[0]));
-
     std::wcerr
-        << L"Usage: " << pProgram
+        << L"Usage: " << programName(argv[0])
         << L" [options] exeFile [arguments...]\n"
            "  Options:\n"
            "    -m ifaceA:ifaceB:ifaceC  Map coclass A with dedault interface B to\n"
