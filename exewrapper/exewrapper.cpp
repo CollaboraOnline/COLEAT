@@ -47,11 +47,6 @@ static void Usage(wchar_t** argv)
     std::exit(1);
 }
 
-inline std::int16_t operator"" _short(unsigned long long value)
-{
-    return static_cast<std::int16_t>(value);
-}
-
 extern "C" {
 
 // This small function is injected into the executable. It is passed a parameter block. It must be
@@ -85,6 +80,8 @@ static DWORD WINAPI threadProc(ThreadProcParam* pParam)
         return FALSE;
     }
 
+#ifndef _WIN64
+
 #define p1(x) x x
 #define p2(x) p1(p1(x))
 #define p3(x) p2(p2(x))
@@ -97,6 +94,14 @@ static DWORD WINAPI threadProc(ThreadProcParam* pParam)
     // other crack should be going on.
 
     p3(__asm { nop });
+
+#else
+
+    // For 64-bit, we just need to look for the return instruction and hope there is just one of
+    // them?
+    ;
+
+#endif
 
     return (*pMainFunction.pStartRoutine)(pParam);
 }
@@ -199,6 +204,7 @@ int wmain(int argc, wchar_t** argv)
     const unsigned char* const pThreadProc = (unsigned char*)&threadProc;
     const unsigned char* pRover = pThreadProc;
 
+#ifndef _WIN64
     while (std::memcmp(pRover, p3("\x90"), 16) != 0)
         pRover++;
     pRover += 16;
@@ -212,6 +218,22 @@ int wmain(int argc, wchar_t** argv)
         std::exit(1);
     }
     pRover += 4;
+
+#else
+    // Search for "pop rbp; ret" == 0x5d 0xc3
+    while (pRover[0] != 0x5d && pRover[1] != 0xc3 && (pRover < pThreadProc + 1000))
+        pRover++;
+    if (pRover - pThreadProc >= 1000)
+    {
+        std::wcerr << L"Can't find end of threadProc\n";
+        std::exit(1);
+    }
+    pRover += 2;
+
+    // None of the rest works as 64-bit anyway yet
+    assert(false);
+
+#endif
 
     const SIZE_T nSizeOfThreadProc = (SIZE_T)(pRover - pThreadProc);
 
