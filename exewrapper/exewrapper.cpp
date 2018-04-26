@@ -31,19 +31,14 @@
 #include "exewrapper.hpp"
 #include "utils.hpp"
 
+static bool bDebug = false;
+
 inline bool operator<(const IID& a, const IID& b) { return std::memcmp(&a, &b, sizeof(a)) < 0; }
 
 static void Usage(wchar_t** argv)
 {
-    std::wcerr
-        << L"Usage: " << programName(argv[0])
-        << L" [options] exeFile [arguments...]\n"
-           "  Options:\n"
-           "    -m ifaceA:ifaceB:ifaceC  Map coclass A with dedault interface B to\n"
-           "                             replacement interface C. Option can be repeated.\n"
-           "                             Each IID is in the normal brace-enclosed format.\n"
-           "    -M file                  file contains interface mappings, like the -m option.\n"
-           "\n";
+    std::wcerr << programName(argv[0])
+               << L": Usage error. This is not a program that users should run directly.\n";
     std::exit(1);
 }
 
@@ -97,8 +92,7 @@ static DWORD WINAPI threadProc(ThreadProcParam* pParam)
 
 #else
 
-    // For 64-bit, we just need to look for the return instruction and hope there is just one of
-    // them?
+    // For 64-bit, we can only look for the ret instruction and hope there is just one of them?
     ;
 
 #endif
@@ -134,14 +128,31 @@ int wmain(int argc, wchar_t** argv)
 {
     tryToEnsureStdHandlesOpen();
 
-    int argi = 1;
+    if (argc < 3)
+        Usage(argv);
 
+    HANDLE hWrappedProcess = (HANDLE)std::stoull(argv[1]);
+    HANDLE hWrappedThread = (HANDLE)std::stoull(argv[2]);
+    DWORD nHandleFlags;
+    if (!GetHandleInformation(hWrappedProcess, &nHandleFlags)
+        || !GetHandleInformation(hWrappedThread, &nHandleFlags))
+    {
+        std::wcerr << L"Inherited handle to wrapped process or its start thread is invalid?\n";
+        std::exit(1);
+    }
+
+    int argi = 3;
     std::map<IID, InterfaceMapping> aInterfaceMap;
 
     while (argi < argc && argv[argi][0] == L'-')
     {
         switch (argv[argi][1])
         {
+            case L'd':
+            {
+                bDebug = true;
+                break;
+            }
             case L'm':
             {
                 if (argi + 1 >= argc)
@@ -192,13 +203,23 @@ int wmain(int argc, wchar_t** argv)
         argi++;
     }
 
-    if (argc - argi < 1)
+    if (argi != argc)
         Usage(argv);
 
     if (aInterfaceMap.size() > ThreadProcParam::NIIDMAP)
     {
         std::wcerr << L"At most " << ThreadProcParam::NIIDMAP << " IID mappings possible\n";
         std::exit(1);
+    }
+
+    if (bDebug)
+    {
+        // Give the developer a chance to attach us in a debugger
+        std::wcout << L"Waiting for you to attach a debugger to process "
+                   << std::to_wstring(GetProcessId(GetCurrentProcess())) << std::endl;
+        volatile bool bWait = true;
+        while (bWait)
+            Sleep(100);
     }
 
     const unsigned char* const pThreadProc = (unsigned char*)&threadProc;
@@ -218,7 +239,6 @@ int wmain(int argc, wchar_t** argv)
         std::exit(1);
     }
     pRover += 4;
-
 #else
     // Search for "pop rbp; ret" == 0x5d 0xc3
     while (pRover[0] != 0x5d && pRover[1] != 0xc3 && (pRover < pThreadProc + 1000))
@@ -229,10 +249,6 @@ int wmain(int argc, wchar_t** argv)
         std::exit(1);
     }
     pRover += 2;
-
-    // None of the rest works as 64-bit anyway yet
-    assert(false);
-
 #endif
 
     const SIZE_T nSizeOfThreadProc = (SIZE_T)(pRover - pThreadProc);
@@ -259,45 +275,6 @@ int wmain(int argc, wchar_t** argv)
     }
     wcscpy(pLastDot, L"-injected.dll");
 
-    // Start the process to wrap. Start it as suspended.
-
-    std::wstring sCommandLine;
-    for (int i = argi; i < argc; ++i)
-    {
-        if (i > argi)
-            sCommandLine += L" ";
-        sCommandLine += argv[i];
-    }
-
-    wchar_t* pCommandLine = _wcsdup(sCommandLine.data());
-
-    STARTUPINFOW aStartupInfo;
-    PROCESS_INFORMATION aProcessInfo;
-
-    std::memset(&aStartupInfo, 0, sizeof(aStartupInfo));
-    aStartupInfo.cb = sizeof(aStartupInfo);
-    aStartupInfo.dwFlags = STARTF_USESTDHANDLES;
-
-    if (!DuplicateHandle(GetCurrentProcess(), GetStdHandle(STD_INPUT_HANDLE), GetCurrentProcess(),
-                         &aStartupInfo.hStdInput, 0, TRUE, DUPLICATE_SAME_ACCESS)
-        || !DuplicateHandle(GetCurrentProcess(), GetStdHandle(STD_OUTPUT_HANDLE),
-                            GetCurrentProcess(), &aStartupInfo.hStdOutput, 0, TRUE,
-                            DUPLICATE_SAME_ACCESS)
-        || !DuplicateHandle(GetCurrentProcess(), GetStdHandle(STD_ERROR_HANDLE),
-                            GetCurrentProcess(), &aStartupInfo.hStdError, 0, TRUE,
-                            DUPLICATE_SAME_ACCESS))
-    {
-        std::wcerr << L"DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << L"\n";
-        std::exit(1);
-    }
-
-    if (!CreateProcessW(NULL, pCommandLine, NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL,
-                        &aStartupInfo, &aProcessInfo))
-    {
-        std::wcerr << L"CreateProcess failed: " << WindowsErrorString(GetLastError()) << L"\n";
-        std::exit(1);
-    }
-
     // Inject our magic DLL, and start its main function.
 
     // Can we really trust that kernel32.dll is at the same address in all processes (exempt from
@@ -321,7 +298,7 @@ int wmain(int argc, wchar_t** argv)
     }
 
     void* pParamRemote
-        = VirtualAllocEx(aProcessInfo.hProcess, NULL, sizeof(aParam), MEM_COMMIT, PAGE_READWRITE);
+        = VirtualAllocEx(hWrappedProcess, NULL, sizeof(aParam), MEM_COMMIT, PAGE_READWRITE);
     if (pParamRemote == NULL)
     {
         std::wcerr << L"VirtualAllocEx failed: " << WindowsErrorString(GetLastError()) << L"\n";
@@ -329,30 +306,29 @@ int wmain(int argc, wchar_t** argv)
     }
 
     SIZE_T nBytesWritten;
-    if (!WriteProcessMemory(aProcessInfo.hProcess, pParamRemote, &aParam, sizeof(aParam),
-                            &nBytesWritten))
+    if (!WriteProcessMemory(hWrappedProcess, pParamRemote, &aParam, sizeof(aParam), &nBytesWritten))
     {
         std::wcerr << L"WriteProcessMemory failed: " << WindowsErrorString(GetLastError()) << L"\n";
         std::exit(1);
     }
 
-    void* pThreadProcRemote = VirtualAllocEx(aProcessInfo.hProcess, NULL, nSizeOfThreadProc,
-                                             MEM_COMMIT, PAGE_READWRITE);
+    void* pThreadProcRemote
+        = VirtualAllocEx(hWrappedProcess, NULL, nSizeOfThreadProc, MEM_COMMIT, PAGE_READWRITE);
     if (pThreadProcRemote == NULL)
     {
         std::wcerr << L"VirtualAllocEx failed: " << WindowsErrorString(GetLastError()) << L"\n";
         std::exit(1);
     }
 
-    if (!WriteProcessMemory(aProcessInfo.hProcess, pThreadProcRemote, pThreadProc,
-                            nSizeOfThreadProc, &nBytesWritten))
+    if (!WriteProcessMemory(hWrappedProcess, pThreadProcRemote, pThreadProc, nSizeOfThreadProc,
+                            &nBytesWritten))
     {
         std::wcerr << L"WriteProcessMemory failed: " << WindowsErrorString(GetLastError()) << L"\n";
         std::exit(1);
     }
 
     DWORD nOldProtection;
-    if (!VirtualProtectEx(aProcessInfo.hProcess, pThreadProcRemote, nSizeOfThreadProc, PAGE_EXECUTE,
+    if (!VirtualProtectEx(hWrappedProcess, pThreadProcRemote, nSizeOfThreadProc, PAGE_EXECUTE,
                           &nOldProtection))
     {
         std::wcerr << L"VirtualProtectEx failed: " << WindowsErrorString(GetLastError()) << L"\n";
@@ -361,8 +337,8 @@ int wmain(int argc, wchar_t** argv)
 
     FunPtr pProc;
     pProc.pVoid = pThreadProcRemote;
-    HANDLE hThread = CreateRemoteThread(aProcessInfo.hProcess, NULL, 0, pProc.pStartRoutine,
-                                        pParamRemote, 0, NULL);
+    HANDLE hThread
+        = CreateRemoteThread(hWrappedProcess, NULL, 0, pProc.pStartRoutine, pParamRemote, 0, NULL);
     if (!hThread)
     {
         std::wcerr << L"CreateRemoteThread failed: " << WindowsErrorString(GetLastError()) << L"\n";
@@ -372,12 +348,11 @@ int wmain(int argc, wchar_t** argv)
     WaitForSingleObject(hThread, INFINITE);
 
     SIZE_T nBytesRead;
-    if (!ReadProcessMemory(aProcessInfo.hProcess, pParamRemote, &aParam, sizeof(aParam),
-                           &nBytesRead))
+    if (!ReadProcessMemory(hWrappedProcess, pParamRemote, &aParam, sizeof(aParam), &nBytesRead))
     {
         std::wcerr << L"ReadProcessMemory failed: " << WindowsErrorString(GetLastError()) << L"\n";
-        TerminateProcess(aProcessInfo.hProcess, 1);
-        WaitForSingleObject(aProcessInfo.hThread, INFINITE);
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
 
@@ -385,8 +360,8 @@ int wmain(int argc, wchar_t** argv)
     if (!GetExitCodeThread(hThread, &nExitCode))
     {
         std::wcerr << L"GetExitCodeThread failed: " << WindowsErrorString(GetLastError()) << L"\n";
-        TerminateProcess(aProcessInfo.hProcess, 1);
-        WaitForSingleObject(aProcessInfo.hThread, INFINITE);
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
     if (!nExitCode)
@@ -409,19 +384,19 @@ int wmain(int argc, wchar_t** argv)
                 std::wcerr << WindowsErrorString(aParam.mnLastError);
         }
 
-        TerminateProcess(aProcessInfo.hProcess, 1);
-        WaitForSingleObject(aProcessInfo.hThread, INFINITE);
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
 
     CloseHandle(hThread);
 
-    DWORD nPreviousSuspendCount = ResumeThread(aProcessInfo.hThread);
+    DWORD nPreviousSuspendCount = ResumeThread(hWrappedThread);
     if (nPreviousSuspendCount == (DWORD)-1)
     {
         std::wcerr << L"ResumeThread failed: " << WindowsErrorString(GetLastError()) << L"\n";
-        TerminateProcess(aProcessInfo.hProcess, 1);
-        WaitForSingleObject(aProcessInfo.hThread, INFINITE);
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
     else if (nPreviousSuspendCount == 0)
@@ -431,16 +406,13 @@ int wmain(int argc, wchar_t** argv)
     else if (nPreviousSuspendCount > 1)
     {
         std::wcerr << L"Thread still suspended after ResumeThread\n";
-        TerminateProcess(aProcessInfo.hProcess, 1);
-        WaitForSingleObject(aProcessInfo.hThread, INFINITE);
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
 
     // Wait for the process to finish.
-    WaitForSingleObject(aProcessInfo.hThread, INFINITE);
-
-    CloseHandle(aProcessInfo.hThread);
-    CloseHandle(aProcessInfo.hProcess);
+    WaitForSingleObject(hWrappedProcess, INFINITE);
 
     return 0;
 }
