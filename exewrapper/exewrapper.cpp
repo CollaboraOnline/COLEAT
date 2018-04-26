@@ -62,10 +62,10 @@ inline std::int16_t operator"" _short(unsigned long long value)
 extern "C" {
 
 // This small function is injected into the executable. It is passed a parameter block. It must be
-// carefully written to be position-independent and is not able to call any imported functions, as
-// the mechanism to access such, import tables etc, obviously would not work when the just function
-// code is bluntly written into a completely different process. But that's OK, we can pass pointers
-// to functions from kernel32.dll at least in the parameter block.
+// carefully written to not refer directly to any external data or functions at all. Not even
+// integer literals can be used. The mechanism to access such, import tables etc, obviously would
+// not work when the just function code is bluntly written into a completely different process. But
+// that's OK, we can pass pointers to functions from kernel32.dll at least in the parameter block.
 
 #pragma runtime_checks("", off)
 #pragma optimize("", off)
@@ -378,21 +378,20 @@ int wmain(int argc, wchar_t** argv)
     {
         std::wcerr << L"Injected thread failed: ";
 
-        if (aParam.mbInjectedDllMainFunctionDidWriteErrorMessage)
-            std::wcerr << L" See error messages above\n";
+        if (!aParam.mbPassedSizeCheck)
+        {
+            if (aParam.mnLastError != 0)
+                std::wcerr << WindowsErrorString(aParam.mnLastError) << L"\n";
+            else
+                std::wcerr << L"Mismatched parameter structure sizes, COLEAT build or installation "
+                              L"problem.\n";
+        }
         else
         {
-            // The only way it can fail without filling in the msErrorExplanation is if the initial
-            // threadProc() function fails, or it the sanity check of ThreadProcParam::mnSize fails.
-            if (aParam.msErrorExplanation[0] == L'\0')
-            {
-                if (aParam.mnLastError != 0)
-                    std::wcerr << WindowsErrorString(aParam.mnLastError) << L"\n";
-                else
-                    std::wcerr << L"Mismatched thread procedure parameter structure?\n";
-            }
-            else
+            if (aParam.msErrorExplanation[0])
                 std::wcerr << aParam.msErrorExplanation << L"\n";
+            else
+                std::wcerr << WindowsErrorString(aParam.mnLastError);
         }
 
         TerminateProcess(aProcessInfo.hProcess, 1);

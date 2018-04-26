@@ -190,6 +190,10 @@ static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD d
     return hModule;
 }
 
+// The functions below, InjectedDllMainFunction() and the functions it calls, can not write to
+// std::wcout and std::wcerr. They run in a thread created before those have been set up. They can,
+// however, use Win32 API directly.
+
 static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModuleName,
                  const wchar_t* sDll, const wchar_t* sFunction, PVOID pOwnFunction)
 {
@@ -305,11 +309,11 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         return FALSE;
     }
 
+    pParam->mbPassedSizeCheck = true;
+
     // This function returns and the remotely created thread exits, and the wrapper process will
     // copy back the parameter block, but we keep a pointer to it for use by the hook functions.
     pGlobalParamPtr = pParam;
-
-    pParam->mbDidEnterInjectedDllMainFunction = true;
 
     tryToEnsureStdHandlesOpen();
 
