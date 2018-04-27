@@ -38,13 +38,13 @@ public:
                      const IID& aIID);
     CProxiedDispatch(IDispatch* pDispatchToProxy,
                      const IID& aIID,
-                     const IID& aIID2);
+                     const IID& aCoclassIID);
 
     static void setParam(ThreadProcParam* pParam);
     static ThreadProcParam* getParam();
 
 private:
-    IID maIID, maIID2;
+    IID maIID, maCoclassIID;
     IDispatch* mpDispatchToProxy;
     IConnectionPointContainer* mpConnectionPointContainerToProxy;
     ConnectionPointMapHolder* const mpCPMap;

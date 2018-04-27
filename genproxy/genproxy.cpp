@@ -1614,9 +1614,9 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
     aHeader << "    {\n";
     aHeader << "    }\n";
     aHeader << "\n";
-    aHeader << "    C" << sClass << "(IDispatch* pDispatchToProxy, const IID& aExtraIID) :\n";
+    aHeader << "    C" << sClass << "(IDispatch* pDispatchToProxy, const IID& aCoclassIID) :\n";
     aHeader << "        CProxiedDispatch(pDispatchToProxy, " << IID_initializer(pVtblTypeAttr->guid)
-            << ", aExtraIID)\n";
+            << ", aCoclassIID)\n";
     aHeader << "    {\n";
     aHeader << "    }\n";
     aHeader << "\n";

@@ -693,7 +693,7 @@ public:
 
 CProxiedDispatch::CProxiedDispatch(IDispatch* pDispatchToProxy, const IID& aIID)
     : maIID(aIID)
-    , maIID2(IID_NULL)
+    , maCoclassIID(IID_NULL)
     , mpDispatchToProxy(pDispatchToProxy)
     , mpCPMap(new ConnectionPointMapHolder())
 {
@@ -701,13 +701,14 @@ CProxiedDispatch::CProxiedDispatch(IDispatch* pDispatchToProxy, const IID& aIID)
               << std::endl;
 }
 
-CProxiedDispatch::CProxiedDispatch(IDispatch* pDispatchToProxy, const IID& aIID, const IID& aIID2)
+CProxiedDispatch::CProxiedDispatch(IDispatch* pDispatchToProxy, const IID& aIID,
+                                   const IID& aCoclassIID)
     : maIID(aIID)
-    , maIID2(aIID2)
+    , maCoclassIID(aCoclassIID)
     , mpDispatchToProxy(pDispatchToProxy)
     , mpCPMap(new ConnectionPointMapHolder())
 {
-    std::cout << this << "@CProxiedDispatch::CTOR(" << maIID << ", " << maIID2 << ", "
+    std::cout << this << "@CProxiedDispatch::CTOR(" << maIID << ", " << maCoclassIID << ", "
               << pDispatchToProxy << ")" << std::endl;
 }
 
@@ -840,7 +841,7 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::QueryInterface(REFIID riid, void** p
         return S_OK;
     }
 
-    if (!IsEqualIID(maIID2, IID_NULL) && IsEqualIID(riid, maIID2))
+    if (!IsEqualIID(maCoclassIID, IID_NULL) && IsEqualIID(riid, maCoclassIID))
     {
         std::cout << "self" << std::endl;
         *ppvObject = this;
