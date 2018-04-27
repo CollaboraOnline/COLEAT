@@ -99,7 +99,7 @@
       <AdditionalOptions>
       </AdditionalOptions>
       <DisableSpecificWarnings>4061;4514;4626;4710;4711;5027</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>..\..\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include;..\..\include</AdditionalIncludeDirectories>
       <WarningLevel>EnableAllWarnings</WarningLevel>
     </ClCompile>
     <Link>
@@ -107,7 +107,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>$(OutDir)$(TargetName)$(TargetExt) -I ..\mso.interfaces.list -d  ..\generated -M ..\mso.outgoing.map -T ..\..\..\MSWORD.OLB ..\..\..\excel2007.exe</Command>
+      <Command>$(OutDir)$(TargetName)$(TargetExt) -I ..\mso.interfaces.list -d  ..\generated -O ..\mso.outgoing.map -M ..\mso.interface.map -T ..\..\..\MSWORD.OLB ..\..\..\excel2007.exe</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -117,7 +117,7 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include;..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4061;4514;4626;4710;4711;5027</DisableSpecificWarnings>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
@@ -126,7 +126,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>$(OutDir)$(TargetName)$(TargetExt) -I ..\mso.interfaces.list -d  ..\generated -M ..\mso.outgoing.map -T ..\..\..\MSWORD.OLB ..\..\..\excel2007.exe</Command>
+      <Command>$(OutDir)$(TargetName)$(TargetExt) -I ..\mso.interfaces.list -d  ..\generated -O ..\mso.outgoing.map -M ..\mso.interface.map -T ..\..\..\MSWORD.OLB ..\..\..\excel2007.exe</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -138,7 +138,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include;..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4061;4514;4626;4710;4711;5027</DisableSpecificWarnings>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
@@ -149,7 +149,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>$(OutDir)$(TargetName)$(TargetExt) -I ..\mso.interfaces.list -d  ..\generated -M ..\mso.outgoing.map -T ..\..\..\MSWORD.OLB ..\..\..\excel2007.exe</Command>
+      <Command>$(OutDir)$(TargetName)$(TargetExt) -I ..\mso.interfaces.list -d  ..\generated -O ..\mso.outgoing.map -M ..\mso.interface.map -T ..\..\..\MSWORD.OLB ..\..\..\excel2007.exe</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -161,7 +161,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include;..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4061;4514;4626;4710;4711;5027</DisableSpecificWarnings>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
@@ -172,7 +172,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>$(OutDir)$(TargetName)$(TargetExt) -I ..\mso.interfaces.list -d  ..\generated -M ..\mso.outgoing.map -T ..\..\..\MSWORD.OLB ..\..\..\excel2007.exe</Command>
+      <Command>$(OutDir)$(TargetName)$(TargetExt) -I ..\mso.interfaces.list -d  ..\generated -O ..\mso.outgoing.map -M ..\mso.interface.map -T ..\..\..\MSWORD.OLB ..\..\..\excel2007.exe</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

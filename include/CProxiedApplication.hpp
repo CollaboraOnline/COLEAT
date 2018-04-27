@@ -19,6 +19,7 @@
 #include <Windows.h>
 
 #include "exewrapper.hpp"
+#include "interfacemap.hpp"
 
 #pragma warning(pop)
 

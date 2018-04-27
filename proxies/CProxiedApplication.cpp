@@ -36,7 +36,7 @@ bool CProxiedApplication::mbIsActive = false;
 CProxiedApplication::CProxiedApplication(const InterfaceMapping& rMapping)
     : maProxiedAppCoclassIID(rMapping.maFromCoclass)
     , maProxiedAppDefaultIID(rMapping.maFromDefault)
-    , maReplacementAppCoclassIID(rMapping.maTo)
+    , maReplacementAppCoclassIID(rMapping.maReplacementCoclass)
     , mnRefCount(0)
     , mpReplacementAppUnknown(nullptr)
     , mpReplacementAppDispatch(nullptr)

@@ -106,26 +106,6 @@ static DWORD WINAPI threadProc(ThreadProcParam* pParam)
 #pragma runtime_checks("", restore)
 }
 
-static bool parseMapping(wchar_t* pLine, InterfaceMapping& rMapping)
-{
-    wchar_t* pColon1 = std::wcschr(pLine, L':');
-    if (!pColon1)
-        return false;
-    *pColon1 = L'\0';
-
-    wchar_t* pColon2 = std::wcschr(pColon1 + 1, L':');
-    if (!pColon2)
-        return false;
-    *pColon2 = L'\0';
-
-    if (FAILED(IIDFromString(pLine, &rMapping.maFromCoclass))
-        || FAILED(IIDFromString(pColon1 + 1, &rMapping.maFromDefault))
-        || FAILED(IIDFromString(pColon2 + 1, &rMapping.maTo)))
-        return false;
-
-    return true;
-}
-
 int wmain(int argc, wchar_t** argv)
 {
     tryToEnsureStdHandlesOpen();
@@ -144,7 +124,6 @@ int wmain(int argc, wchar_t** argv)
     }
 
     int argi = 3;
-    std::map<IID, InterfaceMapping> aInterfaceMap;
 
     while (argi < argc && argv[argi][0] == L'-')
     {
@@ -155,50 +134,6 @@ int wmain(int argc, wchar_t** argv)
                 bDebug = true;
                 break;
             }
-            case L'm':
-            {
-                if (argi + 1 >= argc)
-                    Usage(argv);
-                InterfaceMapping aMapping;
-                if (!parseMapping(argv[argi + 1], aMapping))
-                {
-                    std::wcerr << L"Invalid IIDs\n";
-                    Usage(argv);
-                }
-                aInterfaceMap[aMapping.maFromCoclass] = aMapping;
-                argi++;
-                break;
-            }
-            case L'M':
-            {
-                if (argi + 1 >= argc)
-                    Usage(argv);
-                std::wifstream aMFile(argv[argi + 1]);
-                if (!aMFile.good())
-                {
-                    std::wcerr << L"Could not open " << argv[argi + 1] << L" for reading\n";
-                    std::exit(1);
-                }
-                while (!aMFile.eof())
-                {
-                    std::wstring sLine;
-                    std::getline(aMFile, sLine);
-                    if (sLine.length() == 0 || sLine[0] == L'#')
-                        continue;
-                    wchar_t* pLine = _wcsdup(sLine.data());
-                    InterfaceMapping aMapping;
-                    if (!parseMapping(pLine, aMapping))
-                    {
-                        std::wcerr << L"Invalid IIDs\n";
-                        Usage(argv);
-                    }
-                    aInterfaceMap[aMapping.maFromCoclass] = aMapping;
-                    std::free(pLine);
-                }
-                aMFile.close();
-                argi++;
-                break;
-            }
             default:
                 Usage(argv);
         }
@@ -207,12 +142,6 @@ int wmain(int argc, wchar_t** argv)
 
     if (argi != argc)
         Usage(argv);
-
-    if (aInterfaceMap.size() > ThreadProcParam::NIIDMAP)
-    {
-        std::wcerr << L"At most " << ThreadProcParam::NIIDMAP << " IID mappings possible\n";
-        std::exit(1);
-    }
 
     // Get our exe pathname and the wrapped process exe pathname.
 
@@ -312,12 +241,6 @@ int wmain(int argc, wchar_t** argv)
     aParam.mpGetProcAddress.pVoid = GetProcAddress(hKernel32, "GetProcAddress");
     std::strcpy(aParam.msInjectedDllMainFunction, "InjectedDllMainFunction");
     wcscpy(aParam.msFileName, sDllFileName);
-
-    for (auto i : aInterfaceMap)
-    {
-        aParam.mvInterfaceMap[aParam.mnMappings] = i.second;
-        ++aParam.mnMappings;
-    }
 
     void* pParamRemote
         = VirtualAllocEx(hWrappedProcess, NULL, sizeof(aParam), MEM_COMMIT, PAGE_READWRITE);

@@ -21,12 +21,15 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include <Windows.h>
 
 #include <comphelper/windowsdebugoutput.hxx>
 
 #pragma warning(pop)
+
+#include "interfacemap.hpp"
 
 struct FuncTableEntry
 {
@@ -1909,6 +1912,48 @@ static void GenerateOutgoingInterfaceMap(const std::map<IID, IID>& aOutgoingInte
     }
 }
 
+static void GenerateInterfaceMapping(const std::vector<InterfaceMapping>& rInterfaceMap)
+{
+    if (rInterfaceMap.size() == 0)
+        return;
+
+    const std::string sHeader = sOutputFolder + "/InterfaceMapping.hxx";
+    std::ofstream aHeader(sHeader);
+    if (!aHeader.good())
+    {
+        std::cerr << "Could not open '" << sHeader << "' for writing\n";
+        std::exit(1);
+    }
+
+    aHeader << "// Generated file. Do not edit.\n";
+    aHeader << "\n";
+    aHeader << "#ifndef INCLUDED_InterfaceMapping_HXX\n";
+    aHeader << "#define INCLUDED_InterfaceMapping_HXX\n";
+    aHeader << "\n";
+    aHeader << "#include \"interfacemap.hpp\"\n";
+    aHeader << "\n";
+
+    aHeader << "const static InterfaceMapping aInterfaceMap[] =\n";
+    aHeader << "{\n";
+
+    for (const auto i : rInterfaceMap)
+    {
+        aHeader << "    { " << IID_initializer(i.maFromCoclass) << ", "
+                << IID_initializer(i.maFromDefault) << ", "
+                << IID_initializer(i.maReplacementCoclass) << "},\n";
+    }
+
+    aHeader << "};\n";
+    aHeader << "\n";
+    aHeader << "#endif // INCLUDED__InterfaceMapping_HXX\n";
+    aHeader.close();
+    if (!aHeader.good())
+    {
+        std::cerr << "Problems writing to '" << sHeader << "'\n";
+        std::exit(1);
+    }
+}
+
 static void Usage(char** argv)
 {
     const char* const pBackslash = std::strrchr(argv[0], L'\\');
@@ -1929,15 +1974,37 @@ static void Usage(char** argv)
                  "                                 Default: \"generated\".\n"
                  "    -i ifaceA,ifaceB,...         Only output code for those interfaces\n"
                  "    -I file                      Only output code for interfaces listed in file\n"
-                 "    -M file                      Use mapping between LibreOffice outgoing "
+                 "    -M file                      file contains interface mappings\n"
+                 "    -O file                      Use mapping between LibreOffice outgoing "
                  "interface IIDs\n"
                  "                                 and the other application's source interface "
                  "IIDs in file\n"
                  "    -T                           Generate verbose tracing outout.\n"
+                 "  If no -M option is given, does not do any COM server redirection.\n"
                  "  For instance: "
               << argv[0]
               << " -i _Application,Documents,Document foo.olb:Application bar.exe:SomeInterface\n";
     std::exit(1);
+}
+
+static bool parseMapping(wchar_t* pLine, InterfaceMapping& rMapping)
+{
+    wchar_t* pColon1 = std::wcschr(pLine, L':');
+    if (!pColon1)
+        return false;
+    *pColon1 = L'\0';
+
+    wchar_t* pColon2 = std::wcschr(pColon1 + 1, L':');
+    if (!pColon2)
+        return false;
+    *pColon2 = L'\0';
+
+    if (FAILED(IIDFromString(pLine, &rMapping.maFromCoclass))
+        || FAILED(IIDFromString(pColon1 + 1, &rMapping.maFromDefault))
+        || FAILED(IIDFromString(pColon2 + 1, &rMapping.maReplacementCoclass)))
+        return false;
+
+    return true;
 }
 
 int main(int argc, char** argv)
@@ -1945,6 +2012,7 @@ int main(int argc, char** argv)
     int argi = 1;
 
     std::map<IID, IID> aOutgoingInterfaceMap;
+    std::vector<InterfaceMapping> aInterfaceMap;
 
     while (argi < argc && argv[argi][0] == '-')
     {
@@ -1997,26 +2065,59 @@ int main(int argc, char** argv)
             {
                 if (argi + 1 >= argc)
                     Usage(argv);
-                std::ifstream aMFile(argv[argi + 1]);
+                std::wifstream aMFile(argv[argi + 1]);
                 if (!aMFile.good())
+                {
+                    std::wcerr << L"Could not open " << argv[argi + 1] << L" for reading\n";
+                    std::exit(1);
+                }
+                int nLine = 0;
+                while (!aMFile.eof())
+                {
+                    std::wstring sLine;
+                    std::getline(aMFile, sLine);
+                    nLine++;
+                    if (sLine.length() == 0 || sLine[0] == L'#')
+                        continue;
+                    wchar_t* pLine = _wcsdup(sLine.data());
+                    InterfaceMapping aMapping;
+                    if (!parseMapping(pLine, aMapping))
+                    {
+                        std::cerr << "Invalid IIDs on line " << nLine << " in " << argv[argi + 1]
+                                  << "\n";
+                        Usage(argv);
+                    }
+                    aInterfaceMap.push_back(aMapping);
+                    std::free(pLine);
+                }
+                aMFile.close();
+                argi++;
+                break;
+            }
+            case 'O':
+            {
+                if (argi + 1 >= argc)
+                    Usage(argv);
+                std::ifstream aOFile(argv[argi + 1]);
+                if (!aOFile.good())
                 {
                     std::cerr << "Could not open " << argv[argi + 1] << " for reading\n";
                     std::exit(1);
                 }
-                while (!aMFile.eof())
+                while (!aOFile.eof())
                 {
                     std::string sLibreOfficeOutgoingInterface;
-                    aMFile >> sLibreOfficeOutgoingInterface;
+                    aOFile >> sLibreOfficeOutgoingInterface;
                     if (sLibreOfficeOutgoingInterface.length() > 0
                         && sLibreOfficeOutgoingInterface[0] == '#')
                     {
                         std::string sRestOfLine;
-                        std::getline(aMFile, sRestOfLine);
+                        std::getline(aOFile, sRestOfLine);
                         continue;
                     }
                     std::string sOtherAppSourceInterface;
-                    aMFile >> sOtherAppSourceInterface;
-                    if (aMFile.good())
+                    aOFile >> sOtherAppSourceInterface;
+                    if (aOFile.good())
                     {
                         IID aLibreOfficeOutgoingInterface;
                         if (FAILED(IIDFromString(
@@ -2149,6 +2250,8 @@ int main(int argc, char** argv)
             std::exit(1);
         }
     }
+
+    GenerateInterfaceMapping(aInterfaceMap);
 
     GenerateOutgoingInterfaceMap(aOutgoingInterfaceMap);
 

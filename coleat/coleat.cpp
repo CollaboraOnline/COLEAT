@@ -35,15 +35,7 @@ static bool bDebug = false;
 
 static void Usage(wchar_t** argv)
 {
-    std::wcerr
-        << L"Usage: " << programName(argv[0])
-        << L" [options] exeFile [arguments...]\n"
-           "  Options:\n"
-           "    -m ifaceA:ifaceB:ifaceC  Map coclass A with dedault interface B to\n"
-           "                             replacement interface C. Option can be repeated.\n"
-           "                             Each IID is in the normal brace-enclosed format.\n"
-           "    -M file                  file contains interface mappings, like the -m option.\n"
-           "\n";
+    std::wcerr << L"Usage: " << programName(argv[0]) << L" exeFile [arguments...]\n";
     std::exit(1);
 }
 
@@ -63,20 +55,6 @@ int wmain(int argc, wchar_t** argv)
             {
                 // secret debug switch
                 bDebug = true;
-                break;
-            }
-            case L'm':
-            {
-                if (argi + 1 >= argc)
-                    Usage(argv);
-                argi++;
-                break;
-            }
-            case L'M':
-            {
-                if (argi + 1 >= argc)
-                    Usage(argv);
-                argi++;
                 break;
             }
             default:

@@ -27,11 +27,6 @@ union FunPtr
     PVOID (WINAPI *pGetProcAddress)(HMODULE, char*);
 };
 
-struct InterfaceMapping
-{
-    IID maFromCoclass, maFromDefault, maTo;
-};
-    
 struct ThreadProcParam
 {
     size_t mnSize;
@@ -46,9 +41,6 @@ struct ThreadProcParam
     wchar_t msFileName[1000];
     wchar_t msErrorExplanation[1000];
     DWORD mnLastError;
-    static const int NIIDMAP = 10;
-    InterfaceMapping mvInterfaceMap[NIIDMAP];
-    int mnMappings;
 };
 
 #endif // INCLUDED_EXEWRAPPER_HPP

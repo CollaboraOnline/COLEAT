@@ -38,6 +38,8 @@
 
 #include "CProxiedApplication.hpp"
 
+#include "InterfaceMapping.hxx"
+
 static std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> aUTF16ToUTF8;
 
 static ThreadProcParam* pGlobalParamPtr;
@@ -76,12 +78,11 @@ static HRESULT WINAPI myCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, D
 {
     std::wcout << L"myCoCreateInstance(" << rclsid << L")\n";
 
-    for (int i = 0; i < pGlobalParamPtr->mnMappings; ++i)
+    for (int i = 0; i < sizeof(aInterfaceMap) / sizeof(aInterfaceMap[0]); ++i)
     {
-        if (IsEqualIID(rclsid, pGlobalParamPtr->mvInterfaceMap[i].maFromCoclass))
+        if (IsEqualIID(rclsid, aInterfaceMap[i].maFromCoclass))
         {
-            CProxiedApplication* pApplication
-                = new CProxiedApplication(pGlobalParamPtr->mvInterfaceMap[i]);
+            CProxiedApplication* pApplication = new CProxiedApplication(aInterfaceMap[i]);
             pApplication->AddRef();
             *ppv = pApplication;
             return S_OK;
@@ -97,12 +98,11 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
 {
     std::wcout << L"myCoCreateInstanceEx(" << clsid << L")\n";
 
-    for (int i = 0; i < pGlobalParamPtr->mnMappings; ++i)
+    for (int i = 0; i < sizeof(aInterfaceMap) / sizeof(aInterfaceMap[0]); ++i)
     {
-        if (IsEqualIID(clsid, pGlobalParamPtr->mvInterfaceMap[i].maFromCoclass))
+        if (IsEqualIID(clsid, aInterfaceMap[i].maFromCoclass))
         {
-            CProxiedApplication* pApplication
-                = new CProxiedApplication(pGlobalParamPtr->mvInterfaceMap[i]);
+            CProxiedApplication* pApplication = new CProxiedApplication(aInterfaceMap[i]);
 
             DWORD nSuccess = 0;
             for (DWORD j = 0; j < dwCount; ++j)
