@@ -28,13 +28,13 @@
 
 #include "utils.hpp"
 
-#include "CProxiedApplication.hpp"
+#include "CProxiedCoclass.hpp"
 #include "CProxiedDispatch.hpp"
 #include "DefaultInterfaceCreator.hxx"
 
-bool CProxiedApplication::mbIsActive = false;
+bool CProxiedCoclass::mbIsActive = false;
 
-CProxiedApplication::CProxiedApplication(const InterfaceMapping& rMapping)
+CProxiedCoclass::CProxiedCoclass(const InterfaceMapping& rMapping)
     : maProxiedAppCoclassIID(rMapping.maFromCoclass)
     , maProxiedAppDefaultIID(rMapping.maFromDefault)
     , maReplacementAppCoclassIID(rMapping.maReplacementCoclass)
@@ -42,14 +42,14 @@ CProxiedApplication::CProxiedApplication(const InterfaceMapping& rMapping)
     , mpReplacementAppUnknown(nullptr)
     , mpReplacementAppDispatch(nullptr)
 {
-    std::wcout << this << L"@CProxiedApplication::CTOR" << std::endl;
+    std::wcout << this << L"@CProxiedCoclass::CTOR" << std::endl;
     assert(!mbIsActive);
     mbIsActive = true;
 }
 
-bool CProxiedApplication::IsActive() { return mbIsActive; }
+bool CProxiedCoclass::IsActive() { return mbIsActive; }
 
-void CProxiedApplication::createReplacementAppPointers()
+void CProxiedCoclass::createReplacementAppPointers()
 {
     if (mpReplacementAppUnknown == nullptr)
     {
@@ -83,15 +83,14 @@ void CProxiedApplication::createReplacementAppPointers()
 
 // IUnknown
 
-HRESULT STDMETHODCALLTYPE CProxiedApplication::QueryInterface(REFIID riid, void** ppvObject)
+HRESULT STDMETHODCALLTYPE CProxiedCoclass::QueryInterface(REFIID riid, void** ppvObject)
 {
     if (!ppvObject)
         return E_POINTER;
 
     if (IsEqualIID(riid, IID_IUnknown))
     {
-        std::wcout << this << L"@CProxiedApplication::QueryInterface(IID_IUnknown): self"
-                   << std::endl;
+        std::wcout << this << L"@CProxiedCoclass::QueryInterface(IID_IUnknown): self" << std::endl;
         AddRef();
         *ppvObject = this;
         return S_OK;
@@ -99,7 +98,7 @@ HRESULT STDMETHODCALLTYPE CProxiedApplication::QueryInterface(REFIID riid, void*
 
     if (IsEqualIID(riid, IID_IClassFactory))
     {
-        std::wcout << this << L"@CProxiedApplication::QueryInterface(IID_IClassFactory): self"
+        std::wcout << this << L"@CProxiedCoclass::QueryInterface(IID_IClassFactory): self"
                    << std::endl;
         AddRef();
         *ppvObject = static_cast<IClassFactory*>(this);
@@ -110,40 +109,39 @@ HRESULT STDMETHODCALLTYPE CProxiedApplication::QueryInterface(REFIID riid, void*
 
     if (IsEqualIID(riid, IID_IDispatch))
     {
-        std::wcout << this << L"@CProxiedApplication::QueryInterface(IID_IDispatch): self"
-                   << std::endl;
+        std::wcout << this << L"@CProxiedCoclass::QueryInterface(IID_IDispatch): self" << std::endl;
         AddRef();
         *ppvObject = static_cast<IDispatch*>(this);
         return S_OK;
     }
 
-    std::wcout << this << L"@CProxiedApplication::QueryInterface(" << riid << L")..." << std::endl;
+    std::wcout << this << L"@CProxiedCoclass::QueryInterface(" << riid << L")..." << std::endl;
 
     IDispatch* pDefault;
     std::wstring sFoundDefault;
     if (DefaultInterfaceCreator(riid, &pDefault, mpReplacementAppDispatch, sFoundDefault))
     {
-        std::wcout << "..." << this << L"@CProxiedApplication::QueryInterface(" << riid
-                   << L"): new " << sFoundDefault << std::endl;
+        std::wcout << "..." << this << L"@CProxiedCoclass::QueryInterface(" << riid << L"): new "
+                   << sFoundDefault << std::endl;
         pDefault->AddRef();
         *ppvObject = pDefault;
         return S_OK;
     }
 
-    std::wcout << "..." << this << L"@CProxiedApplication::QueryInterface(" << riid
+    std::wcout << "..." << this << L"@CProxiedCoclass::QueryInterface(" << riid
                << L"): E_NOINTERFACE" << std::endl;
     return E_NOINTERFACE;
 }
 
-ULONG STDMETHODCALLTYPE CProxiedApplication::AddRef()
+ULONG STDMETHODCALLTYPE CProxiedCoclass::AddRef()
 {
-    std::wcout << this << L"@CProxiedApplication::AddRef: " << (mnRefCount + 1) << std::endl;
+    std::wcout << this << L"@CProxiedCoclass::AddRef: " << (mnRefCount + 1) << std::endl;
     return ++mnRefCount;
 }
 
-ULONG STDMETHODCALLTYPE CProxiedApplication::Release()
+ULONG STDMETHODCALLTYPE CProxiedCoclass::Release()
 {
-    std::wcout << this << L"@CProxiedApplication::Release: " << (mnRefCount - 1) << std::endl;
+    std::wcout << this << L"@CProxiedCoclass::Release: " << (mnRefCount - 1) << std::endl;
     ULONG nResult = --mnRefCount;
     if (nResult == 0)
     {
@@ -154,92 +152,89 @@ ULONG STDMETHODCALLTYPE CProxiedApplication::Release()
 
 // IClassFactory
 
-HRESULT STDMETHODCALLTYPE CProxiedApplication::CreateInstance(IUnknown* /*pUnkOuter*/, REFIID riid,
-                                                              void** ppvObject)
+HRESULT STDMETHODCALLTYPE CProxiedCoclass::CreateInstance(IUnknown* /*pUnkOuter*/, REFIID riid,
+                                                          void** ppvObject)
 {
     if (IsEqualIID(riid, IID_IUnknown))
     {
         createReplacementAppPointers();
 
-        std::wcout << this << L"@CProxiedApplication::CreateInstance(IID_IUnknown): self"
-                   << std::endl;
+        std::wcout << this << L"@CProxiedCoclass::CreateInstance(IID_IUnknown): self" << std::endl;
 
         *ppvObject = this;
         AddRef();
         return S_OK;
     }
 
-    std::wcout << this << L"@CProxiedApplication::CreateInstance(" << riid << L"): E_NOTIMPL"
+    std::wcout << this << L"@CProxiedCoclass::CreateInstance(" << riid << L"): E_NOTIMPL"
                << std::endl;
 
     return E_NOTIMPL;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedApplication::LockServer(BOOL /*fLock*/) { return S_OK; }
+HRESULT STDMETHODCALLTYPE CProxiedCoclass::LockServer(BOOL /*fLock*/) { return S_OK; }
 
 // IDispatch
 
 // These return highly misleading information. We should return what we know to porxy, not what the
 // replacement app says it has.
 
-HRESULT STDMETHODCALLTYPE CProxiedApplication::GetTypeInfoCount(UINT* pctinfo)
+HRESULT STDMETHODCALLTYPE CProxiedCoclass::GetTypeInfoCount(UINT* pctinfo)
 {
     HRESULT nResult;
 
-    std::wcout << this << L"@CProxiedApplication::GetTypeInfoCount..." << std::endl;
+    std::wcout << this << L"@CProxiedCoclass::GetTypeInfoCount..." << std::endl;
 
     nResult = mpReplacementAppDispatch->GetTypeInfoCount(pctinfo);
 
-    std::wcout << "..." << this << L"@CProxiedApplication::GetTypeInfoCount:"
+    std::wcout << "..." << this << L"@CProxiedCoclass::GetTypeInfoCount:"
                << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedApplication::GetTypeInfo(UINT iTInfo, LCID lcid,
-                                                           ITypeInfo** ppTInfo)
+HRESULT STDMETHODCALLTYPE CProxiedCoclass::GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo** ppTInfo)
 {
     HRESULT nResult;
 
-    std::wcout << this << L"@CProxiedApplication::GetTypeInfo..." << std::endl;
+    std::wcout << this << L"@CProxiedCoclass::GetTypeInfo..." << std::endl;
 
     nResult = mpReplacementAppDispatch->GetTypeInfo(iTInfo, lcid, ppTInfo);
 
-    std::wcout << "..." << this << L"@CProxiedApplication::GetTypeInfo: "
+    std::wcout << "..." << this << L"@CProxiedCoclass::GetTypeInfo: "
                << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedApplication::GetIDsOfNames(REFIID riid, LPOLESTR* rgszNames,
-                                                             UINT cNames, LCID lcid,
-                                                             DISPID* rgDispId)
+HRESULT STDMETHODCALLTYPE CProxiedCoclass::GetIDsOfNames(REFIID riid, LPOLESTR* rgszNames,
+                                                         UINT cNames, LCID lcid, DISPID* rgDispId)
 {
     HRESULT nResult;
 
-    std::wcout << this << L"@CProxiedApplication::GetIDsOfNames..." << std::endl;
+    std::wcout << this << L"@CProxiedCoclass::GetIDsOfNames..." << std::endl;
 
     nResult = mpReplacementAppDispatch->GetIDsOfNames(riid, rgszNames, cNames, lcid, rgDispId);
 
-    std::wcout << "..." << this << L"@CProxiedApplication::GetIDsOfNames:"
+    std::wcout << "..." << this << L"@CProxiedCoclass::GetIDsOfNames:"
                << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedApplication::Invoke(DISPID dispIdMember, REFIID riid, LCID lcid,
-                                                      WORD wFlags, DISPPARAMS* pDispParams,
-                                                      VARIANT* pVarResult, EXCEPINFO* pExcepInfo,
-                                                      UINT* puArgErr)
+HRESULT STDMETHODCALLTYPE CProxiedCoclass::Invoke(DISPID dispIdMember, REFIID riid, LCID lcid,
+                                                  WORD wFlags, DISPPARAMS* pDispParams,
+                                                  VARIANT* pVarResult, EXCEPINFO* pExcepInfo,
+                                                  UINT* puArgErr)
 {
     HRESULT nResult;
 
-    std::wcout << this << L"@CProxiedApplication::Invoke(" << dispIdMember << L")..." << std::endl;
+    std::wcout << this << L"@CProxiedCoclass::Invoke(" << dispIdMember << L")..." << std::endl;
 
     nResult = mpReplacementAppDispatch->Invoke(dispIdMember, riid, lcid, wFlags, pDispParams,
                                                pVarResult, pExcepInfo, puArgErr);
 
-    std::wcout << this << L"@CProxiedApplication::Invoke(" << dispIdMember << L"):"
+    std::wcout << this << L"@CProxiedCoclass::Invoke(" << dispIdMember << L"):"
                << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 
     return nResult;

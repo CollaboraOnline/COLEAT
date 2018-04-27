@@ -7,8 +7,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-#ifndef INCLUDED_CPROXIEDAPPLICATION_HPP
-#define INCLUDED_CPROXIEDAPPLICATION_HPP
+#ifndef INCLUDED_CPROXIEDCOCLASS_HPP
+#define INCLUDED_CPROXIEDCOCLASS_HPP
 
 #pragma warning(push)
 #pragma warning(disable : 4668 4820 4917)
@@ -23,7 +23,7 @@
 
 #pragma warning(pop)
 
-class CProxiedApplication : public IClassFactory, public IDispatch
+class CProxiedCoclass : public IClassFactory, public IDispatch
 {
 private:
     const IID maProxiedAppCoclassIID;
@@ -37,7 +37,7 @@ private:
     void createReplacementAppPointers();
 
 public:
-    CProxiedApplication(const InterfaceMapping& rMapping);
+    CProxiedCoclass(const InterfaceMapping& rMapping);
 
     static bool IsActive();
 
@@ -67,6 +67,6 @@ public:
                                      EXCEPINFO* pExcepInfo, UINT* puArgErr) override;
 };
 
-#endif // INCLUDED_CPROXIEDAPPLICATION_HPP
+#endif // INCLUDED_CPROXIEDCOCLASS_HPP
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab cinoptions=b1,g0,N-s cinkeys+=0=break: */

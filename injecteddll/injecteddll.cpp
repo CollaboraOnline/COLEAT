@@ -36,7 +36,7 @@
 #include "exewrapper.hpp"
 #include "utils.hpp"
 
-#include "CProxiedApplication.hpp"
+#include "CProxiedCoclass.hpp"
 #include "CProxiedDispatch.hpp"
 
 #include "InterfaceMapping.hxx"
@@ -83,9 +83,9 @@ static HRESULT WINAPI myCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, D
     {
         if (IsEqualIID(rclsid, aInterfaceMap[i].maFromCoclass))
         {
-            CProxiedApplication* pApplication = new CProxiedApplication(aInterfaceMap[i]);
-            pApplication->AddRef();
-            *ppv = pApplication;
+            CProxiedCoclass* pCoclass = new CProxiedCoclass(aInterfaceMap[i]);
+            pCoclass->AddRef();
+            *ppv = pCoclass;
             return S_OK;
         }
     }
@@ -103,13 +103,13 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
     {
         if (IsEqualIID(clsid, aInterfaceMap[i].maFromCoclass))
         {
-            CProxiedApplication* pApplication = new CProxiedApplication(aInterfaceMap[i]);
+            CProxiedCoclass* pCoclass = new CProxiedCoclass(aInterfaceMap[i]);
 
             DWORD nSuccess = 0;
             for (DWORD j = 0; j < dwCount; ++j)
             {
                 pResults[j].hr
-                    = pApplication->QueryInterface(*pResults[j].pIID, (void**)&pResults[j].pItf);
+                    = pCoclass->QueryInterface(*pResults[j].pIID, (void**)&pResults[j].pItf);
                 if (SUCCEEDED(pResults[j].hr))
                     ++nSuccess;
             }

@@ -167,7 +167,7 @@
     <ClCompile Include="..\generated\CWord__Document.cxx" />
     <ClCompile Include="..\generated\Word_ApplicationEvents4.cxx" />
     <ClCompile Include="..\generated\Word_DocumentEvents2.cxx" />
-    <ClCompile Include="CProxiedApplication.cpp" />
+    <ClCompile Include="CProxiedCoclass.cpp" />
     <ClCompile Include="CProxiedDispatch.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
