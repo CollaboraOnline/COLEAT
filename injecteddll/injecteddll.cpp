@@ -37,6 +37,7 @@
 #include "utils.hpp"
 
 #include "CProxiedApplication.hpp"
+#include "CProxiedDispatch.hpp"
 
 #include "InterfaceMapping.hxx"
 
@@ -329,6 +330,8 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
     // This function returns and the remotely created thread exits, and the wrapper process will
     // copy back the parameter block, but we keep a pointer to it for use by the hook functions.
     pGlobalParamPtr = pParam;
+
+    CProxiedDispatch::setParam(pGlobalParamPtr);
 
     tryToEnsureStdHandlesOpen();
 

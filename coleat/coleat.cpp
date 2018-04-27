@@ -35,7 +35,12 @@ static bool bDebug = false;
 
 static void Usage(wchar_t** argv)
 {
-    std::wcerr << L"Usage: " << programName(argv[0]) << L" exeFile [arguments...]\n";
+    std::wcerr
+        << L"Usage: " << programName(argv[0])
+        << L" [options] program [arguments...]\n"
+           L"\n"
+           L"  Options:\n"
+           L"    -t                           only trace, no redirection to replacement app\n";
     std::exit(1);
 }
 
@@ -57,6 +62,8 @@ int wmain(int argc, wchar_t** argv)
                 bDebug = true;
                 break;
             }
+            case L't':
+                break;
             default:
                 Usage(argv);
         }

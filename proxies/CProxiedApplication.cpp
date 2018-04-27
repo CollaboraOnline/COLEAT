@@ -29,6 +29,7 @@
 #include "utils.hpp"
 
 #include "CProxiedApplication.hpp"
+#include "CProxiedDispatch.hpp"
 #include "DefaultInterfaceCreator.hxx"
 
 bool CProxiedApplication::mbIsActive = false;
@@ -52,7 +53,16 @@ void CProxiedApplication::createReplacementAppPointers()
 {
     if (mpReplacementAppUnknown == nullptr)
     {
-        if (FAILED(CoCreateInstance(maReplacementAppCoclassIID, NULL, CLSCTX_LOCAL_SERVER,
+        // If we are only tracing, there replacement app does not have to be installed, as we won't
+        // actually instantiate any COM service using its CLSID. The mpReplacementAppUnknown and
+        // mpReplacementAppDispatch fields in this object will actually be those of the real
+        // ("proxied") application.
+
+        const IID aProxiedOrReplacementIID
+            = (CProxiedDispatch::getParam()->mbTraceOnly ? maProxiedAppCoclassIID
+                                                         : maReplacementAppCoclassIID);
+
+        if (FAILED(CoCreateInstance(aProxiedOrReplacementIID, NULL, CLSCTX_LOCAL_SERVER,
                                     IID_IUnknown, (void**)&mpReplacementAppUnknown)))
         {
             std::wcerr << L"Cound not create LO instance?" << std::endl;

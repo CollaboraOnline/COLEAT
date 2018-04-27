@@ -36,6 +36,7 @@ struct ThreadProcParam
     FunPtr mpGetProcAddress;
 
     bool mbPassedSizeCheck;
+    bool mbTraceOnly;
 
     char msInjectedDllMainFunction[100];
     wchar_t msFileName[1000];

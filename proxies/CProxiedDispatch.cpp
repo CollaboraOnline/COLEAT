@@ -19,6 +19,7 @@
 #include <vector>
 
 #include <Windows.h>
+#include <OleCtl.h>
 
 #include <comphelper/windowsdebugoutput.hxx>
 
@@ -27,6 +28,8 @@
 #include "CProxiedDispatch.hpp"
 #include "CallbackInvoker.hxx"
 #include "OutgoingInterfaceMap.hxx"
+
+static ThreadProcParam* pGlobalParam;
 
 // FIXME: Factor out these three functions into some include file. Now copy-pasted from
 // genproxy.cpp. (Originally from LibreOffice's <comphelper/windowserrorstring.hxx>, but that uses
@@ -643,10 +646,14 @@ public:
             bool bFound = false;
             for (const auto aMapEntry : aOutgoingInterfaceMap)
             {
-                if (IsEqualIID(aIID, aMapEntry.maLibreOfficeIID))
+                const IID aProxiedOrReplacementIID
+                    = (CProxiedDispatch::getParam()->mbTraceOnly ? aMapEntry.maOtherAppIID
+                                                                 : aMapEntry.maLibreOfficeIID);
+
+                if (IsEqualIID(aIID, aProxiedOrReplacementIID))
                 {
                     ITypeInfo* pTI;
-                    nResult = mpProxiedDispatch->FindTypeInfo(aMapEntry.maLibreOfficeIID, &pTI);
+                    nResult = mpProxiedDispatch->FindTypeInfo(aProxiedOrReplacementIID, &pTI);
                     if (FAILED(nResult))
                         return nResult;
                     ppCP[i] = new CProxiedConnectionPoint(mpProxiedDispatch, vCP[i],
@@ -690,7 +697,8 @@ CProxiedDispatch::CProxiedDispatch(IDispatch* pDispatchToProxy, const IID& aIID)
     , mpDispatchToProxy(pDispatchToProxy)
     , mpCPMap(new ConnectionPointMapHolder())
 {
-    std::cout << this << "@CProxiedDispatch::CTOR(" << maIID << ")" << std::endl;
+    std::cout << this << "@CProxiedDispatch::CTOR(" << maIID << ", " << pDispatchToProxy << ")"
+              << std::endl;
 }
 
 CProxiedDispatch::CProxiedDispatch(IDispatch* pDispatchToProxy, const IID& aIID, const IID& aIID2)
@@ -699,8 +707,13 @@ CProxiedDispatch::CProxiedDispatch(IDispatch* pDispatchToProxy, const IID& aIID,
     , mpDispatchToProxy(pDispatchToProxy)
     , mpCPMap(new ConnectionPointMapHolder())
 {
-    std::cout << this << "@CProxiedDispatch::CTOR(" << maIID << ", " << maIID2 << ")" << std::endl;
+    std::cout << this << "@CProxiedDispatch::CTOR(" << maIID << ", " << maIID2 << ", "
+              << pDispatchToProxy << ")" << std::endl;
 }
+
+void CProxiedDispatch::setParam(ThreadProcParam* pParam) { pGlobalParam = pParam; }
+
+ThreadProcParam* CProxiedDispatch::getParam() { return pGlobalParam; }
 
 HRESULT CProxiedDispatch::Invoke(std::string sFuncName, int nInvKind,
                                  std::vector<VARIANT>& rParameters, void* pRetval)
@@ -896,18 +909,27 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
 
 HRESULT CProxiedDispatch::FindTypeInfo(const IID& rIID, ITypeInfo** pTypeInfo)
 {
+    std::cout << this << "@CProxiedDispatch::FindTypeInfo(" << rIID << ")..." << std::endl;
     HRESULT nResult;
 
     ITypeInfo* pTI;
 
     nResult = GetTypeInfo(0, LOCALE_USER_DEFAULT, &pTI);
     if (FAILED(nResult))
+    {
+        std::cout << "..." << this << "@CProxiedDispatch::FindTypeInfo(" << rIID << ") ("
+                  << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
         return nResult;
+    }
 
     TYPEATTR* pTA;
     nResult = pTI->GetTypeAttr(&pTA);
     if (FAILED(nResult))
+    {
+        std::cout << "..." << this << "@CProxiedDispatch::FindTypeInfo(" << rIID << ") ("
+                  << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
         return nResult;
+    }
 
     bool bFound = false;
     for (WORD i = 0; i < pTA->cImplTypes; ++i)
@@ -915,16 +937,31 @@ HRESULT CProxiedDispatch::FindTypeInfo(const IID& rIID, ITypeInfo** pTypeInfo)
         HREFTYPE nHrefType;
         nResult = pTI->GetRefTypeOfImplType(i, &nHrefType);
         if (FAILED(nResult))
+        {
+            std::cout << "..." << this << "@CProxiedDispatch::FindTypeInfo(" << rIID << ") ("
+                      << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
             return nResult;
+        }
 
         nResult = pTI->GetRefTypeInfo(nHrefType, pTypeInfo);
         if (FAILED(nResult))
+        {
+            std::cout << "..." << this << "@CProxiedDispatch::FindTypeInfo(" << rIID << ") ("
+                      << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
             return nResult;
+        }
 
         TYPEATTR* pRefTA;
         nResult = (*pTypeInfo)->GetTypeAttr(&pRefTA);
         if (FAILED(nResult))
+        {
+            std::cout << "..." << this << "@CProxiedDispatch::FindTypeInfo(" << rIID << ") ("
+                      << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
             return nResult;
+        }
+
+        std::cout << "..." << this << "@CProxiedDispatch::FindTypeInfo(" << rIID << ") ("
+                  << __LINE__ << "): " << rIID << ":" << pRefTA->guid << "\n";
 
         if (IsEqualIID(rIID, pRefTA->guid))
         {
@@ -937,8 +974,14 @@ HRESULT CProxiedDispatch::FindTypeInfo(const IID& rIID, ITypeInfo** pTypeInfo)
     pTI->ReleaseTypeAttr(pTA);
 
     if (!bFound)
+    {
+        std::cout << "..." << this << "@CProxiedDispatch::FindTypeInfo(" << rIID << ") ("
+                  << __LINE__ << "): E_NOTIMPL" << std::endl;
         return E_NOTIMPL;
+    }
 
+    std::cout << "..." << this << "@CProxiedDispatch::FindTypeInfo(" << rIID << "): S_OK"
+              << std::endl;
     return S_OK;
 }
 
@@ -986,21 +1029,25 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::FindConnectionPoint(REFIID riid,
         if (IsEqualIID(riid, aMapEntry.maOtherAppIID))
         {
             ITypeInfo* pTI;
-            nResult = FindTypeInfo(aMapEntry.maLibreOfficeIID, &pTI);
+            const IID aProxiedOrReplacementIID
+                = (getParam()->mbTraceOnly ? aMapEntry.maOtherAppIID : aMapEntry.maLibreOfficeIID);
+            nResult = FindTypeInfo(aProxiedOrReplacementIID, &pTI);
             if (FAILED(nResult))
             {
-                std::cout << this << "@CProxiedDispatch::FindConnectionPoint(" << riid
-                          << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+                std::cout << this << "@CProxiedDispatch::FindConnectionPoint(" << riid << ") ("
+                          << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult)
+                          << std::endl;
                 return nResult;
             }
 
             IConnectionPoint* pCP;
             nResult = mpConnectionPointContainerToProxy->FindConnectionPoint(
-                aMapEntry.maLibreOfficeIID, &pCP);
+                aProxiedOrReplacementIID, &pCP);
             if (FAILED(nResult))
             {
-                std::cout << this << "@CProxiedDispatch::FindConnectionPoint(" << riid
-                          << "): " << WindowsErrorStringFromHRESULT(nResult) << "" << std::endl;
+                std::cout << this << "@CProxiedDispatch::FindConnectionPoint(" << riid << ") ("
+                          << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult) << ""
+                          << std::endl;
                 return nResult;
             }
 
@@ -1019,9 +1066,9 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::FindConnectionPoint(REFIID riid,
         }
     }
 
-    std::cout << "..." << this << "@CProxiedDispatch::FindConnectionPoint(" << riid
+    std::cout << this << "@CProxiedDispatch::FindConnectionPoint(" << riid << ") (" << __LINE__
               << "): E_NOTIMPL" << std::endl;
-    return E_NOTIMPL;
+    return CONNECT_E_NOCONNECTION;
 }
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab cinoptions=b1,g0,N-s cinkeys+=0=break: */

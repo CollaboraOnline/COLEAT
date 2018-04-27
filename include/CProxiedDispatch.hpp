@@ -22,6 +22,8 @@
 
 #pragma warning(pop)
 
+#include "exewrapper.hpp"
+
 inline bool operator<(const IID& a, const IID& b) { return std::memcmp(&a, &b, sizeof(a)) < 0; }
 
 struct ConnectionPointMapHolder
@@ -37,6 +39,9 @@ public:
     CProxiedDispatch(IDispatch* pDispatchToProxy,
                      const IID& aIID,
                      const IID& aIID2);
+
+    static void setParam(ThreadProcParam* pParam);
+    static ThreadProcParam* getParam();
 
 private:
     IID maIID, maIID2;

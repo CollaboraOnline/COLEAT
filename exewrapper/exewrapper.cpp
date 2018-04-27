@@ -33,8 +33,6 @@
 #include "exewrapper.hpp"
 #include "utils.hpp"
 
-static bool bDebug = false;
-
 inline bool operator<(const IID& a, const IID& b) { return std::memcmp(&a, &b, sizeof(a)) < 0; }
 
 static void Usage(wchar_t** argv)
@@ -125,6 +123,9 @@ int wmain(int argc, wchar_t** argv)
 
     int argi = 3;
 
+    bool bDebug = false;
+    bool bTraceOnly = false;
+
     while (argi < argc && argv[argi][0] == L'-')
     {
         switch (argv[argi][1])
@@ -134,6 +135,9 @@ int wmain(int argc, wchar_t** argv)
                 bDebug = true;
                 break;
             }
+            case L't':
+                bTraceOnly = true;
+                break;
             default:
                 Usage(argv);
         }
@@ -239,6 +243,7 @@ int wmain(int argc, wchar_t** argv)
     aParam.mpLoadLibraryW.pVoid = GetProcAddress(hKernel32, "LoadLibraryW");
     aParam.mpGetLastError.pVoid = GetProcAddress(hKernel32, "GetLastError");
     aParam.mpGetProcAddress.pVoid = GetProcAddress(hKernel32, "GetProcAddress");
+    aParam.mbTraceOnly = bTraceOnly;
     std::strcpy(aParam.msInjectedDllMainFunction, "InjectedDllMainFunction");
     wcscpy(aParam.msFileName, sDllFileName);
 
