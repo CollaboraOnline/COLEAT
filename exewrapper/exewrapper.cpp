@@ -24,7 +24,9 @@
 #include <sstream>
 #include <string>
 
+#define PSAPI_VERSION 1
 #include <Windows.h>
+#include <Psapi.h>
 
 #pragma warning(pop)
 
@@ -212,11 +214,36 @@ int wmain(int argc, wchar_t** argv)
         std::exit(1);
     }
 
+    // Get our exe pathname and the wrapped process exe pathname.
+
+    const DWORD NFILENAME = 1000;
+    wchar_t sMyFileName[NFILENAME];
+
+    // NFILENAME-20 let the longer name of our DLL fit.
+    DWORD nSize = GetModuleFileNameW(NULL, sMyFileName, NFILENAME - 20);
+    if (nSize == NFILENAME - 20)
+    {
+        std::wcerr << L"Pathname of this exe ridiculously long\n";
+        std::exit(1);
+    }
+
+    wchar_t sWrappedFileName[NFILENAME];
+    if (!GetModuleFileNameExW(hWrappedProcess, NULL, sWrappedFileName, NFILENAME))
+    {
+        std::wcerr << L"GetModuleFileNameExW failed: " << WindowsErrorString(GetLastError())
+                   << L"\n";
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
+        std::exit(1);
+    }
+
     if (bDebug)
     {
         // Give the developer a chance to attach us in a debugger
-        std::wcout << L"Waiting for you to attach a debugger to process "
-                   << std::to_wstring(GetProcessId(GetCurrentProcess())) << std::endl;
+        std::wcout << L"Waiting for you to attach a debugger to the " << baseName(sMyFileName)
+                   << L" process " << std::to_wstring(GetProcessId(GetCurrentProcess())) << L"\n";
+        std::wcout << L"When done with that, set the bWait in the " << baseName(sMyFileName)
+                   << L" process to false" << std::endl;
         volatile bool bWait = true;
         while (bWait)
             Sleep(100);
@@ -236,6 +263,8 @@ int wmain(int argc, wchar_t** argv)
     if (pRover - pEndOfNops >= 100)
     {
         std::wcerr << L"Can't find end of threadProc\n";
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
     pRover += 4;
@@ -246,6 +275,8 @@ int wmain(int argc, wchar_t** argv)
     if (pRover - pThreadProc >= 1000)
     {
         std::wcerr << L"Can't find end of threadProc\n";
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
     pRover += 2;
@@ -253,24 +284,15 @@ int wmain(int argc, wchar_t** argv)
 
     const SIZE_T nSizeOfThreadProc = (SIZE_T)(pRover - pThreadProc);
 
-    // Get our exe pathname.
-
-    const DWORD NFILENAME = 1000;
-    wchar_t sFileName[NFILENAME];
-
-    // NFILENAME-20 let the longer name of our DLL fit.
-    DWORD nSize = GetModuleFileNameW(NULL, sFileName, NFILENAME - 20);
-    if (nSize == NFILENAME - 20)
-    {
-        std::wcerr << L"Pathname of this exe ridiculously long\n";
-        std::exit(1);
-    }
-
-    // Path to the DLL to inject.
-    wchar_t* pLastDot = wcsrchr(sFileName, L'.');
+    // Construct name of DLL to inject.
+    wchar_t sDllFileName[NFILENAME];
+    wcscpy(sDllFileName, sMyFileName);
+    wchar_t* pLastDot = wcsrchr(sDllFileName, L'.');
     if (pLastDot == NULL)
     {
-        std::wcerr << L"No period in " << sFileName << L"?\n";
+        std::wcerr << L"No period in " << sDllFileName << L"?\n";
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
     wcscpy(pLastDot, L"-injected.dll");
@@ -289,7 +311,7 @@ int wmain(int argc, wchar_t** argv)
     aParam.mpGetLastError.pVoid = GetProcAddress(hKernel32, "GetLastError");
     aParam.mpGetProcAddress.pVoid = GetProcAddress(hKernel32, "GetProcAddress");
     std::strcpy(aParam.msInjectedDllMainFunction, "InjectedDllMainFunction");
-    wcscpy(aParam.msFileName, sFileName);
+    wcscpy(aParam.msFileName, sDllFileName);
 
     for (auto i : aInterfaceMap)
     {
@@ -302,6 +324,8 @@ int wmain(int argc, wchar_t** argv)
     if (pParamRemote == NULL)
     {
         std::wcerr << L"VirtualAllocEx failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
 
@@ -309,6 +333,8 @@ int wmain(int argc, wchar_t** argv)
     if (!WriteProcessMemory(hWrappedProcess, pParamRemote, &aParam, sizeof(aParam), &nBytesWritten))
     {
         std::wcerr << L"WriteProcessMemory failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
 
@@ -317,6 +343,8 @@ int wmain(int argc, wchar_t** argv)
     if (pThreadProcRemote == NULL)
     {
         std::wcerr << L"VirtualAllocEx failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
 
@@ -324,6 +352,8 @@ int wmain(int argc, wchar_t** argv)
                             &nBytesWritten))
     {
         std::wcerr << L"WriteProcessMemory failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
 
@@ -332,7 +362,22 @@ int wmain(int argc, wchar_t** argv)
                           &nOldProtection))
     {
         std::wcerr << L"VirtualProtectEx failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
+    }
+
+    if (bDebug)
+    {
+        // Give the developer a chance to debug the wrapped program, too.
+        std::wcout << L"Waiting for you to attach a debugger to the wrapped "
+                   << baseName(sWrappedFileName) << " process "
+                   << std::to_wstring(GetProcessId(hWrappedProcess)) << L"\n";
+        std::wcout << L"When done with that, set the bWait in the " << baseName(sMyFileName)
+                   << L" process to false" << std::endl;
+        volatile bool bWait = true;
+        while (bWait)
+            Sleep(100);
     }
 
     FunPtr pProc;
@@ -342,6 +387,8 @@ int wmain(int argc, wchar_t** argv)
     if (!hThread)
     {
         std::wcerr << L"CreateRemoteThread failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
 
