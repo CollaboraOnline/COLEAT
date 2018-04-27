@@ -242,6 +242,8 @@ int wmain(int argc, wchar_t** argv)
                         &aExeWrapperStartupInfo, &aExeWrapperProcessInfo))
     {
         std::wcerr << L"CreateProcess failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        TerminateProcess(aWrappedProcessInfo.hProcess, 1);
+        WaitForSingleObject(aWrappedProcessInfo.hProcess, INFINITE);
         std::exit(1);
     }
 
