@@ -754,7 +754,7 @@ HRESULT CProxiedDispatch::Invoke(std::string sFuncName, int nInvKind,
     DISPPARAMS aDispParams;
     aDispParams.rgvarg = rParameters.data();
     aDispParams.rgdispidNamedArgs = NULL;
-    aDispParams.cArgs = rParameters.size();
+    aDispParams.cArgs = (UINT)rParameters.size();
     aDispParams.cNamedArgs = 0;
 
     VARIANT aResult;
