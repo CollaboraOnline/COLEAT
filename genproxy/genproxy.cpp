@@ -30,6 +30,7 @@
 #pragma warning(pop)
 
 #include "interfacemap.hpp"
+#include "utilstemp.hpp"
 
 struct FuncTableEntry
 {
@@ -81,13 +82,6 @@ inline bool operator<(const DefaultInterface& a, const DefaultInterface& b)
 
 inline bool operator<(const IID& a, const IID& b) { return std::memcmp(&a, &b, sizeof(a)) < 0; }
 
-static std::string to_hex(uint64_t n, int w = 0)
-{
-    std::stringstream aStringStream;
-    aStringStream << std::setfill('0') << std::setw(w) << std::hex << n;
-    return aStringStream.str();
-}
-
 static std::string IID_initializer(const IID& aIID)
 {
     std::string sResult;
@@ -98,52 +92,6 @@ static std::string IID_initializer(const IID& aIID)
     sResult += "}";
 
     return sResult;
-}
-
-static std::string WindowsErrorString(DWORD nErrorCode)
-{
-    LPWSTR pMsgBuf;
-
-    if (FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM
-                           | FORMAT_MESSAGE_IGNORE_INSERTS,
-                       nullptr, nErrorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                       reinterpret_cast<LPWSTR>(&pMsgBuf), 0, nullptr)
-        == 0)
-    {
-        return to_hex(nErrorCode);
-    }
-
-    std::string sResult = aUTF16ToUTF8.to_bytes(pMsgBuf);
-    if (sResult.length() > 2 && sResult.substr(sResult.length() - 2, 2) == "\r\n")
-        sResult.resize(sResult.length() - 2);
-
-    HeapFree(GetProcessHeap(), 0, pMsgBuf);
-
-    return sResult;
-}
-
-static std::string WindowsErrorStringFromHRESULT(HRESULT nResult)
-{
-    // See https://blogs.msdn.microsoft.com/oldnewthing/20061103-07/?p=29133
-    // Also https://social.msdn.microsoft.com/Forums/vstudio/en-US/c33d9a4a-1077-4efd-99e8-0c222743d2f8
-    // (which refers to https://msdn.microsoft.com/en-us/library/aa382475)
-    // explains why can't we just reinterpret_cast HRESULT to DWORD Win32 error:
-    // we might actually have a Win32 error code converted using HRESULT_FROM_WIN32 macro
-
-    DWORD nErrorCode = DWORD(nResult);
-    if (HRESULT(nResult & 0xFFFF0000) == MAKE_HRESULT(SEVERITY_ERROR, FACILITY_WIN32, 0)
-        || nResult == S_OK)
-    {
-        nErrorCode = (DWORD)HRESULT_CODE(nResult);
-        // https://msdn.microsoft.com/en-us/library/ms679360 mentions that the codes might have
-        // high word bits set (e.g., bit 29 could be set if error comes from a 3rd-party library).
-        // So try to restore the original error code to avoid wrong error messages
-        DWORD nLastError = GetLastError();
-        if ((nLastError & 0xFFFF) == nErrorCode)
-            nErrorCode = nLastError;
-    }
-
-    return WindowsErrorString(nErrorCode);
 }
 
 static bool IsIgnoredType(ITypeInfo* pTypeInfo)
@@ -448,8 +396,8 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
 
     aHeader << "// Generated file. Do not edit.\n";
     aHeader << "\n";
-    aHeader << "#ifndef INCLUDED_C" << sClass << "_HXX\n";
-    aHeader << "#define INCLUDED_C" << sClass << "_HXX\n";
+    aHeader << "#ifndef INCLUDED_" << sClass << "_HXX\n";
+    aHeader << "#define INCLUDED_" << sClass << "_HXX\n";
     aHeader << "\n";
     aHeader << "#pragma warning(push)\n";
     aHeader << "#pragma warning(disable: 4668 4820 4917)\n";
@@ -470,6 +418,9 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
     aCode << "            DISPPARAMS* pDispParams, VARIANT* pVarResult, EXCEPINFO* pExcepInfo, "
              "UINT* puArgErr)\n";
     aCode << "{\n";
+
+    aCode << "    std::cout << \"" << sClass
+          << "CallbackInvoke(\" << pDispatchToProxy << \", \" << dispIdMember << \":\";\n";
 
     aCode << "    HRESULT nResult;\n";
     aCode << "    DISPPARAMS aLocalDispParams = *pDispParams;\n";
@@ -506,9 +457,11 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
             std::exit(1);
         }
 
-        aCode << "        case " << pFuncDesc->memid << ": /* " << aUTF16ToUTF8.to_bytes(sFuncName)
-              << " */\n";
+        aCode << "        case " << pFuncDesc->memid << ": // " << aUTF16ToUTF8.to_bytes(sFuncName)
+              << "\n";
         aCode << "            {\n";
+        aCode << "                std::cout << \"" << aUTF16ToUTF8.to_bytes(sFuncName)
+              << ")\" << std::endl;\n";
 
         // Go through parameter list declared for the function in the type library, manipulate
         // corresponding actual run-time parameters. Currently the only special thing needed is to
@@ -564,9 +517,10 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
                     }
                     std::string sReferencedTypeName(aUTF16ToUTF8.to_bytes(sReferencedTypeNameBstr));
                     aCode << "                    aLocalDispParams.rgvarg["
-                          << (pFuncDesc->cParams - nParam - 1) << "].pdispVal = new C" << sLibName
-                          << "_" << sReferencedTypeName << "(aLocalDispParams.rgvarg["
-                          << (pFuncDesc->cParams - nParam - 1) << "].pdispVal);\n";
+                          << (pFuncDesc->cParams - nParam - 1)
+                          << "].pdispVal = reinterpret_cast<IDispatch*>(new C" << sLibName << "_"
+                          << sReferencedTypeName << "(nullptr, aLocalDispParams.rgvarg["
+                          << (pFuncDesc->cParams - nParam - 1) << "].pdispVal));\n";
 
                     if (!aIncludedHeaders.count(sReferencedTypeName))
                     {
@@ -606,7 +560,7 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
     aHeader << "            DISPPARAMS* pDispParams, VARIANT* pVarResult,\n";
     aHeader << "            EXCEPINFO* pExcepInfo, UINT* puArgErr);\n";
     aHeader << "\n";
-    aHeader << "#endif // INCLUDED_C" << sClass << "_HXX\n";
+    aHeader << "#endif // INCLUDED_" << sClass << "_HXX\n";
 
     aHeader.close();
     if (!aHeader.good())
@@ -801,9 +755,11 @@ static void GenerateCoclass(const std::string& sLibName, const std::string& sTyp
     aHeader << "class C" << sClass << ": public C" << sLibName << "_" << sDefaultInterface << "\n";
     aHeader << "{\n";
     aHeader << "public:\n";
-    aHeader << "    C" << sClass << "(IDispatch* pDispatchToProxy) :\n";
-    aHeader << "        C" << sLibName << "_" << sDefaultInterface << "(pDispatchToProxy, "
-            << IID_initializer(pTypeAttr->guid) << ")\n";
+    aHeader << "    C" << sClass
+            << "(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy) :\n";
+    aHeader << "        C" << sLibName << "_" << sDefaultInterface
+            << "(pBaseClassUnknown, pDispatchToProxy, " << IID_initializer(pTypeAttr->guid)
+            << ")\n";
     aHeader << "    {\n";
     aHeader << "    }\n";
     aHeader << "};\n";
@@ -1032,7 +988,27 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
     std::set<std::string> aIncludedHeaders;
     std::string sReferencedName;
 
-    // Generate cxx file
+    // Generate bulk of cxx file
+
+    // First constructors. Two constructors: One that takes an extra IID (in case this is the
+    // default interface for a coclass).
+
+    aCode << "C" << sClass << "::C" << sClass
+          << "(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy) :\n";
+    aCode << "    CProxiedDispatch(pBaseClassUnknown, pDispatchToProxy, "
+          << IID_initializer(pVtblTypeAttr->guid) << ")\n";
+    aCode << "{\n";
+    aCode << "}\n";
+    aCode << "\n";
+    aCode << "C" << sClass << "::C" << sClass
+          << "(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& aIID) :\n";
+    aCode << "    CProxiedDispatch(pBaseClassUnknown, pDispatchToProxy, "
+          << IID_initializer(pVtblTypeAttr->guid) << ", aIID)\n";
+    aCode << "{\n";
+    aCode << "}\n";
+    aCode << "\n";
+
+    // Then the member functions
 
     for (UINT nFunc = 0; nFunc < pVtblTypeAttr->cFuncs; ++nFunc)
     {
@@ -1496,8 +1472,8 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
             aCode << "        vReverseParams.push_back(*i);\n";
         }
 
-        // Call CProxiedDispatch::Invoke()
-        aCode << "    HRESULT nResult = Invoke(\""
+        // Call CProxiedDispatch::genericInvoke()
+        aCode << "    HRESULT nResult = genericInvoke(\""
               << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[0]) << "\", "
               << vVtblFuncTable[nFunc].mpFuncDesc->invkind << ", "
               << "vReverseParams, " << sRetvalName << ");\n";
@@ -1577,10 +1553,10 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                                                        .mpFuncDesc->lprgelemdescParam[nRetvalParam]
                                                        .tdesc.lptdesc->lptdesc,
                                                   sReferencedName)
-                                  << "(*"
+                                  << "(nullptr, reinterpret_cast<IDispatch*>(*"
                                   << aUTF16ToUTF8.to_bytes(
                                          vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
-                                  << ");\n";
+                                  << "));\n";
                         }
                         pReferencedTypeInfo->ReleaseTypeAttr(pReferencedTypeAttr);
                     }
@@ -1603,22 +1579,13 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
     if (aIncludedHeaders.size())
         aHeader << "\n";
 
-    // Two constructors: One that takes an extra IID (in case this is the default interface for a
-    // coclass).
     aHeader << "class C" << sClass << ": public CProxiedDispatch\n";
     aHeader << "{\n";
     aHeader << "public:\n";
-    aHeader << "    C" << sClass << "(IDispatch* pDispatchToProxy) :\n";
-    aHeader << "        CProxiedDispatch(pDispatchToProxy, " << IID_initializer(pVtblTypeAttr->guid)
-            << ")\n";
-    aHeader << "    {\n";
-    aHeader << "    }\n";
+    aHeader << "    C" << sClass << "(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy);\n";
     aHeader << "\n";
-    aHeader << "    C" << sClass << "(IDispatch* pDispatchToProxy, const IID& aCoclassIID) :\n";
-    aHeader << "        CProxiedDispatch(pDispatchToProxy, " << IID_initializer(pVtblTypeAttr->guid)
-            << ", aCoclassIID)\n";
-    aHeader << "    {\n";
-    aHeader << "    }\n";
+    aHeader << "    C" << sClass
+            << "(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& aIID);\n";
     aHeader << "\n";
 
     for (UINT nFunc = 0; nFunc < pVtblTypeAttr->cFuncs; ++nFunc)
@@ -1828,7 +1795,6 @@ static void GenerateDefaultInterfaceCreator()
     aHeader << "#define INCLUDED_DefaultInterfaceCreator_HXX\n";
     aHeader << "\n";
 
-    aHeader << "#include <codecvt>\n";
     aHeader << "#include <string>\n";
     aHeader << "\n";
 
@@ -1839,8 +1805,9 @@ static void GenerateDefaultInterfaceCreator()
     }
     aHeader << "\n";
 
-    aHeader << "static bool DefaultInterfaceCreator(const IID& rIID, IDispatch** pPDispatch, "
-               "IDispatch* pReplacementAppDispatch, std::wstring& sClass)\n";
+    aHeader << "static bool DefaultInterfaceCreator(IUnknown* pBaseClassUnknown, const IID& rIID, "
+               "IDispatch** pPDispatch, "
+               "IDispatch* pReplacementAppDispatch, std::string& sClass)\n";
     aHeader << "{\n";
 
     for (auto aDefaultInterface : aDefaultInterfaces)
@@ -1851,9 +1818,10 @@ static void GenerateDefaultInterfaceCreator()
         aHeader << "    if (IsEqualIID(rIID, aIID_" << aDefaultInterface.msLibName << "_"
                 << aDefaultInterface.msName << "))\n";
         aHeader << "    {\n";
-        aHeader << "        *pPDispatch = new C" << aDefaultInterface.msLibName << "_"
-                << aDefaultInterface.msName << "(pReplacementAppDispatch);\n";
-        aHeader << "        sClass = L\"" << aDefaultInterface.msLibName << "_"
+        aHeader << "        *pPDispatch = reinterpret_cast<IDispatch*>(new C"
+                << aDefaultInterface.msLibName << "_" << aDefaultInterface.msName
+                << "(pBaseClassUnknown, pReplacementAppDispatch));\n";
+        aHeader << "        sClass = \"" << aDefaultInterface.msLibName << "_"
                 << aDefaultInterface.msName << "\";\n";
         aHeader << "        return true;\n";
         aHeader << "    }\n";
@@ -1891,7 +1859,7 @@ static void GenerateOutgoingInterfaceMap(const std::map<IID, IID>& aOutgoingInte
     aHeader << "#define INCLUDED_OutgoingInterfaceMap_HXX\n";
     aHeader << "\n";
 
-    aHeader << "const static struct { IID maOtherAppIID, maLibreOfficeIID; } "
+    aHeader << "const static struct { IID maProxiedAppIID, maReplacementIID; } "
                "aOutgoingInterfaceMap[] =\n";
     aHeader << "{\n";
 
@@ -1975,9 +1943,9 @@ static void Usage(char** argv)
                  "    -i ifaceA,ifaceB,...         Only output code for those interfaces\n"
                  "    -I file                      Only output code for interfaces listed in file\n"
                  "    -M file                      file contains interface mappings\n"
-                 "    -O file                      Use mapping between LibreOffice outgoing "
+                 "    -O file                      Use mapping between replacement app's outgoing "
                  "interface IIDs\n"
-                 "                                 and the other application's source interface "
+                 "                                 and the proxied application's source interface "
                  "IIDs in file\n"
                  "    -T                           Generate verbose tracing outout.\n"
                  "  If no -M option is given, does not do any COM server redirection.\n"
@@ -2106,40 +2074,40 @@ int main(int argc, char** argv)
                 }
                 while (!aOFile.eof())
                 {
-                    std::string sLibreOfficeOutgoingInterface;
-                    aOFile >> sLibreOfficeOutgoingInterface;
-                    if (sLibreOfficeOutgoingInterface.length() > 0
-                        && sLibreOfficeOutgoingInterface[0] == '#')
+                    std::string sReplacementOutgoingInterface;
+                    aOFile >> sReplacementOutgoingInterface;
+                    if (sReplacementOutgoingInterface.length() > 0
+                        && sReplacementOutgoingInterface[0] == '#')
                     {
                         std::string sRestOfLine;
                         std::getline(aOFile, sRestOfLine);
                         continue;
                     }
-                    std::string sOtherAppSourceInterface;
-                    aOFile >> sOtherAppSourceInterface;
+                    std::string sProxiedAppSourceInterface;
+                    aOFile >> sProxiedAppSourceInterface;
                     if (aOFile.good())
                     {
-                        IID aLibreOfficeOutgoingInterface;
+                        IID aReplacementOutgoingInterface;
                         if (FAILED(IIDFromString(
-                                aUTF8ToUTF16.from_bytes(sLibreOfficeOutgoingInterface.c_str())
+                                aUTF8ToUTF16.from_bytes(sReplacementOutgoingInterface.c_str())
                                     .data(),
-                                &aLibreOfficeOutgoingInterface)))
+                                &aReplacementOutgoingInterface)))
                         {
-                            std::cerr << "Could not interpret " << sLibreOfficeOutgoingInterface
+                            std::cerr << "Could not interpret " << sReplacementOutgoingInterface
                                       << " in " << argv[argi + 1] << " as an IID\n";
                             break;
                         }
-                        IID aOtherAppSourceInterface;
+                        IID aProxiedAppSourceInterface;
                         if (FAILED(IIDFromString(
-                                aUTF8ToUTF16.from_bytes(sOtherAppSourceInterface.c_str()).data(),
-                                &aOtherAppSourceInterface)))
+                                aUTF8ToUTF16.from_bytes(sProxiedAppSourceInterface.c_str()).data(),
+                                &aProxiedAppSourceInterface)))
                         {
-                            std::cerr << "Count not interpret " << sOtherAppSourceInterface
+                            std::cerr << "Count not interpret " << sProxiedAppSourceInterface
                                       << " in " << argv[argi + 1] << " as an IID\n";
                             break;
                         }
-                        aOutgoingInterfaceMap[aLibreOfficeOutgoingInterface]
-                            = aOtherAppSourceInterface;
+                        aOutgoingInterfaceMap[aReplacementOutgoingInterface]
+                            = aProxiedAppSourceInterface;
                     }
                 }
                 argi++;

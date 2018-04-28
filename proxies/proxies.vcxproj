@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -156,9 +156,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="CProxiedDispatch.hpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="..\generated\CExcel_Workbooks.cxx" />
     <ClCompile Include="..\generated\CExcel__Application.cxx" />
     <ClCompile Include="..\generated\CExcel__Workbook.cxx" />
@@ -168,7 +165,13 @@
     <ClCompile Include="..\generated\Word_ApplicationEvents4.cxx" />
     <ClCompile Include="..\generated\Word_DocumentEvents2.cxx" />
     <ClCompile Include="CProxiedCoclass.cpp" />
+    <ClCompile Include="CProxiedConnectionPoint.cpp" />
+    <ClCompile Include="CProxiedConnectionPointContainer.cpp" />
     <ClCompile Include="CProxiedDispatch.cpp" />
+    <ClCompile Include="CProxiedEnumConnectionPoints.cpp" />
+    <ClCompile Include="CProxiedEnumConnections.cpp" />
+    <ClCompile Include="CProxiedSink.cpp" />
+    <ClCompile Include="CProxiedUnknown.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -7,48 +7,35 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-#ifndef INCLUDED_CProxiedDispatch_hpp
-#define INCLUDED_CProxiedDispatch_hpp
+#ifndef INCLUDED_CProxiedSink_hpp
+#define INCLUDED_CProxiedSink_hpp
 
 #pragma warning(push)
 #pragma warning(disable: 4668 4820 4917)
 
-#include <map>
-#include <string>
-#include <vector>
-
 #include <Windows.h>
-#include <OCIdl.h>
 
 #pragma warning(pop)
 
 #include "CProxiedUnknown.hpp"
 
-class CProxiedDispatch: public CProxiedUnknown
+// We have all these proxy classes inherit from CProxiedUnknown and not from the corresponding
+// actual abstract interface class so that they will automatically inherit CProxiedUnknown's
+// implementations of the IUnknown member functions. We must therefore declare the member functions
+// in the same order as those of the actual abstract interface class as virtual (and not overridden)
+// so that they go into the vtbl in the expected order.
+
+class CProxiedSink : public CProxiedUnknown
 {
-public:
-    CProxiedDispatch(IUnknown* pBaseClassUnknown,
-                     IDispatch* pDispatchToProxy);
-
-    CProxiedDispatch(IUnknown* pBaseClassUnknown,
-                     IDispatch* pDispatchToProxy,
-                     const IID& rIID);
-
-    CProxiedDispatch(IUnknown* pBaseClassUnknown,
-                     IDispatch* pDispatchToProxy,
-                     const IID& rIID1,
-                     const IID& rIID2);
-
 private:
-    IDispatch* const mpDispatchToProxy;
+    IDispatch* mpDispatchToProxy;
+    ITypeInfo* mpTypeInfoOfOutgoingInterface;
 
 public:
-    HRESULT genericInvoke(std::string sFuncName,
-                          int nInvKind,
-                          std::vector<VARIANT>& rParameters,
-                          void* pRetval);
+    CProxiedSink(IDispatch* pDispatchToProxy, ITypeInfo* pTypeInfoOfOutgoingInterface, const IID& aOutgoingIID);
 
     // IDispatch
+
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT* pctinfo);
 
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo** ppTInfo);
@@ -61,6 +48,6 @@ public:
                                              EXCEPINFO* pExcepInfo, UINT* puArgErr);
 };
 
-#endif // INCLUDED_CProxiedDispatch_hpp
+#endif // INCLUDED_CProxiedSink_hpp
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab cinoptions=b1,g0,N-s cinkeys+=0=break: */
