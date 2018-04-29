@@ -2074,19 +2074,28 @@ int main(int argc, char** argv)
                 }
                 while (!aOFile.eof())
                 {
-                    std::string sReplacementOutgoingInterface;
-                    aOFile >> sReplacementOutgoingInterface;
-                    if (sReplacementOutgoingInterface.length() > 0
-                        && sReplacementOutgoingInterface[0] == '#')
+                    std::string sProxiedAppSourceInterface;
+                    aOFile >> sProxiedAppSourceInterface;
+                    if (sProxiedAppSourceInterface.length() > 0
+                        && sProxiedAppSourceInterface[0] == '#')
                     {
                         std::string sRestOfLine;
                         std::getline(aOFile, sRestOfLine);
                         continue;
                     }
-                    std::string sProxiedAppSourceInterface;
-                    aOFile >> sProxiedAppSourceInterface;
+                    std::string sReplacementOutgoingInterface;
+                    aOFile >> sReplacementOutgoingInterface;
                     if (aOFile.good())
                     {
+                        IID aProxiedAppSourceInterface;
+                        if (FAILED(IIDFromString(
+                                aUTF8ToUTF16.from_bytes(sProxiedAppSourceInterface.c_str()).data(),
+                                &aProxiedAppSourceInterface)))
+                        {
+                            std::cerr << "Count not interpret " << sProxiedAppSourceInterface
+                                      << " in " << argv[argi + 1] << " as an IID\n";
+                            break;
+                        }
                         IID aReplacementOutgoingInterface;
                         if (FAILED(IIDFromString(
                                 aUTF8ToUTF16.from_bytes(sReplacementOutgoingInterface.c_str())
@@ -2097,17 +2106,8 @@ int main(int argc, char** argv)
                                       << " in " << argv[argi + 1] << " as an IID\n";
                             break;
                         }
-                        IID aProxiedAppSourceInterface;
-                        if (FAILED(IIDFromString(
-                                aUTF8ToUTF16.from_bytes(sProxiedAppSourceInterface.c_str()).data(),
-                                &aProxiedAppSourceInterface)))
-                        {
-                            std::cerr << "Count not interpret " << sProxiedAppSourceInterface
-                                      << " in " << argv[argi + 1] << " as an IID\n";
-                            break;
-                        }
-                        aOutgoingInterfaceMap[aReplacementOutgoingInterface]
-                            = aProxiedAppSourceInterface;
+                        aOutgoingInterfaceMap[aProxiedAppSourceInterface]
+                            = aReplacementOutgoingInterface;
                     }
                 }
                 argi++;
