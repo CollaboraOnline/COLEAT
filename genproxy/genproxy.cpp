@@ -685,7 +685,7 @@ static void GenerateCoclass(const std::string& sLibName, const std::string& sTyp
 
         INT nImplTypeFlags;
         nResult = pTypeInfo->GetImplTypeFlags(i, &nImplTypeFlags);
-        if (FAILED(nRefType))
+        if (FAILED(nResult))
         {
             std::cerr << "GetImplTypeFlags(" << i
                       << ") failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
