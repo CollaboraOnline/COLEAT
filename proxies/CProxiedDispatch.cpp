@@ -114,6 +114,14 @@ HRESULT CProxiedDispatch::genericInvoke(std::string sFuncName, int nInvKind,
 
     UINT nArgErr;
 
+    // See https://msdn.microsoft.com/en-us/library/windows/desktop/ms221486(v=vs.85).aspx
+    DISPID nDispid = DISPID_PROPERTYPUT;
+    if (nFlags == DISPATCH_PROPERTYPUT)
+    {
+        aDispParams.rgdispidNamedArgs = &nDispid;
+        aDispParams.cNamedArgs = 1;
+    }
+
     nResult = mpDispatchToProxy->Invoke(nMemberId, IID_NULL, LOCALE_USER_DEFAULT, nFlags,
                                         &aDispParams, &aResult, NULL, &nArgErr);
     if (FAILED(nResult))
