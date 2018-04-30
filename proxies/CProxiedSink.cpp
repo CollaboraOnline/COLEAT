@@ -113,8 +113,9 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
     nResult = ProxiedCallbackInvoke(maIID2, mpDispatchToProxy, nDispIdMemberInClient, riid, lcid,
                                     wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
 
-    std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
-              << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+    std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember << "): maps to Invoke("
+              << nDispIdMemberInClient << "): " << WindowsErrorStringFromHRESULT(nResult)
+              << std::endl;
 
     return nResult;
 }
