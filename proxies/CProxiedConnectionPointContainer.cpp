@@ -83,11 +83,11 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
 
     for (const auto aMapEntry : aOutgoingInterfaceMap)
     {
-        if (IsEqualIID(riid, aMapEntry.maProxiedAppIID))
+        if (IsEqualIID(riid, aMapEntry.maSourceInterfaceInProxiedApp))
         {
             const IID aProxiedOrReplacementIID
-                = (getParam()->mbTraceOnly ? aMapEntry.maProxiedAppIID
-                                           : aMapEntry.maReplacementIID);
+                = (getParam()->mbTraceOnly ? aMapEntry.maSourceInterfaceInProxiedApp
+                                           : aMapEntry.maOutgoingInterfaceInReplacement);
 
             ITypeInfo* pCoclassTI;
             nResult = mpProvideClassInfo->GetClassInfo(&pCoclassTI);
@@ -175,8 +175,8 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
                           << std::endl;
                 return nResult;
             }
-            *ppCP = reinterpret_cast<IConnectionPoint*>(
-                new CProxiedConnectionPoint(nullptr, this, pCP, aMapEntry.maProxiedAppIID, pTI));
+            *ppCP = reinterpret_cast<IConnectionPoint*>(new CProxiedConnectionPoint(
+                nullptr, this, pCP, aMapEntry.maSourceInterfaceInProxiedApp, pTI));
 
             std::cout << "..." << this << "@CProxiedConnectionPointContainer::FindConnectionPoint("
                       << riid << "): S_OK" << std::endl;

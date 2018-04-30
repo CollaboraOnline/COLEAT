@@ -30,6 +30,7 @@
 #pragma warning(pop)
 
 #include "interfacemap.hpp"
+#include "outgoingmap.hpp"
 #include "utilstemp.hpp"
 
 struct FuncTableEntry
@@ -62,6 +63,8 @@ static std::set<std::string> aOnlyTheseInterfaces;
 
 static std::set<Callback> aCallbacks;
 static std::set<DefaultInterface> aDefaultInterfaces;
+
+static std::vector<OutgoingInterfaceMapping> aOutgoingInterfaceMap;
 
 static bool bGenerateTracing = false;
 
@@ -429,6 +432,18 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
     aCode << "    switch (dispIdMember)\n";
     aCode << "    {\n";
 
+    // Also fill in the NameToMemberIdMapping in the corresponding OutgoingInterfaceMapping
+    OutgoingInterfaceMapping* pOutgoing = nullptr;
+    auto pOutgoingNameToId = new std::vector<NameToMemberIdMapping>;
+    for (auto& i : aOutgoingInterfaceMap)
+    {
+        if (IsEqualIID(i.maSourceInterfaceInProxiedApp, pTypeAttr->guid))
+        {
+            pOutgoing = &i;
+            break;
+        }
+    }
+
     std::set<std::string> aIncludedHeaders;
 
     for (UINT nFunc = 0; nFunc < pTypeAttr->cFuncs; ++nFunc)
@@ -456,6 +471,9 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
                       << ") failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
             std::exit(1);
         }
+
+        pOutgoingNameToId->push_back(
+            { _strdup(aUTF16ToUTF8.to_bytes(sFuncName).data()), pFuncDesc->memid });
 
         aCode << "        case " << pFuncDesc->memid << ": // " << aUTF16ToUTF8.to_bytes(sFuncName)
               << "\n";
@@ -538,6 +556,11 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
 
         pTypeInfo->ReleaseFuncDesc(pFuncDesc);
     }
+
+    pOutgoingNameToId->push_back({ nullptr, 0 });
+    if (pOutgoing != nullptr)
+        pOutgoing->maNameToId = pOutgoingNameToId->data();
+
     aCode << "        default:\n";
     aCode << "            std::cerr << \"Unhandled DISPID \" << dispIdMember << \" in " << sClass
           << "CallbackInvoke!\" << std::endl;\n";
@@ -1840,7 +1863,7 @@ static void GenerateDefaultInterfaceCreator()
     }
 }
 
-static void GenerateOutgoingInterfaceMap(const std::map<IID, IID>& aOutgoingInterfaceMap)
+static void GenerateOutgoingInterfaceMap()
 {
     if (aOutgoingInterfaceMap.size() == 0)
         return;
@@ -1858,15 +1881,36 @@ static void GenerateOutgoingInterfaceMap(const std::map<IID, IID>& aOutgoingInte
     aHeader << "#ifndef INCLUDED_OutgoingInterfaceMap_HXX\n";
     aHeader << "#define INCLUDED_OutgoingInterfaceMap_HXX\n";
     aHeader << "\n";
+    aHeader << "#include \"outgoingmap.hpp\"\n";
+    aHeader << "\n";
 
-    aHeader << "const static struct { IID maProxiedAppIID, maReplacementIID; } "
+    int nMappingIndex = 0;
+    for (const auto i : aOutgoingInterfaceMap)
+    {
+        aHeader << "const static NameToMemberIdMapping a" << nMappingIndex << "[] =\n";
+        aHeader << "{\n";
+        for (const NameToMemberIdMapping* p = i.maNameToId; p->mpName != nullptr; ++p)
+        {
+            aHeader << "    { \"" << p->mpName << "\", " << p->mnMemberId << " },\n";
+        }
+        aHeader << "    { nullptr, 0 }\n";
+        aHeader << "};\n";
+        aHeader << "\n";
+
+        ++nMappingIndex;
+    }
+
+    aHeader << "const static OutgoingInterfaceMapping "
                "aOutgoingInterfaceMap[] =\n";
     aHeader << "{\n";
 
+    nMappingIndex = 0;
     for (const auto i : aOutgoingInterfaceMap)
     {
-        aHeader << "    { " << IID_initializer(i.first) << ", " << IID_initializer(i.second)
-                << "},\n";
+        aHeader << "    { " << IID_initializer(i.maSourceInterfaceInProxiedApp) << ", "
+                << IID_initializer(i.maOutgoingInterfaceInReplacement) << ", "
+                << "a" << nMappingIndex << " },\n";
+        ++nMappingIndex;
     }
 
     aHeader << "};\n";
@@ -1979,7 +2023,6 @@ int main(int argc, char** argv)
 {
     int argi = 1;
 
-    std::map<IID, IID> aOutgoingInterfaceMap;
     std::vector<InterfaceMapping> aInterfaceMap;
 
     while (argi < argc && argv[argi][0] == '-')
@@ -2106,8 +2149,11 @@ int main(int argc, char** argv)
                                       << " in " << argv[argi + 1] << " as an IID\n";
                             break;
                         }
-                        aOutgoingInterfaceMap[aProxiedAppSourceInterface]
-                            = aReplacementOutgoingInterface;
+                        // We leave the maNameToId as empty and fill in once we have the type library.
+                        aOutgoingInterfaceMap.push_back({
+                            aProxiedAppSourceInterface,
+                            aReplacementOutgoingInterface,
+                        });
                     }
                 }
                 argi++;
@@ -2221,7 +2267,7 @@ int main(int argc, char** argv)
 
     GenerateInterfaceMapping(aInterfaceMap);
 
-    GenerateOutgoingInterfaceMap(aOutgoingInterfaceMap);
+    GenerateOutgoingInterfaceMap();
 
     GenerateCallbackInvoker();
 

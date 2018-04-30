@@ -17,6 +17,7 @@
 #include <string>
 
 #include <Windows.h>
+#include <OCIdl.h>
 
 #pragma warning(pop)
 
