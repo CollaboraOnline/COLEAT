@@ -18,13 +18,18 @@
   existing file, and only if the contents has changed replace it with
   the newly written one.
 
+- Make the lines in the -I file (argument to genproxy) specify both
+  library name and interface name.
+
 - Clean up the std::cout vs. std::wcout (and std::cerr vs. std::wcerr)
   inconsistency. Decision: Just use the the plain char streams for
   logging and warnings. Add static UTF16-to-UTF8 (and reverse, if
   necessary) converters to CProxiedUnknown.
 
 - When that done, can get rid of the utils.hpp vs utilstemp.hpp and
-  just use an utils.hpp.
+  just use an utils.hpp. Also don't include windowsdebugoutput.hxx
+  from LibreOffice, but just copy the necessary thing, so that coleat
+  can be built freestanding from LibreOffice.
 
 - What about wmain() vs main()? Just use main(). Our command-line
   parameter are either by their natur ASCII-only or file names, and
