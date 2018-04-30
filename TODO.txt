@@ -13,6 +13,11 @@
   are unstable per definition as new callback methods are added
   whenever a need is noticed.
 
+- Make genproxy write its generated code to files with a .temp suffix,
+  and after closing a generated file check if there is a corresponding
+  existing file, and only if the contents has changed replace it with
+  the newly written one.
+
 - Clean up the std::cout vs. std::wcout (and std::cerr vs. std::wcerr)
   inconsistency. Decision: Just use the the plain char streams for
   logging and warnings. Add static UTF16-to-UTF8 (and reverse, if
