@@ -1,17 +1,12 @@
 - Even if -t (tracing-only) now seems to basically work for Word, it
-  doesn't for Excel. No IProvideClassInfo provided by its interfaces.
+  doesn't for Excel. That obviously needs to be fixed.
 
-  So we need to avoid the need for IProvideClassInfo in the -t mode,
-  and instead generate the necessary data at genproxy time: Mapping
-  between method names and member ids for the "source" (outgoing)
-  interfaces.
-
-  Note that in the "normal" mode, the server application we are
-  talking to (the "replacement application") *must* provide
-  IProvideClassInfo. We don't know anything about for instance
-  Collabora Office's outgoing interfaces at genproxy time. And they
-  are unstable per definition as new callback methods are added
-  whenever a need is noticed.
+  (Related note: In the "normal" mode, the replacement application we
+  are talking to *must* provide IProvideClassInfo. We don't know
+  anything about for instance Collabora Office's outgoing interfaces
+  at genproxy time. And they are unstable per definition as new
+  callback methods are added whenever a need is noticed. Collabora
+  Office built from this branch does provide IProvideClassInfo.)
 
 - Make genproxy write its generated code to files with a .temp suffix,
   and after closing a generated file check if there is a corresponding
@@ -46,8 +41,7 @@
   Collabora Office. "Proxied application" is too unclear, we use the
   "proxy" term too much already.
 
-- Add a -v switch to turn on the verbose logging, and put everything
-  except the actual tracing of what the client does with the API the
-  original application provides behind that switch. (Thus, without any
-  switches at all, coleat would be entirely silent, except for error
-  messages.)
+- Add a -v switch to turn on the verbose logging, and make all output
+  except error messages conditional on either -t or -v. (Thus, without
+  any switches at all, coleat would be entirely silent, except for
+  error messages.)
