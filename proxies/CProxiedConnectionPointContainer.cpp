@@ -89,80 +89,76 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
                 = (getParam()->mbTraceOnly ? aMapEntry.maSourceInterfaceInProxiedApp
                                            : aMapEntry.maOutgoingInterfaceInReplacement);
 
-            ITypeInfo* pCoclassTI;
-            nResult = mpProvideClassInfo->GetClassInfo(&pCoclassTI);
-            if (FAILED(nResult))
-            {
-                std::cout << "..." << this
-                          << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid
-                          << "): GetClassInfo failed: " << WindowsErrorStringFromHRESULT(nResult)
-                          << std::endl;
-                return nResult;
-            }
-
-            TYPEATTR* pCoclassTA;
-            nResult = pCoclassTI->GetTypeAttr(&pCoclassTA);
-            if (FAILED(nResult))
-            {
-                std::cout << "..." << this
-                          << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid
-                          << "): GetTypeAttr failed: " << WindowsErrorStringFromHRESULT(nResult)
-                          << std::endl;
-                return nResult;
-            }
-
             ITypeInfo* pTI = NULL;
-            for (WORD i = 0; i < pCoclassTA->cImplTypes; ++i)
+
+            if (mpProvideClassInfo != NULL)
             {
-                INT nImplTypeFlags;
-                nResult = pCoclassTI->GetImplTypeFlags(i, &nImplTypeFlags);
+                ITypeInfo* pCoclassTI;
+                nResult = mpProvideClassInfo->GetClassInfo(&pCoclassTI);
                 if (FAILED(nResult))
                 {
                     std::cout << "..." << this
                               << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid
-                              << "): GetImplTypeFlags failed: "
+                              << "): GetClassInfo failed: "
                               << WindowsErrorStringFromHRESULT(nResult) << std::endl;
-                    pCoclassTI->ReleaseTypeAttr(pCoclassTA);
                     return nResult;
                 }
 
-                if (!((nImplTypeFlags & IMPLTYPEFLAG_FDEFAULT)
-                      && (nImplTypeFlags & IMPLTYPEFLAG_FSOURCE)))
-                    continue;
-
-                HREFTYPE nHrefType;
-                nResult = pCoclassTI->GetRefTypeOfImplType(i, &nHrefType);
+                TYPEATTR* pCoclassTA;
+                nResult = pCoclassTI->GetTypeAttr(&pCoclassTA);
                 if (FAILED(nResult))
                 {
                     std::cout << "..." << this
                               << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid
-                              << "): GetRefTypeOfImplType failed: "
-                              << WindowsErrorStringFromHRESULT(nResult) << std::endl;
-                    pCoclassTI->ReleaseTypeAttr(pCoclassTA);
+                              << "): GetTypeAttr failed: " << WindowsErrorStringFromHRESULT(nResult)
+                              << std::endl;
                     return nResult;
                 }
 
-                nResult = pCoclassTI->GetRefTypeInfo(nHrefType, &pTI);
-                if (FAILED(nResult))
+                for (WORD i = 0; i < pCoclassTA->cImplTypes; ++i)
                 {
-                    std::cout << "..." << this
-                              << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid
-                              << "): GetRefTypeInfo failed: "
-                              << WindowsErrorStringFromHRESULT(nResult) << std::endl;
-                    pCoclassTI->ReleaseTypeAttr(pCoclassTA);
-                    return nResult;
+                    INT nImplTypeFlags;
+                    nResult = pCoclassTI->GetImplTypeFlags(i, &nImplTypeFlags);
+                    if (FAILED(nResult))
+                    {
+                        std::cout << "..." << this
+                                  << "@CProxiedConnectionPointContainer::FindConnectionPoint("
+                                  << riid << "): GetImplTypeFlags failed: "
+                                  << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+                        pCoclassTI->ReleaseTypeAttr(pCoclassTA);
+                        return nResult;
+                    }
+
+                    if (!((nImplTypeFlags & IMPLTYPEFLAG_FDEFAULT)
+                          && (nImplTypeFlags & IMPLTYPEFLAG_FSOURCE)))
+                        continue;
+
+                    HREFTYPE nHrefType;
+                    nResult = pCoclassTI->GetRefTypeOfImplType(i, &nHrefType);
+                    if (FAILED(nResult))
+                    {
+                        std::cout << "..." << this
+                                  << "@CProxiedConnectionPointContainer::FindConnectionPoint("
+                                  << riid << "): GetRefTypeOfImplType failed: "
+                                  << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+                        pCoclassTI->ReleaseTypeAttr(pCoclassTA);
+                        return nResult;
+                    }
+
+                    nResult = pCoclassTI->GetRefTypeInfo(nHrefType, &pTI);
+                    if (FAILED(nResult))
+                    {
+                        std::cout << "..." << this
+                                  << "@CProxiedConnectionPointContainer::FindConnectionPoint("
+                                  << riid << "): GetRefTypeInfo failed: "
+                                  << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+                        pCoclassTI->ReleaseTypeAttr(pCoclassTA);
+                        return nResult;
+                    }
+                    break;
                 }
-                break;
-            }
 
-            pCoclassTI->ReleaseTypeAttr(pCoclassTA);
-
-            if (pTI == NULL)
-            {
-                std::cout << "..." << this
-                          << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid
-                          << "): Could not find type info for default source?" << std::endl;
-                return CONNECT_E_NOCONNECTION;
+                pCoclassTI->ReleaseTypeAttr(pCoclassTA);
             }
 
             IConnectionPoint* pCP;
@@ -176,7 +172,7 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
                 return nResult;
             }
             *ppCP = reinterpret_cast<IConnectionPoint*>(new CProxiedConnectionPoint(
-                nullptr, this, pCP, aMapEntry.maSourceInterfaceInProxiedApp, pTI));
+                nullptr, this, pCP, aMapEntry.maSourceInterfaceInProxiedApp, pTI, aMapEntry));
 
             std::cout << "..." << this << "@CProxiedConnectionPointContainer::FindConnectionPoint("
                       << riid << "): S_OK" << std::endl;

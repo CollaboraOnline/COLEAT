@@ -19,6 +19,7 @@
 #pragma warning(pop)
 
 #include "CProxiedEnumConnections.hpp"
+#include "CProxiedSink.hpp"
 #include "utilstemp.hpp"
 
 CProxiedEnumConnections::CProxiedEnumConnections(IUnknown* pBaseClassUnknown,
@@ -37,17 +38,60 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumConnections::Next(ULONG cConnections, LPCO
     std::cout << this << "@CProxiedEnumConnections::Next(" << cConnections << ")..." << std::endl;
 
     nResult = mpECToProxy->Next(cConnections, rgcd, pcFetched);
-    if (FAILED(nResult))
+    if (FAILED(nResult) || nResult == S_FALSE)
     {
-        std::cout << "..." << this << "@CProxiedEnumConnections::Next(" << cConnections
-                  << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+        std::cout << "..." << this << "@CProxiedEnumConnections::Next(" << cConnections << ") ("
+                  << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
         return nResult;
     }
-    std::cout << "..." << this << "@CProxiedEnumConnections::Next(" << cConnections
-              << "): " << WindowsErrorStringFromHRESULT(nResult);
+
+    ULONG nFetched = (pcFetched ? *pcFetched : 1);
+
+    for (ULONG i = 0; i < nFetched; ++i)
+    {
+        IUnknown* pUnk = CProxiedSink::existingSink(rgcd[i].pUnk);
+        if (pUnk != NULL)
+        {
+            // FIXME: We don't return the pointer to our proxy of the sink, but the original sink.
+            // That is hopefully not a problem?
+            rgcd[i].pUnk = pUnk;
+        }
+        else
+        {
+#if 1 // Temporary information for debugging                                                       \
+    // Be careful not to overwrite the outer nResult here as that is what we will return
+            HRESULT nHr;
+            std::cout << "=== unknown one " << rgcd[i].pUnk
+                      << " ref count: " << rgcd[i].pUnk->AddRef() - 1 << std::endl;
+            rgcd[i].pUnk->Release();
+            IDispatch* pDispatch;
+            if (SUCCEEDED(rgcd[i].pUnk->QueryInterface(IID_IDispatch, (void**)&pDispatch)))
+            {
+                std::cout << "    is IDispatch\n";
+                ITypeInfo* pTI;
+                nHr = pDispatch->GetTypeInfo(0, LOCALE_USER_DEFAULT, &pTI);
+                if (FAILED(nHr))
+                    std::cout << "    GetTypeInfo: " << WindowsErrorStringFromHRESULT(nHr)
+                              << std::endl;
+                else
+                {
+                    BSTR sName;
+                    if (SUCCEEDED(pTI->GetDocumentation(MEMBERID_NIL, &sName, NULL, NULL, NULL)))
+                        std::wcout << "    " << sName << "\n";
+                }
+            }
+#endif
+            rgcd[i].pUnk = new CProxiedUnknown(rgcd[i].pUnk, IID_NULL);
+        }
+        std::cout << "..." << this << "@CProxiedEnumConnections::Next(" << cConnections
+                  << "): " << i << ": " << rgcd[i].pUnk << std::endl;
+    }
+
+    std::cout << "..." << this << "@CProxiedEnumConnections::Next(" << cConnections << ") ("
+              << __LINE__ << "): ";
     if (pcFetched)
-        std::cout << *pcFetched;
-    std::cout << std::endl;
+        std::cout << *pcFetched << ": ";
+    std::cout << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 
     return nResult;
 }

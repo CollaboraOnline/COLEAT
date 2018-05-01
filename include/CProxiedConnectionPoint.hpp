@@ -21,6 +21,8 @@
 
 #pragma warning(pop)
 
+#include "outgoingmap.hpp"
+
 #include "CProxiedUnknown.hpp"
 #include "CProxiedConnectionPointContainer.hpp"
 
@@ -42,6 +44,7 @@ private:
     IConnectionPoint* mpCPToProxy;
     IID maIID;
     ITypeInfo* mpTypeInfoOfOutgoingInterface;
+    const OutgoingInterfaceMapping maMapEntry;
     AdvisedSinkHolder* const mpAdvisedSinks;
 
 public:
@@ -49,7 +52,8 @@ public:
                             CProxiedConnectionPointContainer* pContainer,
                             IConnectionPoint* pCPToProxy,
                             IID aIID,
-                            ITypeInfo* pTypeInfoOfOutgoingInterface);
+                            ITypeInfo* pTypeInfoOfOutgoingInterface,
+                            const OutgoingInterfaceMapping& rMapEntry);
     // IConnectionPoint
     virtual HRESULT STDMETHODCALLTYPE GetConnectionInterface(IID* pIID);
 

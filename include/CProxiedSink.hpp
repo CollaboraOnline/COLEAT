@@ -13,9 +13,13 @@
 #pragma warning(push)
 #pragma warning(disable: 4668 4820 4917)
 
+#include <map>
+
 #include <Windows.h>
 
 #pragma warning(pop)
+
+#include "outgoingmap.hpp"
 
 #include "CProxiedUnknown.hpp"
 
@@ -30,9 +34,20 @@ class CProxiedSink : public CProxiedUnknown
 private:
     IDispatch* mpDispatchToProxy;
     ITypeInfo* mpTypeInfoOfOutgoingInterface;
+    const OutgoingInterfaceMapping maMapEntry;
+    static std::map<IUnknown*, IUnknown*> maActiveSinks;
 
 public:
-    CProxiedSink(IDispatch* pDispatchToProxy, ITypeInfo* pTypeInfoOfOutgoingInterface, const IID& aOutgoingIID);
+    // If pUnk is our own CProxiedUnknown for a sink that has been advised through us, return the
+    // corresponding client IUnknown passed to the Advise(), else NULL.
+    static IUnknown* existingSink(IUnknown* pUnk);
+
+    static void forgetExistingSink(IUnknown* pUnk);
+
+    CProxiedSink(IDispatch* pDispatchToProxy,
+                 ITypeInfo* pTypeInfoOfOutgoingInterface,
+                 const OutgoingInterfaceMapping& rMapEntry,
+                 const IID& aOutgoingIID);
 
     // IDispatch
 

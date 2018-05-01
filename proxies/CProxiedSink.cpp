@@ -11,6 +11,7 @@
 #pragma warning(disable : 4668 4820 4917)
 
 #include <cassert>
+#include <codecvt>
 #include <iostream>
 
 #include <Windows.h>
@@ -24,13 +25,33 @@
 
 #include "CallbackInvoker.hxx"
 
+std::map<IUnknown*, IUnknown*> CProxiedSink::maActiveSinks;
+
+IUnknown* CProxiedSink::existingSink(IUnknown* pUnk)
+{
+    auto p = maActiveSinks.find(pUnk);
+    if (p == maActiveSinks.end())
+        return NULL;
+    std::cout << "=== found " << pUnk << ": " << p->second << std::endl;
+    return p->second;
+}
+
+void CProxiedSink::forgetExistingSink(IUnknown* pUnk)
+{
+    std::cout << "=== forgetting " << pUnk << std::endl;
+    maActiveSinks.erase(pUnk);
+}
+
 CProxiedSink::CProxiedSink(IDispatch* pDispatchToProxy, ITypeInfo* pTypeInfoOfOutgoingInterface,
-                           const IID& aOutgoingIID)
+                           const OutgoingInterfaceMapping& rMapEntry, const IID& aOutgoingIID)
     : CProxiedUnknown(pDispatchToProxy, IID_IDispatch, aOutgoingIID)
     , mpDispatchToProxy(pDispatchToProxy)
     , mpTypeInfoOfOutgoingInterface(pTypeInfoOfOutgoingInterface)
+    , maMapEntry(rMapEntry)
 {
     std::cout << this << "@CProxiedSink::CTOR" << std::endl;
+    maActiveSinks[this] = pDispatchToProxy;
+    std::cout << "=== registered " << this << std::endl;
 }
 
 HRESULT STDMETHODCALLTYPE CProxiedSink::GetTypeInfoCount(UINT* pctinfo)
@@ -85,14 +106,46 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
 
     std::cout << this << "@CProxiedSink::Invoke(" << dispIdMember << ")..." << std::endl;
 
-    BSTR sName;
+    BSTR sName = NULL;
     UINT nNames;
-    nResult = mpTypeInfoOfOutgoingInterface->GetNames(dispIdMember, &sName, 1, &nNames);
-    if (FAILED(nResult))
+    if (mpTypeInfoOfOutgoingInterface != NULL)
     {
-        std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
-                  << "): GetNames failed: " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
-        return nResult;
+        std::cout << "========== mpTypeInfoOfOutgoingInterface is not null\n";
+        nResult = mpTypeInfoOfOutgoingInterface->GetNames(dispIdMember, &sName, 1, &nNames);
+        if (FAILED(nResult))
+        {
+            std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
+                      << "): GetNames failed: " << WindowsErrorStringFromHRESULT(nResult)
+                      << std::endl;
+            return nResult;
+        }
+    }
+    else
+    {
+        std::cout << "========== mpTypeInfoOfOutgoingInterface IS NULL\n";
+        bool bFound = false;
+        for (int i = 0; maMapEntry.maNameToId[i].mpName != nullptr; ++i)
+        {
+            if (maMapEntry.maNameToId[i].mnMemberId == dispIdMember)
+            {
+                sName = SysAllocString(
+                    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>()
+                        .from_bytes(maMapEntry.maNameToId[i].mpName)
+                        .data());
+                std::cout << "========== found: " << maMapEntry.maNameToId[i].mpName << "\n";
+                bFound = true;
+                break;
+            }
+        }
+        if (!bFound)
+        {
+            std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
+                      << "): GetIDsOfNames("
+                      << std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().to_bytes(sName)
+                      << ") failed: Not found in outgoing mapping" << std::endl;
+            SysFreeString(sName);
+            return E_NOTIMPL;
+        }
     }
 
     DISPID nDispIdMemberInClient;

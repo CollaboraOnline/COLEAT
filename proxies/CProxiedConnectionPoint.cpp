@@ -10,6 +10,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4668 4820 4917)
 
+#include <cassert>
 #include <iostream>
 
 #include <Windows.h>
@@ -26,12 +27,14 @@
 CProxiedConnectionPoint::CProxiedConnectionPoint(IUnknown* pBaseClassUnknown,
                                                  CProxiedConnectionPointContainer* pContainer,
                                                  IConnectionPoint* pCPToProxy, IID aIID,
-                                                 ITypeInfo* pTypeInfoOfOutgoingInterface)
+                                                 ITypeInfo* pTypeInfoOfOutgoingInterface,
+                                                 const OutgoingInterfaceMapping& rMapEntry)
     : CProxiedUnknown(pBaseClassUnknown, pCPToProxy, IID_IConnectionPoint)
     , mpContainer(pContainer)
     , mpCPToProxy(pCPToProxy)
     , maIID(aIID)
     , mpTypeInfoOfOutgoingInterface(pTypeInfoOfOutgoingInterface)
+    , maMapEntry(rMapEntry)
     // FIXME: Delete this when we go inactive
     , mpAdvisedSinks(new AdvisedSinkHolder())
 {
@@ -67,13 +70,14 @@ HRESULT STDMETHODCALLTYPE CProxiedConnectionPoint::Advise(IUnknown* pUnkSink, DW
     nResult = pUnkSink->QueryInterface(IID_IDispatch, (void**)&pSinkAsDispatch);
     if (FAILED(nResult))
     {
-        std::cerr << "..." << this << "@CProxiedSink::Advise: Sink is not an IDispatch"
+        std::cerr << "..." << this << "@CProxiedConnectionPoint::Advise: Sink is not an IDispatch"
                   << std::endl;
         return E_NOTIMPL;
     }
+    assert(pUnkSink == pSinkAsDispatch);
 
     IDispatch* pDispatch = reinterpret_cast<IDispatch*>(
-        new CProxiedSink(pSinkAsDispatch, mpTypeInfoOfOutgoingInterface, maIID));
+        new CProxiedSink(pSinkAsDispatch, mpTypeInfoOfOutgoingInterface, maMapEntry, maIID));
 
     *pdwCookie = 0;
     nResult = mpCPToProxy->Advise(pDispatch, pdwCookie);
@@ -102,12 +106,15 @@ HRESULT STDMETHODCALLTYPE CProxiedConnectionPoint::Unadvise(DWORD dwCookie)
     std::cout << this << "@CProxiedConnectionPoint::Unadvise(" << dwCookie << ")..." << std::endl;
 
     nResult = mpCPToProxy->Unadvise(dwCookie);
+
     if (mpAdvisedSinks->maAdvisedSinks.count(dwCookie) == 0)
     {
         std::cout << "..." << this << "@CProxiedConnectionPoint::Unadvise(" << dwCookie
                   << "): E_POINTER" << std::endl;
         return E_POINTER;
     }
+    CProxiedSink::forgetExistingSink(mpAdvisedSinks->maAdvisedSinks[dwCookie]);
+
     delete mpAdvisedSinks->maAdvisedSinks[dwCookie];
     mpAdvisedSinks->maAdvisedSinks.erase(dwCookie);
 

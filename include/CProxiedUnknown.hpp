@@ -45,8 +45,6 @@ public:
     static void setParam(ThreadProcParam* pParam);
     static ThreadProcParam* getParam();
 
-    HRESULT findTypeInfo(IDispatch* pDispatch, const IID& rIID, ITypeInfo** pTypeInfo);
-
 protected:
     const IID maIID1;
     const IID maIID2;
@@ -62,10 +60,10 @@ private:
     //
     // Or wait. As we don't know anything about such interfaces, how can we proxy them, as we can't
     // construct an object with the necessary vtable entries? So this is a map to what the actual
-    // proxied object's QueryInterface returned then. But then QueryInterface calls on it for
-    // IID_IUnknown will return the proxied object's IUnknown address, not that of our proxy
-    // IUnknow. Which breaks the Object Identity rule on
-    // https://msdn.microsoft.com/en-us/library/ms810016.aspx . Sigh...
+    // object's QueryInterface returned then. But then QueryInterface calls on it for IID_IUnknown
+    // will return the proxied object's IUnknown address, not that of our proxy IUnknow. Which
+    // breaks the Object Identity rule on https://msdn.microsoft.com/en-us/library/ms810016.aspx .
+    // Sigh...
     //
     // This is not just theoretical pondering. A real-world example that one comes across pretty
     // immediately when trying this stuff on real-world use cases is IConnectionPointContainer. The
@@ -74,10 +72,10 @@ private:
     // Object Viewer, for instance.) So we must special-case at least IConnectionPointContainer.
 
     // Must have this in a separate object pointed to from CProxiedUnknown to avoid "C4265
-    // 'CProxiedUnknown': class has virtual functions, but destructor is not virtual"
+    // 'CProxiedUnknown': class has virtual functions, but destructor is not virtual".
     struct UnknownMapHolder
     {
-        std::map<IID, IUnknown*> maExtraInterfaces;
+        std::map<IID, void*> maExtraInterfaces;
     };
 
     UnknownMapHolder* const mpExtraInterfaces;

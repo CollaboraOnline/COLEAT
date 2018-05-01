@@ -30,87 +30,6 @@
 
 static ThreadProcParam* pGlobalParam;
 
-HRESULT CProxiedUnknown::findTypeInfo(IDispatch* pDispatch, const IID& rIID, ITypeInfo** pTypeInfo)
-{
-    std::cout << this << "@CProxiedUnknown::findTypeInfo(" << pDispatch << ", " << rIID << ")..."
-              << std::endl;
-    HRESULT nResult;
-
-    ITypeInfo* pTI;
-    std::cout << "Calling " << pDispatch << "->GetTypeInfo(0)\n";
-    nResult = pDispatch->GetTypeInfo(0, LOCALE_USER_DEFAULT, &pTI);
-    if (FAILED(nResult))
-    {
-        std::cout << "..." << this << "@CProxiedUnknown::findTypeInfo(" << rIID << ") (" << __LINE__
-                  << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
-        return nResult;
-    }
-
-    std::cout << "And calling GetTypeAttr on that\n";
-    TYPEATTR* pTA;
-    nResult = pTI->GetTypeAttr(&pTA);
-    if (FAILED(nResult))
-    {
-        std::cout << "..." << this << "@CProxiedUnknown::findTypeInfo(" << rIID << ") (" << __LINE__
-                  << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
-        return nResult;
-    }
-    std::cout << "Got type attr, guid=" << pTA->guid << std::endl;
-
-    bool bFound = false;
-    for (WORD i = 0; i < pTA->cImplTypes; ++i)
-    {
-        HREFTYPE nHrefType;
-        nResult = pTI->GetRefTypeOfImplType(i, &nHrefType);
-        if (FAILED(nResult))
-        {
-            std::cout << "..." << this << "@CProxiedUnknown::findTypeInfo(" << rIID << ") ("
-                      << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
-            return nResult;
-        }
-
-        nResult = pTI->GetRefTypeInfo(nHrefType, pTypeInfo);
-        if (FAILED(nResult))
-        {
-            std::cout << "..." << this << "@CProxiedUnknown::findTypeInfo(" << rIID << ") ("
-                      << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
-            return nResult;
-        }
-
-        TYPEATTR* pRefTA;
-        nResult = (*pTypeInfo)->GetTypeAttr(&pRefTA);
-        if (FAILED(nResult))
-        {
-            std::cout << "..." << this << "@CProxiedUnknown::findTypeInfo(" << rIID << ") ("
-                      << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
-            return nResult;
-        }
-
-        std::cout << "..." << this << "@CProxiedUnknown::findTypeInfo(" << rIID << ") (" << __LINE__
-                  << "): pRefTA=" << pRefTA->guid << "\n";
-
-        if (IsEqualIID(rIID, pRefTA->guid))
-        {
-            (*pTypeInfo)->ReleaseTypeAttr(pRefTA);
-            bFound = true;
-            break;
-        }
-        (*pTypeInfo)->ReleaseTypeAttr(pRefTA);
-    }
-    pTI->ReleaseTypeAttr(pTA);
-
-    if (!bFound)
-    {
-        std::cout << "..." << this << "@Cproxiedunknown::findTypeInfo(" << rIID << ") (" << __LINE__
-                  << "): E_NOTIMPL" << std::endl;
-        return E_NOTIMPL;
-    }
-
-    std::cout << "..." << this << "@Cproxiedunknown::findTypeInfo(" << rIID << "): S_OK"
-              << std::endl;
-    return S_OK;
-}
-
 CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy,
                                  const IID& rIID)
     : CProxiedUnknown(pBaseClassUnknown, pUnknownToProxy, rIID, IID_NULL)
@@ -189,10 +108,20 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
         return S_OK;
     }
 
+    auto p = mpExtraInterfaces->maExtraInterfaces.find(riid);
+    if (p != mpExtraInterfaces->maExtraInterfaces.end())
+    {
+        std::cout << this << "@CProxiedUnknown::QueryInterface(" << riid
+                  << "): found: " << p->second << ": S_OK" << std::endl;
+        *ppvObject = p->second;
+        return S_OK;
+    }
+
     std::cout << this << "@CProxiedUnknown::QueryInterface(" << riid << ")..." << std::endl;
+
+    // OK, at this stage we have to query the real object for it
+
     nResult = mpUnknownToProxy->QueryInterface(riid, ppvObject);
-    std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid
-              << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 
     // Special cases
 
@@ -200,6 +129,12 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
     {
         *ppvObject = new CProxiedDispatch(mpBaseClassUnknown ? mpBaseClassUnknown : this,
                                           (IDispatch*)*ppvObject);
+
+        mpExtraInterfaces->maExtraInterfaces[riid] = *ppvObject;
+
+        std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid << "): S_OK"
+                  << std::endl;
+
         return S_OK;
     }
 
@@ -207,20 +142,38 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
     {
         // We must proxy it so that we can reverse-proxy the calls to advised sinks
 
-        IProvideClassInfo* pPCI;
+        IProvideClassInfo* pPCI = nullptr;
         nResult = mpUnknownToProxy->QueryInterface(IID_IProvideClassInfo, (void**)&pPCI);
         if (nResult != S_OK)
         {
-            std::cerr << "Have IConnectionPointContainer but not IProvideClassInfo?" << std::endl;
-            ((IUnknown*)*ppvObject)->Release();
-            return E_NOINTERFACE;
+            if (!getParam()->mbTraceOnly)
+            {
+                std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid
+                          << "): IConnectionPointContainer but not IProvideClassInfo: E_NOINTERFACE"
+                          << std::endl;
+                ((IUnknown*)*ppvObject)->Release();
+                return E_NOINTERFACE;
+            }
         }
         *ppvObject
             = new CProxiedConnectionPointContainer(mpBaseClassUnknown ? mpBaseClassUnknown : this,
                                                    (IConnectionPointContainer*)*ppvObject, pPCI);
 
+        mpExtraInterfaces->maExtraInterfaces[riid] = *ppvObject;
+
+        std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid << "): S_OK"
+                  << std::endl;
+
         return S_OK;
     }
+
+    std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid << "): ";
+    if (nResult == S_OK)
+        std::cout << *ppvObject << ": ";
+    std::cout << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+
+    if (nResult == S_OK)
+        mpExtraInterfaces->maExtraInterfaces[riid] = *ppvObject;
 
     return nResult;
 }
