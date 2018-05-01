@@ -58,29 +58,6 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumConnections::Next(ULONG cConnections, LPCO
         }
         else
         {
-#if 1 // Temporary information for debugging                                                       \
-    // Be careful not to overwrite the outer nResult here as that is what we will return
-            HRESULT nHr;
-            std::cout << "=== unknown one " << rgcd[i].pUnk
-                      << " ref count: " << rgcd[i].pUnk->AddRef() - 1 << std::endl;
-            rgcd[i].pUnk->Release();
-            IDispatch* pDispatch;
-            if (SUCCEEDED(rgcd[i].pUnk->QueryInterface(IID_IDispatch, (void**)&pDispatch)))
-            {
-                std::cout << "    is IDispatch\n";
-                ITypeInfo* pTI;
-                nHr = pDispatch->GetTypeInfo(0, LOCALE_USER_DEFAULT, &pTI);
-                if (FAILED(nHr))
-                    std::cout << "    GetTypeInfo: " << WindowsErrorStringFromHRESULT(nHr)
-                              << std::endl;
-                else
-                {
-                    BSTR sName;
-                    if (SUCCEEDED(pTI->GetDocumentation(MEMBERID_NIL, &sName, NULL, NULL, NULL)))
-                        std::wcout << "    " << sName << "\n";
-                }
-            }
-#endif
             rgcd[i].pUnk = new CProxiedUnknown(rgcd[i].pUnk, IID_NULL);
         }
         std::cout << "..." << this << "@CProxiedEnumConnections::Next(" << cConnections

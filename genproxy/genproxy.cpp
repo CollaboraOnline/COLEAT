@@ -1177,11 +1177,11 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                      & (PARAMFLAG_FOPT | PARAMFLAG_FRETVAL | PARAMFLAG_FLCID)))
             {
                 std::cerr << "Huh, Optional parameter "
-                          << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[(UINT)nParam])
+                          << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[(UINT)nParam - 1u])
                           << " to function "
                           << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[0])
                           << " followed by non-optional "
-                          << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[nParam + 1u])
+                          << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[(UINT)nParam])
                           << "?\n";
                 std::exit(1);
             }
@@ -1305,7 +1305,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                     aCode << "            || (vParams[nActualParams].vt == VT_ERROR\n";
                     aCode << "                && vParams[nActualParams].scode == "
                              "DISP_E_PARAMNOTFOUND))\n";
-                    aCode << "            vParams[nActualParams].vt = VT_EMPTY;\n";
+                    aCode << "            VariantInit(&vParams[nActualParams]);\n";
                     aCode << "        nActualParams++;\n";
                     break;
                 case VT_UI2:
@@ -1525,9 +1525,12 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
 
         if (vVtblFuncTable[nFunc].mpFuncDesc->cParams > 0)
         {
+            // Drop trailing empty parameters
+            aCode << "    while (nActualParams > 0 && vParams[nActualParams-1].vt == VT_EMPTY)\n";
+            aCode << "      nActualParams--;\n";
+
             // Resize the vParams to match the number of actual ones we have. FIXME: Make it correct
             // size from the start.
-
             aCode << "    vParams.resize(nActualParams);\n";
 
             // Reverse the order of parameters. Just create another vector.

@@ -32,15 +32,10 @@ IUnknown* CProxiedSink::existingSink(IUnknown* pUnk)
     auto p = maActiveSinks.find(pUnk);
     if (p == maActiveSinks.end())
         return NULL;
-    std::cout << "=== found " << pUnk << ": " << p->second << std::endl;
     return p->second;
 }
 
-void CProxiedSink::forgetExistingSink(IUnknown* pUnk)
-{
-    std::cout << "=== forgetting " << pUnk << std::endl;
-    maActiveSinks.erase(pUnk);
-}
+void CProxiedSink::forgetExistingSink(IUnknown* pUnk) { maActiveSinks.erase(pUnk); }
 
 CProxiedSink::CProxiedSink(IDispatch* pDispatchToProxy, ITypeInfo* pTypeInfoOfOutgoingInterface,
                            const OutgoingInterfaceMapping& rMapEntry, const IID& aOutgoingIID)
@@ -51,7 +46,6 @@ CProxiedSink::CProxiedSink(IDispatch* pDispatchToProxy, ITypeInfo* pTypeInfoOfOu
 {
     std::cout << this << "@CProxiedSink::CTOR" << std::endl;
     maActiveSinks[this] = pDispatchToProxy;
-    std::cout << "=== registered " << this << std::endl;
 }
 
 HRESULT STDMETHODCALLTYPE CProxiedSink::GetTypeInfoCount(UINT* pctinfo)
@@ -110,7 +104,6 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
     UINT nNames;
     if (mpTypeInfoOfOutgoingInterface != NULL)
     {
-        std::cout << "========== mpTypeInfoOfOutgoingInterface is not null\n";
         nResult = mpTypeInfoOfOutgoingInterface->GetNames(dispIdMember, &sName, 1, &nNames);
         if (FAILED(nResult))
         {
@@ -122,7 +115,6 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
     }
     else
     {
-        std::cout << "========== mpTypeInfoOfOutgoingInterface IS NULL\n";
         bool bFound = false;
         for (int i = 0; maMapEntry.maNameToId[i].mpName != nullptr; ++i)
         {
@@ -132,7 +124,6 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
                     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>()
                         .from_bytes(maMapEntry.maNameToId[i].mpName)
                         .data());
-                std::cout << "========== found: " << maMapEntry.maNameToId[i].mpName << "\n";
                 bFound = true;
                 break;
             }

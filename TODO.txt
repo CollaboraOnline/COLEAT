@@ -1,13 +1,3 @@
-- Even if -t (tracing-only) now seems to basically work for Word, it
-  doesn't for Excel. That obviously needs to be fixed.
-
-  (Related note: In the "normal" mode, the replacement application we
-  are talking to *must* provide IProvideClassInfo. We don't know
-  anything about for instance Collabora Office's outgoing interfaces
-  at genproxy time. And they are unstable per definition as new
-  callback methods are added whenever a need is noticed. Collabora
-  Office built from this branch does provide IProvideClassInfo.)
-
 - Clean up the std::cout vs. std::wcout (and std::cerr vs. std::wcerr)
   inconsistency. Decision: Just use the the plain char streams for
   logging and warnings. Add static UTF16-to-UTF8 (and reverse, if
@@ -37,3 +27,8 @@
   except error messages conditional on either -t or -v. (Thus, without
   any switches at all, coleat would be entirely silent, except for
   error messages.)
+
+- Including a coclass should automatically also include its default
+  interface and default source interface, if any. (For instance, if
+  Word.Application is mentioned in the -I file, it should not be
+  necessary to mention Word._Application and Word.ApplicationEvents4.)
