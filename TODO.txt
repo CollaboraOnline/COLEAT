@@ -8,11 +8,6 @@
   callback methods are added whenever a need is noticed. Collabora
   Office built from this branch does provide IProvideClassInfo.)
 
-- Make genproxy write its generated code to files with a .temp suffix,
-  and after closing a generated file check if there is a corresponding
-  existing file, and only if the contents has changed replace it with
-  the newly written one.
-
 - Make the lines in the -I file (argument to genproxy) specify both
   library name and interface name.
 

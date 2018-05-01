@@ -98,7 +98,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <AdditionalOptions>
       </AdditionalOptions>
-      <DisableSpecificWarnings>4061;4514;4626;4710;4711;5027</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4061;4514;4626;4710;4711;4820;5027</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>..\include;..\..\include</AdditionalIncludeDirectories>
       <WarningLevel>EnableAllWarnings</WarningLevel>
     </ClCompile>
@@ -118,7 +118,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\include;..\..\include</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4061;4514;4626;4710;4711;5027</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4061;4514;4626;4710;4711;4820;5027</DisableSpecificWarnings>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
@@ -139,7 +139,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\include;..\..\include</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4061;4514;4626;4710;4711;5027</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4061;4514;4626;4710;4711;4820;5027</DisableSpecificWarnings>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
@@ -162,7 +162,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\include;..\..\include</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4061;4514;4626;4710;4711;5027</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4061;4514;4626;4710;4711;4820;5027</DisableSpecificWarnings>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>

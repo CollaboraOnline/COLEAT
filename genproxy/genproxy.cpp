@@ -12,6 +12,7 @@
 
 #include <cassert>
 #include <codecvt>
+#include <cstdio>
 #include <cstdlib>
 #include <cwchar>
 #include <fstream>
@@ -79,6 +80,77 @@ inline bool operator<(const DefaultInterface& a, const DefaultInterface& b)
 {
     return ((a.msLibName < b.msLibName) || ((a.msLibName == b.msLibName) && (a.msName < b.msName)));
 }
+
+class OutputFile : public std::ofstream
+{
+private:
+    const std::string msFilename;
+
+    std::string readAll(const std::string& sFilename, std::ifstream& rStream)
+    {
+        rStream.seekg(0, std::ios::end);
+        std::size_t nLength = (std::size_t)rStream.tellg();
+        rStream.seekg(0, std::ios::beg);
+        std::vector<char> vBuf(nLength + 1);
+        rStream.read(vBuf.data(), nLength);
+        vBuf[nLength] = '\0';
+        rStream.close();
+        if (!rStream.good())
+        {
+            std::cerr << "Could not read from '" << sFilename << "'\n";
+            std::exit(1);
+        }
+        return std::string(vBuf.data());
+    }
+
+public:
+    OutputFile(const std::string& sFilename)
+        : std::ofstream(sFilename + ".temp")
+        , msFilename(sFilename)
+    {
+        if (!good())
+        {
+            std::cerr << "Could not open '" << sFilename << ".temp' for writing\n";
+            std::exit(1);
+        }
+    }
+
+    OutputFile(const OutputFile&) = delete;
+
+    void close()
+    {
+        std::ofstream::close();
+        if (!good())
+        {
+            std::cerr << "Problems writing to '" << msFilename << ".temp'\n";
+            std::exit(1);
+        }
+
+        const std::string sTempFilename = msFilename + ".temp";
+        std::ifstream aJustWritten(sTempFilename, std::ios::binary);
+        if (aJustWritten.good())
+        {
+            std::string sJustWritten = readAll(sTempFilename, aJustWritten);
+            std::ifstream aOld(msFilename, std::ios::binary);
+            if (aOld.good())
+            {
+                std::string sOld = readAll(msFilename, aOld);
+                if (sJustWritten == sOld)
+                {
+                    if (std::remove(sTempFilename.c_str()) != 0)
+                        std::cerr << "Could not remove '" << sTempFilename << "'\n";
+                    return;
+                }
+            }
+        }
+        std::remove(msFilename.c_str());
+        if (std::rename(sTempFilename.c_str(), msFilename.c_str()) != 0)
+        {
+            std::cerr << "Could not rename '" << sTempFilename << "' to '" << msFilename << "'\n";
+            std::exit(1);
+        }
+    }
+};
 
 // FIXME: These general functions here in the beginning should really be somwhere else. I seem to
 // end up copy-pasting them anyway.
@@ -381,21 +453,10 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
     aCallbacks.insert({ pTypeAttr->guid, sLibName, aUTF16ToUTF8.to_bytes(sName) });
 
     const std::string sHeader = sOutputFolder + "/" + sClass + ".hxx";
-
-    std::ofstream aHeader(sHeader);
-    if (!aHeader.good())
-    {
-        std::cerr << "Could not open '" << sHeader << "' for writing\n";
-        std::exit(1);
-    }
+    OutputFile aHeader(sHeader);
 
     const std::string sCode = sOutputFolder + "/" + sClass + ".cxx";
-    std::ofstream aCode(sCode);
-    if (!aCode.good())
-    {
-        std::cerr << "Could not open '" << sCode << "' for writing\n";
-        std::exit(1);
-    }
+    OutputFile aCode(sCode);
 
     aHeader << "// Generated file. Do not edit.\n";
     aHeader << "\n";
@@ -586,18 +647,7 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
     aHeader << "#endif // INCLUDED_" << sClass << "_HXX\n";
 
     aHeader.close();
-    if (!aHeader.good())
-    {
-        std::cerr << "Problems writing to '" << sHeader << "'\n";
-        std::exit(1);
-    }
-
     aCode.close();
-    if (!aCode.good())
-    {
-        std::cerr << "Problems writing to '" << sCode << "'\n";
-        std::exit(1);
-    }
 }
 
 static void GenerateEnum(const std::string& sLibName, const std::string& sTypeName,
@@ -622,7 +672,7 @@ static void GenerateEnum(const std::string& sLibName, const std::string& sTypeNa
     const std::string sClass = sLibName + "_" + sTypeName;
 
     const std::string sHeader = sOutputFolder + "/E" + sClass + ".hxx";
-    std::ofstream aHeader(sHeader);
+    OutputFile aHeader(sHeader);
     if (!aHeader.good())
     {
         std::cerr << "Could not open '" << sHeader << "' for writing\n";
@@ -760,12 +810,7 @@ static void GenerateCoclass(const std::string& sLibName, const std::string& sTyp
     const std::string sClass = sLibName + "_" + sTypeName;
 
     const std::string sHeader = sOutputFolder + "/C" + sClass + ".hxx";
-    std::ofstream aHeader(sHeader);
-    if (!aHeader.good())
-    {
-        std::cerr << "Could not open '" << sHeader << "' for writing\n";
-        std::exit(1);
-    }
+    OutputFile aHeader(sHeader);
 
     aHeader << "// Generated file. Do not edit.\n";
     aHeader << "\n";
@@ -789,13 +834,8 @@ static void GenerateCoclass(const std::string& sLibName, const std::string& sTyp
 
     aHeader << "\n";
     aHeader << "#endif // INCLUDED_C" << sClass << "_HXX\n";
-    aHeader.close();
 
-    if (!aHeader.good())
-    {
-        std::cerr << "Problems writing to '" << sHeader << "'\n";
-        std::exit(1);
-    }
+    aHeader.close();
 }
 
 static void CollectFuncInfo(ITypeInfo* const pTypeInfo, const TYPEATTR* pTypeAttr,
@@ -963,21 +1003,10 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
     // Open output files
 
     const std::string sHeader = sOutputFolder + "/C" + sClass + ".hxx";
-
-    std::ofstream aHeader(sHeader);
-    if (!aHeader.good())
-    {
-        std::cerr << "Could not open '" << sHeader << "' for writing\n";
-        std::exit(1);
-    }
+    OutputFile aHeader(sHeader);
 
     const std::string sCode = sOutputFolder + "/C" + sClass + ".cxx";
-    std::ofstream aCode(sCode);
-    if (!aCode.good())
-    {
-        std::cerr << "Could not open '" << sCode << "' for writing\n";
-        std::exit(1);
-    }
+    OutputFile aCode(sCode);
 
     aHeader << "// Generated file. Do not edit.\n";
     aHeader << "\n";
@@ -1666,20 +1695,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
     aHeader << "#endif // INCLUDED_C" << sClass << "_HXX\n";
 
     aHeader.close();
-    if (!aHeader.good())
-    {
-        std::cerr << "Problems writing to '" << sHeader << "'\n";
-        std::exit(1);
-    }
-
-    aCode << "\n";
-
     aCode.close();
-    if (!aCode.good())
-    {
-        std::cerr << "Problems writing to '" << sCode << "'\n";
-        std::exit(1);
-    }
 }
 
 static void Generate(const std::string& sLibName, ITypeInfo* const pTypeInfo)
@@ -1736,12 +1752,7 @@ static void GenerateCallbackInvoker()
         return;
 
     const std::string sHeader = sOutputFolder + "/CallbackInvoker.hxx";
-    std::ofstream aHeader(sHeader);
-    if (!aHeader.good())
-    {
-        std::cerr << "Could not open '" << sHeader << "' for writing\n";
-        std::exit(1);
-    }
+    OutputFile aHeader(sHeader);
 
     aHeader << "// Generated file. Do not edit.\n";
     aHeader << "\n";
@@ -1791,12 +1802,8 @@ static void GenerateCallbackInvoker()
 
     aHeader << "\n";
     aHeader << "#endif // INCLUDED_CallbackInvoker_HXX\n";
+
     aHeader.close();
-    if (!aHeader.good())
-    {
-        std::cerr << "Problems writing to '" << sHeader << "'\n";
-        std::exit(1);
-    }
 }
 
 static void GenerateDefaultInterfaceCreator()
@@ -1805,12 +1812,7 @@ static void GenerateDefaultInterfaceCreator()
         return;
 
     const std::string sHeader = sOutputFolder + "/DefaultInterfaceCreator.hxx";
-    std::ofstream aHeader(sHeader);
-    if (!aHeader.good())
-    {
-        std::cerr << "Could not open '" << sHeader << "' for writing\n";
-        std::exit(1);
-    }
+    OutputFile aHeader(sHeader);
 
     aHeader << "// Generated file. Do not edit.\n";
     aHeader << "\n";
@@ -1855,12 +1857,8 @@ static void GenerateDefaultInterfaceCreator()
 
     aHeader << "\n";
     aHeader << "#endif // INCLUDED_DefaultInterfaceCreator_HXX\n";
+
     aHeader.close();
-    if (!aHeader.good())
-    {
-        std::cerr << "Problems writing to '" << sHeader << "'\n";
-        std::exit(1);
-    }
 }
 
 static void GenerateOutgoingInterfaceMap()
@@ -1869,12 +1867,7 @@ static void GenerateOutgoingInterfaceMap()
         return;
 
     const std::string sHeader = sOutputFolder + "/OutgoingInterfaceMap.hxx";
-    std::ofstream aHeader(sHeader);
-    if (!aHeader.good())
-    {
-        std::cerr << "Could not open '" << sHeader << "' for writing\n";
-        std::exit(1);
-    }
+    OutputFile aHeader(sHeader);
 
     aHeader << "// Generated file. Do not edit.\n";
     aHeader << "\n";
@@ -1916,12 +1909,8 @@ static void GenerateOutgoingInterfaceMap()
     aHeader << "};\n";
     aHeader << "\n";
     aHeader << "#endif // INCLUDED__OutgoingInterfaceMap_HXX\n";
+
     aHeader.close();
-    if (!aHeader.good())
-    {
-        std::cerr << "Problems writing to '" << sHeader << "'\n";
-        std::exit(1);
-    }
 }
 
 static void GenerateInterfaceMapping(const std::vector<InterfaceMapping>& rInterfaceMap)
@@ -1930,12 +1919,7 @@ static void GenerateInterfaceMapping(const std::vector<InterfaceMapping>& rInter
         return;
 
     const std::string sHeader = sOutputFolder + "/InterfaceMapping.hxx";
-    std::ofstream aHeader(sHeader);
-    if (!aHeader.good())
-    {
-        std::cerr << "Could not open '" << sHeader << "' for writing\n";
-        std::exit(1);
-    }
+    OutputFile aHeader(sHeader);
 
     aHeader << "// Generated file. Do not edit.\n";
     aHeader << "\n";
@@ -1958,12 +1942,8 @@ static void GenerateInterfaceMapping(const std::vector<InterfaceMapping>& rInter
     aHeader << "};\n";
     aHeader << "\n";
     aHeader << "#endif // INCLUDED__InterfaceMapping_HXX\n";
+
     aHeader.close();
-    if (!aHeader.good())
-    {
-        std::cerr << "Problems writing to '" << sHeader << "'\n";
-        std::exit(1);
-    }
 }
 
 static void Usage(char** argv)
