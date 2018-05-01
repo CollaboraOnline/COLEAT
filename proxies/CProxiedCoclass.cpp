@@ -89,6 +89,9 @@ IDispatch* CProxiedCoclass::createDispatchToProxy(const InterfaceMapping& rMappi
 
 // IUnknown
 
+// FIXME: I am not entirely sure why I have thought that CProxiedCoclass needs an own implementation
+// of QueryInterface, and the CProxiedUnknown one wouldn't work?
+
 HRESULT STDMETHODCALLTYPE CProxiedCoclass::QueryInterface(REFIID riid, void** ppvObject)
 {
     if (!ppvObject)
