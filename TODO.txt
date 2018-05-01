@@ -8,9 +8,6 @@
   callback methods are added whenever a need is noticed. Collabora
   Office built from this branch does provide IProvideClassInfo.)
 
-- Make the lines in the -I file (argument to genproxy) specify both
-  library name and interface name.
-
 - Clean up the std::cout vs. std::wcout (and std::cerr vs. std::wcerr)
   inconsistency. Decision: Just use the the plain char streams for
   logging and warnings. Add static UTF16-to-UTF8 (and reverse, if

@@ -169,7 +169,15 @@ static std::string IID_initializer(const IID& aIID)
     return sResult;
 }
 
-static bool IsIgnoredType(ITypeInfo* pTypeInfo)
+static std::string IID_to_string(const IID& aIID)
+{
+    LPOLESTR pRiid;
+    if (StringFromIID(aIID, &pRiid) != S_OK)
+        return "?";
+    return aUTF16ToUTF8.to_bytes(pRiid);
+}
+
+static bool IsIgnoredType(const std::string& sLibName, ITypeInfo* pTypeInfo)
 {
     if (aOnlyTheseInterfaces.size() == 0)
         return false;
@@ -178,12 +186,15 @@ static bool IsIgnoredType(ITypeInfo* pTypeInfo)
     BSTR sName;
     nResult = pTypeInfo->GetDocumentation(MEMBERID_NIL, &sName, NULL, NULL, NULL);
     if (SUCCEEDED(nResult))
-        return aOnlyTheseInterfaces.count(std::string(aUTF16ToUTF8.to_bytes(sName))) == 0;
+        return aOnlyTheseInterfaces.count(sLibName + "."
+                                          + std::string(aUTF16ToUTF8.to_bytes(sName)))
+               == 0;
 
     return false;
 }
 
-static bool IsIgnoredUserdefinedType(ITypeInfo* pTypeInfo, const TYPEDESC& aTypeDesc)
+static bool IsIgnoredUserdefinedType(const std::string& sLibName, ITypeInfo* pTypeInfo,
+                                     const TYPEDESC& aTypeDesc)
 {
     if (aOnlyTheseInterfaces.size() == 0)
         return false;
@@ -195,7 +206,7 @@ static bool IsIgnoredUserdefinedType(ITypeInfo* pTypeInfo, const TYPEDESC& aType
         nResult = pTypeInfo->GetRefTypeInfo(aTypeDesc.hreftype, &pReferencedTypeInfo);
 
         if (SUCCEEDED(nResult))
-            return IsIgnoredType(pReferencedTypeInfo);
+            return IsIgnoredType(sLibName, pReferencedTypeInfo);
     }
     return false;
 }
@@ -308,7 +319,7 @@ static std::string TypeToString(const std::string& sLibName, ITypeInfo* pTypeInf
 
     if (aTypeDesc.vt == VT_PTR)
     {
-        if (IsIgnoredUserdefinedType(pTypeInfo, *aTypeDesc.lptdesc))
+        if (IsIgnoredUserdefinedType(sLibName, pTypeInfo, *aTypeDesc.lptdesc))
             sResult = "void*";
         else
             sResult = TypeToString(sLibName, pTypeInfo, *aTypeDesc.lptdesc, sReferencedName) + "*";
@@ -416,7 +427,7 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
 {
     HRESULT nResult;
 
-    if (IsIgnoredType(pTypeInfo))
+    if (IsIgnoredType(sLibName, pTypeInfo))
         return;
 
     BSTR sName;
@@ -564,7 +575,7 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
             // Generate the thing this stuff is needed for
             if (pFuncDesc->lprgelemdescParam[nParam].tdesc.vt == VT_PTR
                 && pFuncDesc->lprgelemdescParam[nParam].tdesc.lptdesc->vt == VT_USERDEFINED
-                && !IsIgnoredUserdefinedType(pTypeInfo,
+                && !IsIgnoredUserdefinedType(sLibName, pTypeInfo,
                                              *pFuncDesc->lprgelemdescParam[nParam].tdesc.lptdesc))
             {
                 ITypeInfo* pReferencedTypeInfo;
@@ -1102,7 +1113,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
             // we should just use an integral type for it, not void*. Need to check the type
             // description for the underlying integral type, though.
             if (IsIgnoredUserdefinedType(
-                    pVtblTypeInfo,
+                    sLibName, pVtblTypeInfo,
                     vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc))
                 aCode << "void* ";
             else
@@ -1570,9 +1581,10 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                                    .tdesc.lptdesc->lptdesc->vt
                                == VT_USERDEFINED
                         && !IsIgnoredUserdefinedType(
-                               pVtblTypeInfo, *vVtblFuncTable[nFunc]
-                                                   .mpFuncDesc->lprgelemdescParam[nRetvalParam]
-                                                   .tdesc.lptdesc->lptdesc))
+                               sLibName, pVtblTypeInfo,
+                               *vVtblFuncTable[nFunc]
+                                    .mpFuncDesc->lprgelemdescParam[nRetvalParam]
+                                    .tdesc.lptdesc->lptdesc))
                     {
                         ITypeInfo* pReferencedTypeInfo;
                         nResult = pVtblTypeInfo->GetRefTypeInfo(
@@ -1666,7 +1678,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         for (int nParam = 0; nParam < vVtblFuncTable[nFunc].mpFuncDesc->cParams; ++nParam)
         {
             if (IsIgnoredUserdefinedType(
-                    pVtblTypeInfo,
+                    sLibName, pVtblTypeInfo,
                     vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc))
                 aHeader << "void*";
             else
@@ -1702,7 +1714,7 @@ static void Generate(const std::string& sLibName, ITypeInfo* const pTypeInfo)
 {
     HRESULT nResult;
 
-    if (IsIgnoredType(pTypeInfo))
+    if (IsIgnoredType(sLibName, pTypeInfo))
         return;
 
     BSTR sNameBstr;
@@ -1880,6 +1892,15 @@ static void GenerateOutgoingInterfaceMap()
     int nMappingIndex = 0;
     for (const auto i : aOutgoingInterfaceMap)
     {
+        if (i.maNameToId == nullptr)
+        {
+            std::cerr << "Information was not filled in for all requested outgoing interfaces. Did "
+                         "you perhaps leave\n"
+                      << "the interface name for " << IID_to_string(i.maSourceInterfaceInProxiedApp)
+                      << " out from the -I file?\n";
+            std::exit(1);
+        }
+
         aHeader << "const static NameToMemberIdMapping a" << nMappingIndex << "[] =\n";
         aHeader << "{\n";
         for (const NameToMemberIdMapping* p = i.maNameToId; p->mpName != nullptr; ++p)
@@ -1964,7 +1985,7 @@ static void Usage(char** argv)
                  "  Options:\n"
                  "    -d directory                 Directory where to write generated files.\n"
                  "                                 Default: \"generated\".\n"
-                 "    -i ifaceA,ifaceB,...         Only output code for those interfaces\n"
+                 "    -i app.iface,app.iface,...   Only output code for those interfaces\n"
                  "    -I file                      Only output code for interfaces listed in file\n"
                  "    -M file                      file contains interface mappings\n"
                  "    -O file                      Use mapping between replacement app's outgoing "
@@ -2129,11 +2150,9 @@ int main(int argc, char** argv)
                                       << " in " << argv[argi + 1] << " as an IID\n";
                             break;
                         }
-                        // We leave the maNameToId as empty and fill in once we have the type library.
-                        aOutgoingInterfaceMap.push_back({
-                            aProxiedAppSourceInterface,
-                            aReplacementOutgoingInterface,
-                        });
+                        // We leave the maNameToId as null and fill in once we have the type library.
+                        aOutgoingInterfaceMap.push_back(
+                            { aProxiedAppSourceInterface, aReplacementOutgoingInterface, nullptr });
                     }
                 }
                 argi++;
