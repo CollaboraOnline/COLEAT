@@ -100,10 +100,15 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
 
     std::cout << this << "@CProxiedSink::Invoke(" << dispIdMember << ")..." << std::endl;
 
-    BSTR sName = NULL;
-    UINT nNames;
+    DISPID nDispIdMemberInClient;
     if (mpTypeInfoOfOutgoingInterface != NULL)
     {
+        // The "normal" mode, where the client we are tracing is connected to the replacement
+        // application, whose outgoing interface is not 1:1 equivalent to that of the original
+        // application that provided the type library the client was built against. So we must map
+        // the member ids.
+        UINT nNames;
+        BSTR sName = NULL;
         nResult = mpTypeInfoOfOutgoingInterface->GetNames(dispIdMember, &sName, 1, &nNames);
         if (FAILED(nResult))
         {
@@ -112,48 +117,32 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
                       << std::endl;
             return nResult;
         }
-    }
-    else
-    {
-        bool bFound = false;
-        for (int i = 0; maMapEntry.maNameToId[i].mpName != nullptr; ++i)
-        {
-            if (maMapEntry.maNameToId[i].mnMemberId == dispIdMember)
-            {
-                sName = SysAllocString(
-                    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>()
-                        .from_bytes(maMapEntry.maNameToId[i].mpName)
-                        .data());
-                bFound = true;
-                break;
-            }
-        }
-        if (!bFound)
+
+        nResult
+            = mpDispatchToProxy->GetIDsOfNames(IID_NULL, &sName, 1, lcid, &nDispIdMemberInClient);
+        if (FAILED(nResult))
         {
             std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
                       << "): GetIDsOfNames("
                       << std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().to_bytes(sName)
-                      << ") failed: Not found in outgoing mapping" << std::endl;
+                      << ") failed: " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
             SysFreeString(sName);
-            return E_NOTIMPL;
+            return nResult;
         }
-    }
-
-    DISPID nDispIdMemberInClient;
-    nResult = mpDispatchToProxy->GetIDsOfNames(IID_NULL, &sName, 1, lcid, &nDispIdMemberInClient);
-    if (FAILED(nResult))
-    {
-        std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
-                  << "): GetIDsOfNames("
-                  << std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().to_bytes(sName)
-                  << ") failed: " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
         SysFreeString(sName);
-        return nResult;
+    }
+    else
+    {
+        // mpTypeInfoOfOutgoingInterface can be NULL only when we are in tracing-only mode, i.e.
+        // when the client we are tracing is connected to the very application that provided the
+        // type information the client was built against. Then we can use the dispIdMember parameter
+        // to this function directly also the dispIdMember passed on to when invoking the client
+        // callback.
+        assert(getParam()->mbTraceOnly);
+        nDispIdMemberInClient = dispIdMember;
     }
 
-    SysFreeString(sName);
-
-    // maIID1 is IID_IDispatch (see ctor aboce), maIID2 is the IID of the outgoing interface.
+    // maIID1 is IID_IDispatch (see ctor above), maIID2 is the IID of the outgoing interface.
     nResult = ProxiedCallbackInvoke(maIID2, mpDispatchToProxy, nDispIdMemberInClient, riid, lcid,
                                     wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
 

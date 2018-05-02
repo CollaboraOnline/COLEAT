@@ -10,6 +10,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4668 4820 4917)
 
+#include <cassert>
 #include <codecvt>
 #include <iostream>
 
@@ -91,7 +92,11 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
 
             ITypeInfo* pTI = NULL;
 
-            if (mpProvideClassInfo != NULL)
+            if (mpProvideClassInfo == NULL)
+            {
+                assert(getParam()->mbTraceOnly);
+            }
+            else
             {
                 ITypeInfo* pCoclassTI;
                 nResult = mpProvideClassInfo->GetClassInfo(&pCoclassTI);
