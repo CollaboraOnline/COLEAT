@@ -10,16 +10,12 @@
 #pragma warning(push)
 #pragma warning(disable : 4668 4820 4917)
 
-#define _CRT_SECURE_NO_WARNINGS
-#include <cstdio>
-#undef _CRT_SECURE_NO_WARNINGS
 #include <cassert>
-#include <codecvt>
+#include <cstdio>
 #include <cstdlib>
 #include <cwchar>
 #include <iomanip>
 #include <iostream>
-#include <map>
 #include <sstream>
 #include <string>
 
@@ -41,8 +37,6 @@
 
 #include "InterfaceMapping.hxx"
 
-static std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> aUTF16ToUTF8;
-
 static ThreadProcParam* pGlobalParamPtr;
 
 static int nHookedFunctions = 0;
@@ -57,19 +51,23 @@ static void storeError(ThreadProcParam* pParam, const wchar_t* pPrefix,
                        const wchar_t* pPrefix4 = nullptr)
 {
     LPWSTR pMsgBuf;
-    wcscpy(pParam->msErrorExplanation, L"");
-    wcscat(pParam->msErrorExplanation, pPrefix);
+    wcscpy_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION, pPrefix);
     if (pPrefix2)
-        wcscat(pParam->msErrorExplanation, pPrefix2);
+        wcscat_s(pParam->msErrorExplanation,
+                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pPrefix2);
     if (pPrefix3)
-        wcscat(pParam->msErrorExplanation, pPrefix3);
+        wcscat_s(pParam->msErrorExplanation,
+                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pPrefix3);
     if (pPrefix4)
-        wcscat(pParam->msErrorExplanation, pPrefix4);
+        wcscat_s(pParam->msErrorExplanation,
+                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pPrefix4);
 
     if (GetWindowsErrorString(GetLastError(), &pMsgBuf))
     {
-        wcscat(pParam->msErrorExplanation, L": ");
-        wcscat(pParam->msErrorExplanation, pMsgBuf);
+        wcscat_s(pParam->msErrorExplanation,
+                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), L": ");
+        wcscat_s(pParam->msErrorExplanation,
+                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pMsgBuf);
         HeapFree(GetProcessHeap(), 0, pMsgBuf);
     }
 }
@@ -77,7 +75,7 @@ static void storeError(ThreadProcParam* pParam, const wchar_t* pPrefix,
 static HRESULT WINAPI myCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext,
                                          REFIID riid, LPVOID* ppv)
 {
-    std::wcout << L"myCoCreateInstance(" << rclsid << L")\n";
+    std::cout << "myCoCreateInstance(" << rclsid << ")\n";
 
     for (int i = 0; i < sizeof(aInterfaceMap) / sizeof(aInterfaceMap[0]); ++i)
     {
@@ -97,7 +95,7 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
                                            COSERVERINFO* pServerInfo, DWORD dwCount,
                                            MULTI_QI* pResults)
 {
-    std::wcout << L"myCoCreateInstanceEx(" << clsid << L")\n";
+    std::cout << "myCoCreateInstanceEx(" << clsid << ")\n";
 
     for (int i = 0; i < sizeof(aInterfaceMap) / sizeof(aInterfaceMap[0]); ++i)
     {
@@ -147,7 +145,7 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
 
 static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
 {
-    std::wcout << L"myLoadLibraryW(" << lpFileName << L")\n";
+    std::cout << "myLoadLibraryW(" << convertUTF16ToUTF8(lpFileName) << ")\n";
 
     HMODULE hModule = LoadLibraryW(lpFileName);
 
@@ -170,7 +168,7 @@ static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
 
 static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags)
 {
-    std::wcout << L"myLoadLibraryExW(" << lpFileName << L")\n";
+    std::cout << "myLoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ")\n";
 
     HMODULE hModule = LoadLibraryExW(lpFileName, hFile, dwFlags);
 
@@ -192,7 +190,7 @@ static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD d
 }
 
 // The functions below, InjectedDllMainFunction() and the functions it calls, can not write to
-// std::wcout and std::wcerr. They run in a thread created before those have been set up. They can,
+// std::cout and std::cerr. They run in a thread created before those have been set up. They can,
 // however, use Win32 API directly.
 
 static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModuleName,
@@ -212,7 +210,7 @@ static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModul
     while (pImportDescriptor->Characteristics && pImportDescriptor->Name)
     {
         PSTR sName = (PSTR)((PBYTE)hModule + pImportDescriptor->Name);
-        if (_stricmp(sName, aUTF16ToUTF8.to_bytes(sDll).data()) == 0)
+        if (_stricmp(sName, convertUTF16ToUTF8(sDll).data()) == 0)
         {
             bFound = true;
             break;
@@ -222,15 +220,20 @@ static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModul
 
     if (!bFound)
     {
-        wcscpy(pParam->msErrorExplanation, L"Import descriptor for ");
-        wcscat(pParam->msErrorExplanation, sDll);
-        wcscat(pParam->msErrorExplanation, L" not found in ");
-        wcscat(pParam->msErrorExplanation, sModuleName);
+        wcscpy_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION,
+                 L"Import descriptor for ");
+        wcscat_s(pParam->msErrorExplanation,
+                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), sDll);
+        wcscat_s(pParam->msErrorExplanation,
+                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation),
+                 L" not found in ");
+        wcscat_s(pParam->msErrorExplanation,
+                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), sModuleName);
         return false;
     }
 
     PROC pOriginalFunc
-        = (PROC)GetProcAddress(GetModuleHandleW(sDll), aUTF16ToUTF8.to_bytes(sFunction).data());
+        = (PROC)GetProcAddress(GetModuleHandleW(sDll), convertUTF16ToUTF8(sFunction).data());
     if (pOriginalFunc == NULL)
     {
         storeError(pParam, L"Could not find original ", sFunction, L" in ", sDll);
@@ -274,12 +277,18 @@ static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModul
         pThunk++;
     }
 
-    wcscpy(pParam->msErrorExplanation, L"Did not find ");
-    wcscat(pParam->msErrorExplanation, sFunction);
-    wcscat(pParam->msErrorExplanation, L" in import table for ");
-    wcscat(pParam->msErrorExplanation, sDll);
-    wcscat(pParam->msErrorExplanation, L" in ");
-    wcscat(pParam->msErrorExplanation, sModuleName);
+    wcscpy_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION, L"Did not find ");
+    wcscat_s(pParam->msErrorExplanation,
+             ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), sFunction);
+    wcscat_s(pParam->msErrorExplanation,
+             ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation),
+             L" in import table for ");
+    wcscat_s(pParam->msErrorExplanation,
+             ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), sDll);
+    wcscat_s(pParam->msErrorExplanation,
+             ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), L" in ");
+    wcscat_s(pParam->msErrorExplanation,
+             ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), sModuleName);
 
     return false;
 }
@@ -373,7 +382,8 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
 
         if (nHookedFunctions == 0)
         {
-            wcscpy(pParam->msErrorExplanation, L"Could not hook a single interesting function");
+            wcscpy_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION,
+                     L"Could not hook a single interesting function");
             return FALSE;
         }
     }

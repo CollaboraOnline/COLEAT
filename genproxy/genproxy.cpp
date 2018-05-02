@@ -11,7 +11,6 @@
 #pragma warning(disable : 4668 4820 4917)
 
 #include <cassert>
-#include <codecvt>
 #include <cstdio>
 #include <cstdlib>
 #include <cwchar>
@@ -26,13 +25,11 @@
 
 #include <Windows.h>
 
-#include <comphelper/windowsdebugoutput.hxx>
-
 #pragma warning(pop)
 
 #include "interfacemap.hpp"
 #include "outgoingmap.hpp"
-#include "utilstemp.hpp"
+#include "utils.hpp"
 
 struct FuncTableEntry
 {
@@ -55,9 +52,6 @@ struct DefaultInterface
 };
 
 static std::string sOutputFolder = "generated";
-
-static std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> aUTF16ToUTF8;
-static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> aUTF8ToUTF16;
 
 static std::set<IID> aAlreadyHandledIIDs;
 static std::set<std::string> aOnlyTheseInterfaces;
@@ -155,28 +149,6 @@ public:
 // FIXME: These general functions here in the beginning should really be somwhere else. I seem to
 // end up copy-pasting them anyway.
 
-inline bool operator<(const IID& a, const IID& b) { return std::memcmp(&a, &b, sizeof(a)) < 0; }
-
-static std::string IID_initializer(const IID& aIID)
-{
-    std::string sResult;
-    sResult = "{0x" + to_hex(aIID.Data1, 8) + ",0x" + to_hex(aIID.Data2, 4) + ",0x"
-              + to_hex(aIID.Data3, 4);
-    for (int i = 0; i < 8; ++i)
-        sResult += ",0x" + to_hex(aIID.Data4[i], 2);
-    sResult += "}";
-
-    return sResult;
-}
-
-static std::string IID_to_string(const IID& aIID)
-{
-    LPOLESTR pRiid;
-    if (StringFromIID(aIID, &pRiid) != S_OK)
-        return "?";
-    return aUTF16ToUTF8.to_bytes(pRiid);
-}
-
 static bool IsIgnoredType(const std::string& sLibName, ITypeInfo* pTypeInfo)
 {
     if (aOnlyTheseInterfaces.size() == 0)
@@ -186,8 +158,7 @@ static bool IsIgnoredType(const std::string& sLibName, ITypeInfo* pTypeInfo)
     BSTR sName;
     nResult = pTypeInfo->GetDocumentation(MEMBERID_NIL, &sName, NULL, NULL, NULL);
     if (SUCCEEDED(nResult))
-        return aOnlyTheseInterfaces.count(sLibName + "."
-                                          + std::string(aUTF16ToUTF8.to_bytes(sName)))
+        return aOnlyTheseInterfaces.count(sLibName + "." + std::string(convertUTF16ToUTF8(sName)))
                == 0;
 
     return false;
@@ -346,12 +317,12 @@ static std::string TypeToString(const std::string& sLibName, ITypeInfo* pTypeInf
         {
             if (pTypeAttr->typekind == TKIND_DISPATCH || pTypeAttr->typekind == TKIND_COCLASS)
             {
-                sReferencedName = "C" + sLibName + "_" + aUTF16ToUTF8.to_bytes(sName);
+                sReferencedName = "C" + sLibName + "_" + convertUTF16ToUTF8(sName);
                 sResult = sReferencedName;
             }
             else if (pTypeAttr->typekind == TKIND_ENUM)
             {
-                sReferencedName = "E" + sLibName + "_" + aUTF16ToUTF8.to_bytes(sName);
+                sReferencedName = "E" + sLibName + "_" + convertUTF16ToUTF8(sName);
                 sResult = sReferencedName;
             }
             else if (pTypeAttr->typekind == TKIND_ALIAS)
@@ -438,9 +409,9 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
         std::exit(1);
     }
 
-    std::cerr << sLibName << "_" << aUTF16ToUTF8.to_bytes(sName) << " (sink)\n";
+    std::cerr << sLibName << "_" << convertUTF16ToUTF8(sName) << " (sink)\n";
 
-    std::string sClass = sLibName + "_" + aUTF16ToUTF8.to_bytes(sName);
+    std::string sClass = sLibName + "_" + convertUTF16ToUTF8(sName);
 
     TYPEATTR* pTypeAttr;
     nResult = pTypeInfo->GetTypeAttr(&pTypeAttr);
@@ -461,7 +432,7 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
         return;
     aAlreadyHandledIIDs.insert(pTypeAttr->guid);
 
-    aCallbacks.insert({ pTypeAttr->guid, sLibName, aUTF16ToUTF8.to_bytes(sName) });
+    aCallbacks.insert({ pTypeAttr->guid, sLibName, convertUTF16ToUTF8(sName) });
 
     const std::string sHeader = sOutputFolder + "/" + sClass + ".hxx";
     OutputFile aHeader(sHeader);
@@ -482,6 +453,7 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
 
     aCode << "// Generated file. Do not edit.\n";
     aCode << "\n";
+
     aCode << "#include <cstdlib>\n";
     aCode << "#include <iostream>\n";
     aCode << "\n";
@@ -545,12 +517,12 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
         }
 
         pOutgoingNameToId->push_back(
-            { _strdup(aUTF16ToUTF8.to_bytes(sFuncName).data()), pFuncDesc->memid });
+            { _strdup(convertUTF16ToUTF8(sFuncName).data()), pFuncDesc->memid });
 
-        aCode << "        case " << pFuncDesc->memid << ": // " << aUTF16ToUTF8.to_bytes(sFuncName)
+        aCode << "        case " << pFuncDesc->memid << ": // " << convertUTF16ToUTF8(sFuncName)
               << "\n";
         aCode << "            {\n";
-        aCode << "                std::cout << \"" << aUTF16ToUTF8.to_bytes(sFuncName)
+        aCode << "                std::cout << \"" << convertUTF16ToUTF8(sFuncName)
               << ")\" << std::endl;\n";
 
         // Go through parameter list declared for the function in the type library, manipulate
@@ -605,7 +577,7 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
                         std::cerr << "GetTypeAttr failed\n";
                         std::exit(1);
                     }
-                    std::string sReferencedTypeName(aUTF16ToUTF8.to_bytes(sReferencedTypeNameBstr));
+                    std::string sReferencedTypeName(convertUTF16ToUTF8(sReferencedTypeNameBstr));
                     aCode << "                    aLocalDispParams.rgvarg["
                           << (pFuncDesc->cParams - nParam - 1)
                           << "].pdispVal = reinterpret_cast<IDispatch*>(new C" << sLibName << "_"
@@ -729,7 +701,7 @@ static void GenerateEnum(const std::string& sLibName, const std::string& sTypeNa
                       << ") failed:" << WindowsErrorStringFromHRESULT(nResult) << "\n";
             continue;
         }
-        aHeader << "    " << aUTF16ToUTF8.to_bytes(sVarName) << " = "
+        aHeader << "    " << convertUTF16ToUTF8(sVarName) << " = "
                 << GetIntegralValue(*pVarDesc->lpvarValue) << ",\n";
     }
 
@@ -806,7 +778,7 @@ static void GenerateCoclass(const std::string& sLibName, const std::string& sTyp
                               << sLibName << "'\n";
                     std::exit(1);
                 }
-                sDefaultInterface = aUTF16ToUTF8.to_bytes(sImplTypeName);
+                sDefaultInterface = convertUTF16ToUTF8(sImplTypeName);
                 aDefaultInterfaces.insert({ sLibName, sDefaultInterface, pImplTypeAttr->guid });
             }
         }
@@ -948,9 +920,8 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         {
             std::cerr
                 << "Huh, IDispatch-based method has different name than the Vtbl-based one?\n";
-            std::cerr << "(" << aUTF16ToUTF8.to_bytes(vDispFuncTable[nDispFunc].mvNames[0])
-                      << " vs. " << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nVtblFunc].mvNames[0])
-                      << ")\n";
+            std::cerr << "(" << convertUTF16ToUTF8(vDispFuncTable[nDispFunc].mvNames[0]) << " vs. "
+                      << convertUTF16ToUTF8(vVtblFuncTable[nVtblFunc].mvNames[0]) << ")\n";
         }
 
         // The vtbl-based function can have the same number of parameters as the IDispatch-based
@@ -965,9 +936,8 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         {
             std::cerr << "Huh, IDispatch-based method has different number of parameters than the "
                          "Vtbl-based one?\n";
-            std::cerr << "(Function: "
-                      << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nVtblFunc].mvNames[0]) << ", "
-                      << vDispFuncTable[nDispFunc].mpFuncDesc->cParams << " vs. "
+            std::cerr << "(Function: " << convertUTF16ToUTF8(vVtblFuncTable[nVtblFunc].mvNames[0])
+                      << ", " << vDispFuncTable[nDispFunc].mpFuncDesc->cParams << " vs. "
                       << vVtblFuncTable[nVtblFunc].mpFuncDesc->cParams << ")\n";
             std::exit(1);
         }
@@ -983,12 +953,11 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
             {
                 std::cerr << "Huh, IDispatch-based method parameter has different name than that "
                              "in the Vtbl-based one?\n";
-                std::cerr
-                    << "("
-                    << aUTF16ToUTF8.to_bytes(vDispFuncTable[nDispFunc].mvNames[nVtblParam + 1u])
-                    << " vs. "
-                    << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nVtblFunc].mvNames[nVtblParam + 1u])
-                    << ")\n";
+                std::cerr << "("
+                          << convertUTF16ToUTF8(vDispFuncTable[nDispFunc].mvNames[nVtblParam + 1u])
+                          << " vs. "
+                          << convertUTF16ToUTF8(vVtblFuncTable[nVtblFunc].mvNames[nVtblParam + 1u])
+                          << ")\n";
                 std::exit(1);
             }
 
@@ -996,7 +965,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                 != vVtblFuncTable[nVtblFunc].mpFuncDesc->lprgelemdescParam[nVtblParam].tdesc.vt)
             {
                 std::cerr << "Huh, IDispatch-based parameter " << nVtblParam << " of "
-                          << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nVtblFunc].mvNames[0])
+                          << convertUTF16ToUTF8(vVtblFuncTable[nVtblFunc].mvNames[0])
                           << " has different type than that in the Vtbl-based one?\n";
                 std::cerr
                     << "("
@@ -1103,7 +1072,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
             sFuncName = "put";
         else if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
             sFuncName = "putref";
-        sFuncName += aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[0]);
+        sFuncName += convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[0]);
         aCode << sFuncName << "(";
 
         // Parameter list
@@ -1133,7 +1102,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                 }
             }
             if ((size_t)(nParam + 1) < vVtblFuncTable[nFunc].mvNames.size())
-                aCode << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[nParam + 1u]);
+                aCode << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[nParam + 1u]);
             else
                 aCode << "p" << nParam;
             if (nParam + 1 < vVtblFuncTable[nFunc].mpFuncDesc->cParams)
@@ -1147,7 +1116,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         aCode << "{\n";
 
         if (bGenerateTracing)
-            aCode << "    std::wcout << \"C" << sClass << "::" << sFuncName << "(\";\n";
+            aCode << "    std::cout << \"C" << sClass << "::" << sFuncName << "(\";\n";
 
         aCode << "    std::vector<VARIANT> vParams(" << vVtblFuncTable[nFunc].mpFuncDesc->cParams
               << ");\n";
@@ -1166,7 +1135,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         {
             std::string sParamName;
             if ((size_t)(nParam + 1) < vVtblFuncTable[nFunc].mvNames.size())
-                sParamName = aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[nParam + 1u]);
+                sParamName = convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[nParam + 1u]);
             else
                 sParamName = "p" + std::to_string(nParam);
 
@@ -1177,11 +1146,10 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                      & (PARAMFLAG_FOPT | PARAMFLAG_FRETVAL | PARAMFLAG_FLCID)))
             {
                 std::cerr << "Huh, Optional parameter "
-                          << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[(UINT)nParam - 1u])
-                          << " to function "
-                          << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[0])
+                          << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[(UINT)nParam - 1u])
+                          << " to function " << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[0])
                           << " followed by non-optional "
-                          << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[(UINT)nParam])
+                          << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[(UINT)nParam])
                           << "?\n";
                 std::exit(1);
             }
@@ -1225,12 +1193,12 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                 & PARAMFLAG_FLCID)
             {
                 aCode << "    (void) "
-                      << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[nParam + 1u]) << ";\n";
+                      << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[nParam + 1u]) << ";\n";
 
                 if (bGenerateTracing)
                 {
                     aCode << "    if(!bGotAll)\n";
-                    aCode << "        std::wcout";
+                    aCode << "        std::cout";
                     if (nParam > 0)
                         aCode << " << \",\"";
                     aCode << " << " << sParamName << ";\n";
@@ -1437,13 +1405,13 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                     case VT_UINT_PTR:
                     case VT_LPSTR:
                     case VT_LPWSTR:
-                        aCode << "        std::wcout";
+                        aCode << "        std::cout";
                         if (nParam > 0)
                             aCode << " << \",\"";
                         aCode << " << " << sParamName << ";\n";
                         break;
                     case VT_VARIANT:
-                        aCode << "        std::wcout";
+                        aCode << "        std::cout";
                         if (nParam > 0)
                             aCode << " << \",\"";
                         aCode << " << \"<VARIANT:\" << " << sParamName << ".vt << \">\";\n";
@@ -1456,51 +1424,51 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                         {
                             aCode << "        switch(" << sParamName << "->vt)\n";
                             aCode << "        {\n";
-                            aCode << "        case VT_I2: std::wcout << " << sParamName
+                            aCode << "        case VT_I2: std::cout << " << sParamName
                                   << "->iVal; break;\n";
-                            aCode << "        case VT_I4: std::wcout << " << sParamName
+                            aCode << "        case VT_I4: std::cout << " << sParamName
                                   << "->lVal; break;\n";
-                            aCode << "        case VT_R4: std::wcout << " << sParamName
+                            aCode << "        case VT_R4: std::cout << " << sParamName
                                   << "->fltVal; break;\n";
-                            aCode << "        case VT_R8: std::wcout << " << sParamName
+                            aCode << "        case VT_R8: std::cout << " << sParamName
                                   << "->dblVal; break;\n";
-                            aCode << "        case VT_BSTR: std::wcout << " << sParamName
+                            aCode << "        case VT_BSTR: std::cout << " << sParamName
                                   << "->bstrVal; break;\n";
-                            aCode << "        case VT_DISPATCH: std::wcout << " << sParamName
+                            aCode << "        case VT_DISPATCH: std::cout << " << sParamName
                                   << "->pdispVal; break;\n";
-                            aCode << "        case VT_BOOL: std::wcout << " << sParamName
+                            aCode << "        case VT_BOOL: std::cout << " << sParamName
                                   << "->boolVal; break;\n";
-                            aCode << "        case VT_UI2: std::wcout << " << sParamName
+                            aCode << "        case VT_UI2: std::cout << " << sParamName
                                   << "->uiVal; break;\n";
-                            aCode << "        case VT_UI4: std::wcout << " << sParamName
+                            aCode << "        case VT_UI4: std::cout << " << sParamName
                                   << "->ulVal; break;\n";
-                            aCode << "        case VT_I8: std::wcout << " << sParamName
+                            aCode << "        case VT_I8: std::cout << " << sParamName
                                   << "->llVal; break;\n";
-                            aCode << "        case VT_UI8: std::wcout << " << sParamName
+                            aCode << "        case VT_UI8: std::cout << " << sParamName
                                   << "->ullVal; break;\n";
-                            aCode << "        case VT_INT: std::wcout << " << sParamName
+                            aCode << "        case VT_INT: std::cout << " << sParamName
                                   << "->intVal; break;\n";
-                            aCode << "        case VT_UINT: std::wcout << " << sParamName
+                            aCode << "        case VT_UINT: std::cout << " << sParamName
                                   << "->uintVal; break;\n";
-                            aCode << "        case VT_INT_PTR: std::wcout << " << sParamName
+                            aCode << "        case VT_INT_PTR: std::cout << " << sParamName
                                   << "->pintVal; break;\n";
-                            aCode << "        case VT_UINT_PTR: std::wcout << " << sParamName
+                            aCode << "        case VT_UINT_PTR: std::cout << " << sParamName
                                   << "->puintVal; break;\n";
-                            aCode << "        case VT_LPSTR: std::wcout << " << sParamName
+                            aCode << "        case VT_LPSTR: std::cout << " << sParamName
                                   << "->pcVal; break;\n";
-                            aCode << "        case VT_LPWSTR: std::wcout << (LPWSTR)" << sParamName
+                            aCode << "        case VT_LPWSTR: std::cout << (LPWSTR)" << sParamName
                                   << "->byref; break;\n";
-                            aCode << "        default: std::wcout << " << sParamName
+                            aCode << "        default: std::cout << " << sParamName
                                   << "->byref; break;\n";
                             aCode << "        }\n";
                         }
                         else
                         {
-                            aCode << "        std::wcout << " << sParamName << ";\n";
+                            aCode << "        std::cout << " << sParamName << ";\n";
                         }
                         break;
                     case VT_USERDEFINED:
-                        aCode << "        std::wcout";
+                        aCode << "        std::cout";
                         if (nParam > 0)
                             aCode << " << \",\"";
                         aCode << " << \"<USERDEFINED>\";\n";
@@ -1519,7 +1487,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         }
 
         if (bGenerateTracing)
-            aCode << "    std::wcout << \")\" << std::endl;\n";
+            aCode << "    std::cout << \")\" << std::endl;\n";
 
         aCode << "    std::vector<VARIANT> vReverseParams;\n";
 
@@ -1540,7 +1508,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
 
         // Call CProxiedDispatch::genericInvoke()
         aCode << "    HRESULT nResult = genericInvoke(\""
-              << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[0]) << "\", "
+              << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[0]) << "\", "
               << vVtblFuncTable[nFunc].mpFuncDesc->invkind << ", "
               << "vReverseParams, " << sRetvalName << ");\n";
         if (nRetvalParam >= 0)
@@ -1612,7 +1580,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                         {
                             aCode << "    if (nResult == S_OK)\n";
                             aCode << "        *"
-                                  << aUTF16ToUTF8.to_bytes(
+                                  << convertUTF16ToUTF8(
                                          vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
                                   << " = new "
                                   << TypeToString(sLibName, pVtblTypeInfo,
@@ -1621,7 +1589,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                                                        .tdesc.lptdesc->lptdesc,
                                                   sReferencedName)
                                   << "(nullptr, reinterpret_cast<IDispatch*>(*"
-                                  << aUTF16ToUTF8.to_bytes(
+                                  << convertUTF16ToUTF8(
                                          vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
                                   << "));\n";
                         }
@@ -1677,7 +1645,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
             aHeader << "put";
         else if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
             aHeader << "putref";
-        aHeader << aUTF16ToUTF8.to_bytes(vVtblFuncTable[nFunc].mvNames[0]) << "(";
+        aHeader << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[0]) << "(";
         for (int nParam = 0; nParam < vVtblFuncTable[nFunc].mpFuncDesc->cParams; ++nParam)
         {
             if (IsIgnoredUserdefinedType(
@@ -1728,7 +1696,7 @@ static void Generate(const std::string& sLibName, ITypeInfo* const pTypeInfo)
         std::exit(1);
     }
 
-    const std::string sName = aUTF16ToUTF8.to_bytes(sNameBstr);
+    const std::string sName = convertUTF16ToUTF8(sNameBstr);
 
     TYPEATTR* pTypeAttr;
     nResult = pTypeInfo->GetTypeAttr(&pTypeAttr);
@@ -1775,8 +1743,7 @@ static void GenerateCallbackInvoker()
     aHeader << "#define INCLUDED_CallbackInvoker_HXX\n";
     aHeader << "\n";
 
-    aHeader << "#include <codecvt>\n";
-    aHeader << "#include <string>\n";
+    aHeader << "#include \"utils.hpp\"\n";
     aHeader << "\n";
 
     for (auto aCallback : aCallbacks)
@@ -1806,12 +1773,9 @@ static void GenerateCallbackInvoker()
     }
 
     aHeader << "\n";
-    aHeader << "    wchar_t* sIID = L\"\";\n";
-    aHeader << "    StringFromIID(aIID, &sIID);\n";
 
     aHeader << "    std::cerr << \"ProxiedCallbackInvoke: Not prepared to handle IID \" << "
-               "std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().to_bytes(sIID) << "
-               "std::endl;\n";
+               "IID_to_string(aIID) << std::endl;\n";
     aHeader << "    std::abort();\n";
     aHeader << "}\n";
 
@@ -1970,19 +1934,9 @@ static void GenerateInterfaceMapping(const std::vector<InterfaceMapping>& rInter
     aHeader.close();
 }
 
-static void Usage(char** argv)
+static void Usage(wchar_t** argv)
 {
-    const char* const pBackslash = std::strrchr(argv[0], L'\\');
-    const char* const pSlash = std::strrchr(argv[0], L'/');
-    char* pProgram
-        = _strdup((pBackslash && pSlash)
-                      ? ((pBackslash > pSlash) ? (pBackslash + 1) : (pSlash + 1))
-                      : (pBackslash ? (pBackslash + 1) : (pSlash ? (pSlash + 1) : argv[0])));
-    char* const pDot = std::strrchr(pProgram, '.');
-    if (pDot && _stricmp(pDot, ".exe") == 0)
-        *pDot = '\0';
-
-    std::cerr << "Usage: " << pProgram
+    std::cerr << "Usage: " << convertUTF16ToUTF8(programName(argv[0]))
               << " [options] typelibrary[:interface] ...\n"
                  "\n"
                  "  Options:\n"
@@ -1998,14 +1952,16 @@ static void Usage(char** argv)
                  "    -T                           Generate verbose tracing outout.\n"
                  "  If no -M option is given, does not do any COM server redirection.\n"
                  "  For instance: "
-              << argv[0]
+              << convertUTF16ToUTF8(programName(argv[0]))
               << " -i _Application,Documents,Document foo.olb:Application bar.exe:SomeInterface\n";
     std::exit(1);
 }
 
-static bool parseMapping(wchar_t* pLine, InterfaceMapping& rMapping)
+static bool parseMapping(const char* pLine, InterfaceMapping& rMapping)
 {
-    wchar_t* pColon1 = std::wcschr(pLine, L':');
+    wchar_t* pWLine = _wcsdup(convertUTF8ToUTF16(pLine).data());
+
+    wchar_t* pColon1 = std::wcschr(pWLine, L':');
     if (!pColon1)
         return false;
     *pColon1 = L'\0';
@@ -2015,7 +1971,7 @@ static bool parseMapping(wchar_t* pLine, InterfaceMapping& rMapping)
         return false;
     *pColon2 = L'\0';
 
-    if (FAILED(IIDFromString(pLine, &rMapping.maFromCoclass))
+    if (FAILED(IIDFromString(pWLine, &rMapping.maFromCoclass))
         || FAILED(IIDFromString(pColon1 + 1, &rMapping.maFromDefault))
         || FAILED(IIDFromString(pColon2 + 1, &rMapping.maReplacementCoclass)))
         return false;
@@ -2023,36 +1979,37 @@ static bool parseMapping(wchar_t* pLine, InterfaceMapping& rMapping)
     return true;
 }
 
-int main(int argc, char** argv)
+int wmain(int argc, wchar_t** argv)
 {
     int argi = 1;
 
     std::vector<InterfaceMapping> aInterfaceMap;
 
-    while (argi < argc && argv[argi][0] == '-')
+    while (argi < argc && argv[argi][0] == L'-')
     {
         switch (argv[argi][1])
         {
-            case 'd':
+            case L'd':
             {
                 if (argi + 1 >= argc)
                     Usage(argv);
-                sOutputFolder = argv[argi + 1];
+                sOutputFolder = convertUTF16ToUTF8(argv[argi + 1]);
                 argi++;
                 break;
             }
-            case 'i':
+            case L'i':
             {
                 if (argi + 1 >= argc)
                     Usage(argv);
-                char* p = argv[argi + 1];
-                char* q;
-                while ((q = std::strchr(p, ',')) != NULL)
+                wchar_t* p = argv[argi + 1];
+                wchar_t* q;
+                while ((q = std::wcschr(p, L',')) != NULL)
                 {
-                    aOnlyTheseInterfaces.insert(std::string(p, (unsigned)(q - p)));
+                    aOnlyTheseInterfaces.insert(
+                        std::string(convertUTF16ToUTF8(p), (unsigned)(q - p)));
                     p = q + 1;
                 }
-                aOnlyTheseInterfaces.insert(std::string(p));
+                aOnlyTheseInterfaces.insert(std::string(convertUTF16ToUTF8(p)));
                 argi++;
                 break;
             }
@@ -2063,7 +2020,8 @@ int main(int argc, char** argv)
                 std::ifstream aIFile(argv[argi + 1]);
                 if (!aIFile.good())
                 {
-                    std::cerr << "Could not open " << argv[argi + 1] << " for reading\n";
+                    std::cerr << "Could not open " << convertUTF16ToUTF8(argv[argi + 1])
+                              << " for reading\n";
                     std::exit(1);
                 }
                 while (!aIFile.eof())
@@ -2080,26 +2038,27 @@ int main(int argc, char** argv)
             {
                 if (argi + 1 >= argc)
                     Usage(argv);
-                std::wifstream aMFile(argv[argi + 1]);
+                std::ifstream aMFile(argv[argi + 1]);
                 if (!aMFile.good())
                 {
-                    std::wcerr << L"Could not open " << argv[argi + 1] << L" for reading\n";
+                    std::cerr << "Could not open " << convertUTF16ToUTF8(argv[argi + 1])
+                              << " for reading\n";
                     std::exit(1);
                 }
                 int nLine = 0;
                 while (!aMFile.eof())
                 {
-                    std::wstring sLine;
+                    std::string sLine;
                     std::getline(aMFile, sLine);
                     nLine++;
-                    if (sLine.length() == 0 || sLine[0] == L'#')
+                    if (sLine.length() == 0 || sLine[0] == '#')
                         continue;
-                    wchar_t* pLine = _wcsdup(sLine.data());
+                    char* pLine = _strdup(sLine.data());
                     InterfaceMapping aMapping;
                     if (!parseMapping(pLine, aMapping))
                     {
-                        std::cerr << "Invalid IIDs on line " << nLine << " in " << argv[argi + 1]
-                                  << "\n";
+                        std::cerr << "Invalid IIDs on line " << nLine << " in "
+                                  << convertUTF16ToUTF8(argv[argi + 1]) << "\n";
                         Usage(argv);
                     }
                     aInterfaceMap.push_back(aMapping);
@@ -2116,7 +2075,8 @@ int main(int argc, char** argv)
                 std::ifstream aOFile(argv[argi + 1]);
                 if (!aOFile.good())
                 {
-                    std::cerr << "Could not open " << argv[argi + 1] << " for reading\n";
+                    std::cerr << "Could not open " << convertUTF16ToUTF8(argv[argi + 1])
+                              << " for reading\n";
                     std::exit(1);
                 }
                 while (!aOFile.eof())
@@ -2136,21 +2096,22 @@ int main(int argc, char** argv)
                     {
                         IID aProxiedAppSourceInterface;
                         if (FAILED(IIDFromString(
-                                aUTF8ToUTF16.from_bytes(sProxiedAppSourceInterface.c_str()).data(),
+                                convertUTF8ToUTF16(sProxiedAppSourceInterface.c_str()).data(),
                                 &aProxiedAppSourceInterface)))
                         {
                             std::cerr << "Count not interpret " << sProxiedAppSourceInterface
-                                      << " in " << argv[argi + 1] << " as an IID\n";
+                                      << " in '" << convertUTF16ToUTF8(argv[argi + 1])
+                                      << "' as an IID\n";
                             break;
                         }
                         IID aReplacementOutgoingInterface;
                         if (FAILED(IIDFromString(
-                                aUTF8ToUTF16.from_bytes(sReplacementOutgoingInterface.c_str())
-                                    .data(),
+                                convertUTF8ToUTF16(sReplacementOutgoingInterface.c_str()).data(),
                                 &aReplacementOutgoingInterface)))
                         {
                             std::cerr << "Could not interpret " << sReplacementOutgoingInterface
-                                      << " in " << argv[argi + 1] << " as an IID\n";
+                                      << " in " << convertUTF16ToUTF8(argv[argi + 1])
+                                      << " as an IID\n";
                             break;
                         }
                         // We leave the maNameToId as null and fill in once we have the type library.
@@ -2177,24 +2138,20 @@ int main(int argc, char** argv)
 
     for (; argi < argc; ++argi)
     {
-        char* const pColon = std::strchr(argv[argi], ':');
-        const char* pInterface = "Application";
+        wchar_t* const pColon = std::wcschr(argv[argi], L':');
+        const wchar_t* pInterface = L"Application";
         if (pColon)
         {
-            *pColon = '\0';
+            *pColon = L'\0';
             pInterface = pColon + 1;
         }
 
         HRESULT nResult;
         ITypeLib* pTypeLib;
-        // FIXME: argv is not in UTF-8 but in system codepage. But no big deal, only developers run this
-        // program and they should know to not use non-ASCII characters in their folder and file names,
-        // one hopes.
-        nResult
-            = LoadTypeLibEx(aUTF8ToUTF16.from_bytes(argv[argi]).data(), REGKIND_NONE, &pTypeLib);
+        nResult = LoadTypeLibEx(argv[argi], REGKIND_NONE, &pTypeLib);
         if (FAILED(nResult))
         {
-            std::cerr << "Could not load '" << argv[argi]
+            std::cerr << "Could not load '" << convertUTF16ToUTF8(argv[argi])
                       << "' as a type library: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
             std::exit(1);
         }
@@ -2202,7 +2159,7 @@ int main(int argc, char** argv)
         UINT nTypeInfoCount = pTypeLib->GetTypeInfoCount();
         if (nTypeInfoCount == 0)
         {
-            std::cerr << "No type information in type library " << argv[argi] << "?\n";
+            std::cerr << "No type information in '" << convertUTF16ToUTF8(argv[argi]) << "'?\n";
             std::exit(1);
         }
 
@@ -2210,11 +2167,11 @@ int main(int argc, char** argv)
         nResult = pTypeLib->GetDocumentation(-1, &sLibNameBstr, NULL, NULL, NULL);
         if (FAILED(nResult))
         {
-            std::cerr << "GetDocumentation(-1) of " << argv[argi]
-                      << " failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
+            std::cerr << "GetDocumentation(-1) of '" << argv[argi]
+                      << "' failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
             std::exit(1);
         }
-        std::string sLibName = aUTF16ToUTF8.to_bytes(sLibNameBstr);
+        std::string sLibName = convertUTF16ToUTF8(sLibNameBstr);
 
         bool bFound = false;
         for (UINT i = 0; i < nTypeInfoCount; ++i)
@@ -2241,7 +2198,7 @@ int main(int argc, char** argv)
                 std::exit(1);
             }
 
-            if (std::wcscmp(sTypeName, aUTF8ToUTF16.from_bytes(pInterface).data()) != 0)
+            if (std::wcscmp(sTypeName, pInterface) != 0)
                 continue;
 
             ITypeInfo* pTypeInfo;

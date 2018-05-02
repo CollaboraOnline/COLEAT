@@ -1,20 +1,3 @@
-- Clean up the std::cout vs. std::wcout (and std::cerr vs. std::wcerr)
-  inconsistency. Decision: Just use the the plain char streams for
-  logging and warnings. Add static UTF16-to-UTF8 (and reverse, if
-  necessary) converters to CProxiedUnknown.
-
-- When that done, can get rid of the utils.hpp vs utilstemp.hpp and
-  just use an utils.hpp. Also don't include windowsdebugoutput.hxx
-  from LibreOffice, but just copy the necessary thing, so that coleat
-  can be built freestanding from LibreOffice.
-
-- What about wmain() vs main()? Just use main(). Our command-line
-  parameter are either by their natur ASCII-only or file names, and
-  when command-line parameters are passed to main() they have been
-  converted by the C++ runtime to system codepage, and that is what
-  file names should be passed as to file opening functions anyway.
-  (All our logging, tracing etc is in UTF-8, though.)
-
 - Expand the -t output to be even more useful. Make sure callbacks
   (events) are also handled.
 

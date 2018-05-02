@@ -16,9 +16,9 @@
 
 #include <Windows.h>
 
-#include <comphelper/windowsdebugoutput.hxx>
-
 #pragma warning(pop)
+
+#include "utils.hpp"
 
 #include "CProxiedConnectionPointContainer.hpp"
 #include "CProxiedDispatch.hpp"
@@ -26,7 +26,6 @@
 #include "CProxiedEnumConnections.hpp"
 #include "CProxiedSink.hpp"
 #include "CProxiedUnknown.hpp"
-#include "utilstemp.hpp"
 
 static ThreadProcParam* pGlobalParam;
 

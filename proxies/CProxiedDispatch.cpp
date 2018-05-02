@@ -10,23 +10,19 @@
 #pragma warning(push)
 #pragma warning(disable : 4668 4820 4917)
 
-#include <codecvt>
 #include <cstdlib>
 #include <iostream>
-#include <map>
-#include <sstream>
 #include <string>
 #include <vector>
 
 #include <Windows.h>
 #include <OleCtl.h>
 
-#include <comphelper/windowsdebugoutput.hxx>
-
 #pragma warning(pop)
 
+#include "utils.hpp"
+
 #include "CProxiedDispatch.hpp"
-#include "utilstemp.hpp"
 
 CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy)
     : CProxiedUnknown(pBaseClassUnknown, pDispatchToProxy, IID_IDispatch)
@@ -58,9 +54,7 @@ HRESULT CProxiedDispatch::genericInvoke(std::string sFuncName, int nInvKind,
 
     HRESULT nResult = S_OK;
 
-    std::wstring sFuncNameWstr
-        = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>().from_bytes(
-            sFuncName.c_str());
+    std::wstring sFuncNameWstr = convertUTF8ToUTF16(sFuncName.c_str());
     LPOLESTR pFuncNameWstr = (LPOLESTR)sFuncNameWstr.data();
 
     MEMBERID nMemberId;

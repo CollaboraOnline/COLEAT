@@ -9,7 +9,6 @@
 
 #pragma warning(push)
 #pragma warning(disable : 4668 4820 4917)
-#define _CRT_SECURE_NO_WARNINGS
 
 #include <cassert>
 #include <cstdlib>
@@ -21,9 +20,7 @@
 
 #pragma warning(pop)
 
-#include <comphelper/windowsdebugoutput.hxx>
-
-#include "utilstemp.hpp"
+#include "utils.hpp"
 
 #include "CProxiedCoclass.hpp"
 #include "CProxiedDispatch.hpp"

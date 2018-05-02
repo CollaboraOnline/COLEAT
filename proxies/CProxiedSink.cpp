@@ -11,17 +11,15 @@
 #pragma warning(disable : 4668 4820 4917)
 
 #include <cassert>
-#include <codecvt>
 #include <iostream>
 
 #include <Windows.h>
 
-#include <comphelper/windowsdebugoutput.hxx>
-
 #pragma warning(pop)
 
+#include "utils.hpp"
+
 #include "CProxiedSink.hpp"
-#include "utilstemp.hpp"
 
 #include "CallbackInvoker.hxx"
 
@@ -123,8 +121,7 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
         if (FAILED(nResult))
         {
             std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
-                      << "): GetIDsOfNames("
-                      << std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().to_bytes(sName)
+                      << "): GetIDsOfNames(" << convertUTF16ToUTF8(sName)
                       << ") failed: " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
             SysFreeString(sName);
             return nResult;

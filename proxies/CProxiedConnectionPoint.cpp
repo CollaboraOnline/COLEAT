@@ -15,14 +15,13 @@
 
 #include <Windows.h>
 
-#include <comphelper/windowsdebugoutput.hxx>
-
 #pragma warning(pop)
+
+#include "utils.hpp"
 
 #include "CProxiedConnectionPoint.hpp"
 #include "CProxiedEnumConnections.hpp"
 #include "CProxiedSink.hpp"
-#include "utilstemp.hpp"
 
 CProxiedConnectionPoint::CProxiedConnectionPoint(IUnknown* pBaseClassUnknown,
                                                  CProxiedConnectionPointContainer* pContainer,

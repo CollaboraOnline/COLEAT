@@ -13,6 +13,8 @@
 #pragma warning(push)
 #pragma warning(disable : 4668 4820 4917)
 
+#include <codecvt>
+#include <cstdio>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -23,6 +25,22 @@
 #include <initguid.h>
 
 #pragma warning(pop)
+
+inline bool operator<(const IID& a, const IID& b) { return std::memcmp(&a, &b, sizeof(a)) < 0; }
+
+inline std::string convertUTF16ToUTF8(const wchar_t* pWchar)
+{
+    static std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> aUTF16ToUTF8;
+
+    return std::string(aUTF16ToUTF8.to_bytes(pWchar));
+}
+
+inline std::wstring convertUTF8ToUTF16(const char* pChar)
+{
+    static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> aUTF8ToUTF16;
+
+    return std::wstring(aUTF8ToUTF16.from_bytes(pChar));
+}
 
 inline const wchar_t* baseName(const wchar_t* sPathname)
 {
@@ -44,11 +62,31 @@ inline wchar_t* programName(const wchar_t* sPathname)
     return pRetval;
 }
 
-inline std::wstring to_hex(uint64_t n, int w = 0)
+inline std::string to_hex(uint64_t n, int w = 0)
 {
-    std::wstringstream aStringStream;
-    aStringStream << std::setfill(L'0') << std::setw(w) << std::hex << n;
+    std::stringstream aStringStream;
+    aStringStream << std::setfill('0') << std::setw(w) << std::hex << n;
     return aStringStream.str();
+}
+
+inline std::string IID_initializer(const IID& aIID)
+{
+    std::string sResult;
+    sResult = "{0x" + to_hex(aIID.Data1, 8) + ",0x" + to_hex(aIID.Data2, 4) + ",0x"
+              + to_hex(aIID.Data3, 4);
+    for (int i = 0; i < 8; ++i)
+        sResult += ",0x" + to_hex(aIID.Data4[i], 2);
+    sResult += "}";
+
+    return sResult;
+}
+
+inline std::string IID_to_string(const IID& aIID)
+{
+    LPOLESTR pRiid;
+    if (StringFromIID(aIID, &pRiid) != S_OK)
+        return "?";
+    return convertUTF16ToUTF8(pRiid);
 }
 
 inline bool GetWindowsErrorString(DWORD nErrorCode, LPWSTR* pPMsgBuf)
@@ -68,7 +106,7 @@ inline bool GetWindowsErrorString(DWORD nErrorCode, LPWSTR* pPMsgBuf)
     return true;
 }
 
-inline std::wstring WindowsErrorString(DWORD nErrorCode)
+inline std::string WindowsErrorString(DWORD nErrorCode)
 {
     LPWSTR pMsgBuf;
 
@@ -77,43 +115,43 @@ inline std::wstring WindowsErrorString(DWORD nErrorCode)
         return to_hex(nErrorCode);
     }
 
-    std::wstring sResult(pMsgBuf);
+    std::string sResult(convertUTF16ToUTF8(pMsgBuf));
 
     HeapFree(GetProcessHeap(), 0, pMsgBuf);
 
     return sResult;
 }
 
-inline std::wstring WindowsErrorStringFromHRESULT(HRESULT nResult)
+inline std::string WindowsErrorStringFromHRESULT(HRESULT nResult)
 {
     // Return common HRESULT codes symbolically. This is for developer use anyway, much easier to
     // read "E_NOTIMPL" than the English prose description.
     switch (nResult)
     {
         case S_OK:
-            return L"S_OK";
+            return "S_OK";
         case S_FALSE:
-            return L"S_FALSE";
+            return "S_FALSE";
         case E_UNEXPECTED:
-            return L"E_UNEXPECTED";
+            return "E_UNEXPECTED";
         case E_NOTIMPL:
-            return L"E_NOTIMPL";
+            return "E_NOTIMPL";
         case E_OUTOFMEMORY:
-            return L"E_OUTOFMEMORY";
+            return "E_OUTOFMEMORY";
         case E_INVALIDARG:
-            return L"E_INVALIDARG";
+            return "E_INVALIDARG";
         case E_NOINTERFACE:
-            return L"E_NOINTERFACE";
+            return "E_NOINTERFACE";
         case E_POINTER:
-            return L"E_POINTER";
+            return "E_POINTER";
         case E_HANDLE:
-            return L"E_HANDLE";
+            return "E_HANDLE";
         case E_ABORT:
-            return L"E_ABORT";
+            return "E_ABORT";
         case E_FAIL:
-            return L"E_FAIL";
+            return "E_FAIL";
         case E_ACCESSDENIED:
-            return L"E_ACCESSDENIED";
+            return "E_ACCESSDENIED";
     }
 
     // See https://blogs.msdn.microsoft.com/oldnewthing/20061103-07/?p=29133
@@ -166,77 +204,78 @@ inline void tryToEnsureStdHandlesOpen()
             if (!AttachConsole(ATTACH_PARENT_PROCESS))
                 AllocConsole();
         }
-        std::freopen("CON", "r", stdin);
-        std::freopen("CON", "w", stdout);
-        std::freopen("CON", "w", stderr);
+
+        // Ignore errors from freopen_s()
+        FILE* pStream;
+        freopen_s(&pStream, "CON", "r", stdin);
+        freopen_s(&pStream, "CON", "w", stdout);
+        freopen_s(&pStream, "CON", "w", stderr);
         std::ios::sync_with_stdio(true);
     }
 }
 
-namespace
-{
-DEFINE_GUID(IID_IdentityUnmarshal, 0x0000001B, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x46);
-}
-
 template <typename traits>
-inline std::basic_ostream<wchar_t, traits>& operator<<(std::basic_ostream<wchar_t, traits>& stream,
-                                                     const IID& rIid)
+inline std::basic_ostream<char, traits>& operator<<(std::basic_ostream<char, traits>& stream,
+                                                    const IID& rIid)
 {
     LPOLESTR pRiid;
     if (StringFromIID(rIid, &pRiid) != S_OK)
-        return stream << L"?";
+        return stream << "?";
 
-    stream << pRiid;
+    // Special case well-known interfaces that pop up a lot, but which don't have their name in
+    // the Registry.
+
+    if (IsEqualIID(rIid, IID_IAgileObject))
+        return stream << "IID_IAgileObject";
+    if (IsEqualIID(rIid, IID_ICallFactory))
+        return stream << "IID_ICallFactory";
+    if (IsEqualIID(rIid, IID_IExternalConnection))
+        return stream << "IID_IExternalConnection";
+    if (IsEqualIID(rIid, IID_IFastRundown))
+        return stream << "IID_IFastRundown";
+    if (IsEqualIID(rIid, IID_IMarshal))
+        return stream << "IID_IMarshal";
+    if (IsEqualIID(rIid, IID_IMarshal2))
+        return stream << "IID_IMarshal2";
+    if (IsEqualIID(rIid, IID_INoMarshal))
+        return stream << "IID_INoMarshal";
+    if (IsEqualIID(rIid, IID_NULL))
+        return stream << "IID_NULL";
+    if (IsEqualIID(rIid, IID_IPersistPropertyBag))
+        return stream << "IID_IPersistPropertyBag";
+    if (IsEqualIID(rIid, IID_IPersistStreamInit))
+        return stream << "IID_IPersistStreamInit";
+    if (IsEqualIID(rIid, IID_IStdMarshalInfo))
+        return stream << "IID_IStdMarshalInfo";
 
     DWORD nSize;
-    if (RegGetValueW(HKEY_CLASSES_ROOT, std::wstring(L"CLSID\\").append(pRiid).data(), NULL,
+    if (RegGetValueW(HKEY_CLASSES_ROOT, std::wstring(L"Interface\\").append(pRiid).data(), NULL,
                      RRF_RT_REG_SZ, NULL, NULL, &nSize)
         == ERROR_SUCCESS)
-    {
-        std::vector<wchar_t> sValue(nSize / 2);
-        if (RegGetValueW(HKEY_CLASSES_ROOT, std::wstring(L"CLSID\\").append(pRiid).data(), NULL,
-                         RRF_RT_REG_SZ, NULL, sValue.data(), &nSize)
-            == ERROR_SUCCESS)
-        {
-            stream << L"=\"" << sValue.data() << L"\"";
-        }
-    }
-    else if (RegGetValueW(HKEY_CLASSES_ROOT, std::wstring(L"Interface\\").append(pRiid).data(),
-                          NULL, RRF_RT_REG_SZ, NULL, NULL, &nSize)
-             == ERROR_SUCCESS)
     {
         std::vector<wchar_t> sValue(nSize / 2);
         if (RegGetValueW(HKEY_CLASSES_ROOT, std::wstring(L"Interface\\").append(pRiid).data(), NULL,
                          RRF_RT_REG_SZ, NULL, sValue.data(), &nSize)
             == ERROR_SUCCESS)
         {
-            stream << L"=\"" << sValue.data() << L"\"";
+            stream << "IID_" << convertUTF16ToUTF8(sValue.data());
+        }
+    }
+    else if (RegGetValueW(HKEY_CLASSES_ROOT, std::wstring(L"CLSID\\").append(pRiid).data(), NULL,
+                          RRF_RT_REG_SZ, NULL, NULL, &nSize)
+             == ERROR_SUCCESS)
+    {
+        std::vector<wchar_t> sValue(nSize / 2);
+        if (RegGetValueW(HKEY_CLASSES_ROOT, std::wstring(L"CLSID\\").append(pRiid).data(), NULL,
+                         RRF_RT_REG_SZ, NULL, sValue.data(), &nSize)
+            == ERROR_SUCCESS)
+        {
+            stream << "{" << convertUTF16ToUTF8(sValue.data()) << "}";
         }
     }
     else
     {
-        // Special case well-known interfaces that pop up a lot, but which don't have their name in
-        // the Registry.
-
-        if (IsEqualIID(rIid, IID_IMarshal))
-            stream << L"=\"IMarshal\"";
-        else if (IsEqualIID(rIid, IID_IMarshal2))
-            stream << L"=\"IMarshal2\"";
-        else if (IsEqualIID(rIid, IID_INoMarshal))
-            stream << L"=\"INoMarshal\"";
-        else if (IsEqualIID(rIid, IID_IdentityUnmarshal))
-            stream << L"=\"IdentityUnmarshal\"";
-        else if (IsEqualIID(rIid, IID_IFastRundown))
-            stream << L"=\"IFastRundown\"";
-        else if (IsEqualIID(rIid, IID_IStdMarshalInfo))
-            stream << L"=\"IStdMarshalInfo\"";
-        else if (IsEqualIID(rIid, IID_IAgileObject))
-            stream << L"=\"IAgileObject\"";
-        else if (IsEqualIID(rIid, IID_IExternalConnection))
-            stream << L"=\"IExternalConnection\"";
-        else if (IsEqualIID(rIid, IID_ICallFactory))
-            stream << L"=\"ICallFactory\"";
+        stream << convertUTF16ToUTF8(pRiid);
     }
 
     CoTaskMemFree(pRiid);

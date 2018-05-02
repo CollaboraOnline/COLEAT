@@ -10,11 +10,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4668 4820 4917)
 
-#define _CRT_SECURE_NO_WARNINGS
-#include <cstdio>
-#undef _CRT_SECURE_NO_WARNINGS
 #include <cassert>
-#include <codecvt>
 #include <cstdlib>
 #include <cwchar>
 #include <fstream>
@@ -35,12 +31,11 @@ static bool bDebug = false;
 
 static void Usage(wchar_t** argv)
 {
-    std::wcerr
-        << L"Usage: " << programName(argv[0])
-        << L" [options] program [arguments...]\n"
-           L"\n"
-           L"  Options:\n"
-           L"    -t                           only trace, no redirection to replacement app\n";
+    std::cerr << "Usage: " << convertUTF16ToUTF8(programName(argv[0]))
+              << " [options] program [arguments...]\n"
+                 "\n"
+                 "  Options:\n"
+                 "    -t                           only trace, no redirection to replacement app\n";
     std::exit(1);
 }
 
@@ -82,7 +77,7 @@ int wmain(int argc, wchar_t** argv)
     DWORD nSize = GetModuleFileNameW(NULL, sFileName, NFILENAME - 20);
     if (nSize == NFILENAME - 20)
     {
-        std::wcerr << L"Pathname of this exe ridiculously long\n";
+        std::cerr << "Pathname of this exe ridiculously long\n";
         std::exit(1);
     }
 
@@ -91,7 +86,7 @@ int wmain(int argc, wchar_t** argv)
     wchar_t* pLastSlash = wcsrchr(sFileName, L'/');
     if (pLastBackslash == NULL && pLastSlash == NULL)
     {
-        std::wcerr << L"Not a full path: '" << sFileName << L"'?\n";
+        std::cerr << "Not a full path: '" << convertUTF16ToUTF8(sFileName) << "'?\n";
         std::exit(1);
     }
     wchar_t* pAfterSlash
@@ -127,7 +122,7 @@ int wmain(int argc, wchar_t** argv)
                             GetCurrentProcess(), &aWrappedProcessStartupInfo.hStdError, 0, TRUE,
                             DUPLICATE_SAME_ACCESS))
     {
-        std::wcerr << L"DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        std::cerr << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
         std::exit(1);
     }
 
@@ -136,7 +131,7 @@ int wmain(int argc, wchar_t** argv)
     if (!CreateProcessW(NULL, pCommandLine, NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL,
                         &aWrappedProcessStartupInfo, &aWrappedProcessInfo))
     {
-        std::wcerr << L"CreateProcess failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        std::cerr << "CreateProcess failed: " << WindowsErrorString(GetLastError()) << "\n";
         std::exit(1);
     }
 
@@ -145,7 +140,7 @@ int wmain(int argc, wchar_t** argv)
     BOOL bIsWow64;
     if (!IsWow64Process(aWrappedProcessInfo.hProcess, &bIsWow64))
     {
-        std::wcerr << L"IsWow64Process failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        std::cerr << "IsWow64Process failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(aWrappedProcessInfo.hProcess, 1);
         WaitForSingleObject(aWrappedProcessInfo.hProcess, INFINITE);
         std::exit(1);
@@ -175,7 +170,7 @@ int wmain(int argc, wchar_t** argv)
         || !DuplicateHandle(GetCurrentProcess(), aWrappedProcessInfo.hThread, GetCurrentProcess(),
                             &hInheritableWrappedThread, 0, TRUE, DUPLICATE_SAME_ACCESS))
     {
-        std::wcerr << L"DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        std::cerr << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(aWrappedProcessInfo.hProcess, 1);
         WaitForSingleObject(aWrappedProcessInfo.hProcess, INFINITE);
         std::exit(1);
@@ -184,9 +179,9 @@ int wmain(int argc, wchar_t** argv)
     // Start exewrapper, pass it the inheritable handle to the wrapped process and its startup
     // thread, and after those the same command-line arguments we got.
 
-    wcscpy(pAfterSlash, L"exewrapper-");
-    wcscat(pAfterSlash, pArchOfWrappedProcess);
-    wcscat(pAfterSlash, L".exe");
+    wcscpy_s(pAfterSlash, NFILENAME - (pAfterSlash - sFileName), L"exewrapper-");
+    wcscat_s(pAfterSlash, NFILENAME - wcslen(sFileName), pArchOfWrappedProcess);
+    wcscat_s(pAfterSlash, NFILENAME - wcslen(sFileName), L".exe");
 
     // exewrapper's command line is: inherited process handle, inherited main thread handle followed by our options. The wrapped program and
     // its parameters don't need to be passed to exewrapper.
@@ -219,14 +214,14 @@ int wmain(int argc, wchar_t** argv)
                             GetCurrentProcess(), &aExeWrapperStartupInfo.hStdError, 0, TRUE,
                             DUPLICATE_SAME_ACCESS))
     {
-        std::wcerr << L"DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        std::cerr << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
         std::exit(1);
     }
 
     if (!CreateProcessW(NULL, pCommandLine, NULL, NULL, TRUE, 0, NULL, NULL,
                         &aExeWrapperStartupInfo, &aExeWrapperProcessInfo))
     {
-        std::wcerr << L"CreateProcess failed: " << WindowsErrorString(GetLastError()) << L"\n";
+        std::cerr << "CreateProcess failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(aWrappedProcessInfo.hProcess, 1);
         WaitForSingleObject(aWrappedProcessInfo.hProcess, INFINITE);
         std::exit(1);

@@ -38,9 +38,12 @@ struct ThreadProcParam
     bool mbPassedSizeCheck;
     bool mbTraceOnly;
 
-    char msInjectedDllMainFunction[100];
-    wchar_t msFileName[1000];
-    wchar_t msErrorExplanation[1000];
+    static const int NFUNCTION = 100;
+    char msInjectedDllMainFunction[NFUNCTION];
+    static const int NFILENAME = 1000;
+    wchar_t msFileName[NFILENAME];
+    static const int NEXPLANATION = 1000;
+    wchar_t msErrorExplanation[NEXPLANATION];
     DWORD mnLastError;
 };
 

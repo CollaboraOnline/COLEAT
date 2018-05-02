@@ -14,14 +14,11 @@
 
 #include <Windows.h>
 
-#include <comphelper/windowsdebugoutput.hxx>
-
 #pragma warning(pop)
 
 #include "CProxiedConnectionPoint.hpp"
 #include "CProxiedConnectionPointContainer.hpp"
 #include "CProxiedEnumConnectionPoints.hpp"
-#include "utilstemp.hpp"
 
 #include "OutgoingInterfaceMap.hxx"
 

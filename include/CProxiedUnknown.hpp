@@ -14,8 +14,6 @@
 #pragma warning(disable: 4668 4820 4917)
 
 #include <map>
-#include <string>
-#include <vector>
 
 #include <Windows.h>
 #include <OCIdl.h>
@@ -23,8 +21,7 @@
 #pragma warning(pop)
 
 #include "exewrapper.hpp"
-
-inline bool operator<(const IID& a, const IID& b) { return std::memcmp(&a, &b, sizeof(a)) < 0; }
+#include "utils.hpp"
 
 class CProxiedUnknown: public IUnknown
 {

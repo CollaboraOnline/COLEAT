@@ -14,13 +14,12 @@
 
 #include <Windows.h>
 
-#include <comphelper/windowsdebugoutput.hxx>
-
 #pragma warning(pop)
+
+#include "utils.hpp"
 
 #include "CProxiedEnumConnections.hpp"
 #include "CProxiedSink.hpp"
-#include "utilstemp.hpp"
 
 CProxiedEnumConnections::CProxiedEnumConnections(IUnknown* pBaseClassUnknown,
                                                  IEnumConnections* pECToProxy)

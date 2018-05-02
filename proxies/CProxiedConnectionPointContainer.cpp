@@ -11,20 +11,18 @@
 #pragma warning(disable : 4668 4820 4917)
 
 #include <cassert>
-#include <codecvt>
 #include <iostream>
 
 #include <Windows.h>
 #include <OleCtl.h>
 
-#include <comphelper/windowsdebugoutput.hxx>
-
 #pragma warning(pop)
+
+#include "utils.hpp"
 
 #include "CProxiedConnectionPoint.hpp"
 #include "CProxiedConnectionPointContainer.hpp"
 #include "CProxiedEnumConnectionPoints.hpp"
-#include "utilstemp.hpp"
 
 #include "OutgoingInterfaceMap.hxx"
 
