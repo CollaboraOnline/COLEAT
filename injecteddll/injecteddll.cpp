@@ -75,7 +75,8 @@ static void storeError(ThreadProcParam* pParam, const wchar_t* pPrefix,
 static HRESULT WINAPI myCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext,
                                          REFIID riid, LPVOID* ppv)
 {
-    std::cout << "myCoCreateInstance(" << rclsid << ")\n";
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "myCoCreateInstance(" << rclsid << ")\n";
 
     for (int i = 0; i < sizeof(aInterfaceMap) / sizeof(aInterfaceMap[0]); ++i)
     {
@@ -95,7 +96,8 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
                                            COSERVERINFO* pServerInfo, DWORD dwCount,
                                            MULTI_QI* pResults)
 {
-    std::cout << "myCoCreateInstanceEx(" << clsid << ")\n";
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "myCoCreateInstanceEx(" << clsid << ")\n";
 
     for (int i = 0; i < sizeof(aInterfaceMap) / sizeof(aInterfaceMap[0]); ++i)
     {
@@ -145,7 +147,8 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
 
 static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
 {
-    std::cout << "myLoadLibraryW(" << convertUTF16ToUTF8(lpFileName) << ")\n";
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "myLoadLibraryW(" << convertUTF16ToUTF8(lpFileName) << ")\n";
 
     HMODULE hModule = LoadLibraryW(lpFileName);
 
@@ -168,7 +171,8 @@ static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
 
 static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags)
 {
-    std::cout << "myLoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ")\n";
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "myLoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ")\n";
 
     HMODULE hModule = LoadLibraryExW(lpFileName, hFile, dwFlags);
 

@@ -28,8 +28,9 @@ CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDisp
     : CProxiedUnknown(pBaseClassUnknown, pDispatchToProxy, IID_IDispatch)
     , mpDispatchToProxy(pDispatchToProxy)
 {
-    std::cout << this << "@CProxiedDispatch::CTOR(" << pBaseClassUnknown << ", " << pDispatchToProxy
-              << ")" << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedDispatch::CTOR(" << pBaseClassUnknown << ", " << pDispatchToProxy
+                  << ")" << std::endl;
 }
 
 CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
@@ -43,14 +44,16 @@ CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDisp
     : CProxiedUnknown(pBaseClassUnknown, pDispatchToProxy, rIID1, rIID2)
     , mpDispatchToProxy(pDispatchToProxy)
 {
-    std::cout << this << "@CProxiedDispatch::CTOR(" << pBaseClassUnknown << ", " << pDispatchToProxy
-              << ", " << rIID1 << ", " << rIID2 << ")" << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedDispatch::CTOR(" << pBaseClassUnknown << ", " << pDispatchToProxy
+                  << ", " << rIID1 << ", " << rIID2 << ")" << std::endl;
 }
 
 HRESULT CProxiedDispatch::genericInvoke(std::string sFuncName, int nInvKind,
                                         std::vector<VARIANT>& rParameters, void* pRetval)
 {
-    std::cout << this << "@CProxiedDispatch::genericInvoke(" << sFuncName << ")..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedDispatch::genericInvoke(" << sFuncName << ")..." << std::endl;
 
     HRESULT nResult = S_OK;
 
@@ -63,16 +66,18 @@ HRESULT CProxiedDispatch::genericInvoke(std::string sFuncName, int nInvKind,
                                                &nMemberId);
     if (nResult == DISP_E_UNKNOWNNAME)
     {
-        std::cerr << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
-                  << "): Not implemented in the replacement app" << std::endl;
+        if (getParam()->mbVerbose)
+            std::cerr << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
+                      << "): Not implemented in the replacement app" << std::endl;
         return E_NOTIMPL;
     }
 
     if (FAILED(nResult))
     {
-        std::cerr << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
-                  << "): GetIDsOfNames failed: " << WindowsErrorStringFromHRESULT(nResult)
-                  << std::endl;
+        if (getParam()->mbVerbose)
+            std::cerr << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
+                      << "): GetIDsOfNames failed: " << WindowsErrorStringFromHRESULT(nResult)
+                      << std::endl;
         return nResult;
     }
 
@@ -120,8 +125,9 @@ HRESULT CProxiedDispatch::genericInvoke(std::string sFuncName, int nInvKind,
                                         &aDispParams, &aResult, NULL, &nArgErr);
     if (FAILED(nResult))
     {
-        std::cout << "..." << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
-                  << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << "..." << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
+                      << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
         return nResult;
     }
 
@@ -136,13 +142,14 @@ HRESULT CProxiedDispatch::genericInvoke(std::string sFuncName, int nInvKind,
                 *(IDispatch**)pRetval = aResult.pdispVal;
                 break;
             default:
-                std::cerr << "..." << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
+                std::cerr << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
                           << "): Unhandled vt: " << aResult.vt << std::endl;
                 std::abort();
         }
     }
-    std::cout << "..." << this << "@CProxiedDispatch::genericInvoke(" << sFuncName << "): S_OK"
-              << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "..." << this << "@CProxiedDispatch::genericInvoke(" << sFuncName << "): S_OK"
+                  << std::endl;
 
     return S_OK;
 }
@@ -153,13 +160,15 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::GetTypeInfoCount(UINT* pctinfo)
 {
     HRESULT nResult;
 
-    std::cout << this << "@CProxiedDispatch::GetTypeInfoCount..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedDispatch::GetTypeInfoCount..." << std::endl;
 
     nResult = mpDispatchToProxy->GetTypeInfoCount(pctinfo);
 
-    std::cout << "..." << this
-              << "@CProxiedDispatch::GetTypeInfoCount:" << WindowsErrorStringFromHRESULT(nResult)
-              << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "..." << this
+                  << "@CProxiedDispatch::GetTypeInfoCount:" << WindowsErrorStringFromHRESULT(nResult)
+                  << std::endl;
 
     return nResult;
 }
@@ -168,12 +177,14 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::GetTypeInfo(UINT iTInfo, LCID lcid, 
 {
     HRESULT nResult;
 
-    std::cout << this << "@CProxiedDispatch::GetTypeInfo(" << iTInfo << ")..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedDispatch::GetTypeInfo(" << iTInfo << ")..." << std::endl;
 
     nResult = mpDispatchToProxy->GetTypeInfo(iTInfo, lcid, ppTInfo);
 
-    std::cout << "..." << this << "@CProxiedDispatch::GetTypeInfo(" << iTInfo
-              << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "..." << this << "@CProxiedDispatch::GetTypeInfo(" << iTInfo
+                  << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 
     return nResult;
 }
@@ -183,13 +194,15 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::GetIDsOfNames(REFIID riid, LPOLESTR*
 {
     HRESULT nResult;
 
-    std::cout << this << "@CProxiedDispatch::GetIDsOfNames..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedDispatch::GetIDsOfNames..." << std::endl;
 
     nResult = mpDispatchToProxy->GetIDsOfNames(riid, rgszNames, cNames, lcid, rgDispId);
 
-    std::cout << "..." << this
-              << "@CProxiedDispatch::GetIDsOfNames:" << WindowsErrorStringFromHRESULT(nResult)
-              << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "..." << this
+                  << "@CProxiedDispatch::GetIDsOfNames:" << WindowsErrorStringFromHRESULT(nResult)
+                  << std::endl;
 
     return nResult;
 }
@@ -201,13 +214,15 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
 {
     HRESULT nResult;
 
-    std::cout << this << "@CProxiedDispatch::Invoke(" << dispIdMember << ")..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedDispatch::Invoke(" << dispIdMember << ")..." << std::endl;
 
     nResult = mpDispatchToProxy->Invoke(dispIdMember, riid, lcid, wFlags, pDispParams, pVarResult,
                                         pExcepInfo, puArgErr);
 
-    std::cout << "..." << this << "@CProxiedDispatch::Invoke(" << dispIdMember
-              << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "..." << this << "@CProxiedDispatch::Invoke(" << dispIdMember
+                  << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 
     return nResult;
 }

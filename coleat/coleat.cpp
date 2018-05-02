@@ -35,7 +35,8 @@ static void Usage(wchar_t** argv)
               << " [options] program [arguments...]\n"
                  "\n"
                  "  Options:\n"
-                 "    -t                           only trace, no redirection to replacement app\n";
+                 "    -t                           trace, no redirection to replacement app\n"
+                 "    -v                           verbose logging of internal operation\n";
     std::exit(1);
 }
 
@@ -58,6 +59,8 @@ int wmain(int argc, wchar_t** argv)
                 break;
             }
             case L't':
+                break;
+            case L'v':
                 break;
             default:
                 Usage(argv);

@@ -6,11 +6,6 @@
   Collabora Office. "Proxied application" is too unclear, we use the
   "proxy" term too much already.
 
-- Add a -v switch to turn on the verbose logging, and make all output
-  except error messages conditional on either -t or -v. (Thus, without
-  any switches at all, coleat would be entirely silent, except for
-  error messages.)
-
 - Including a coclass should automatically also include its default
   interface and default source interface, if any. (For instance, if
   Word.Application is mentioned in the -I file, it should not be

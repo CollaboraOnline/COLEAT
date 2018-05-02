@@ -37,7 +37,8 @@ CProxiedConnectionPoint::CProxiedConnectionPoint(IUnknown* pBaseClassUnknown,
     // FIXME: Delete this when we go inactive
     , mpAdvisedSinks(new AdvisedSinkHolder())
 {
-    std::cout << this << "@CProxiedConnectionPoint::CTOR" << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedConnectionPoint::CTOR" << std::endl;
 }
 
 HRESULT STDMETHODCALLTYPE CProxiedConnectionPoint::GetConnectionInterface(IID* /*pIID*/)
@@ -63,14 +64,16 @@ HRESULT STDMETHODCALLTYPE CProxiedConnectionPoint::Advise(IUnknown* pUnkSink, DW
     if (!pdwCookie)
         return E_POINTER;
 
-    std::cout << this << "@CProxiedConnectionPoint::Advise(" << pUnkSink << ")..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedConnectionPoint::Advise(" << pUnkSink << ")..." << std::endl;
 
     IDispatch* pSinkAsDispatch;
     nResult = pUnkSink->QueryInterface(IID_IDispatch, (void**)&pSinkAsDispatch);
     if (FAILED(nResult))
     {
-        std::cerr << "..." << this << "@CProxiedConnectionPoint::Advise: Sink is not an IDispatch"
-                  << std::endl;
+        if (getParam()->mbVerbose)
+            std::cerr << "..." << this << "@CProxiedConnectionPoint::Advise: Sink is not an IDispatch"
+                      << std::endl;
         return E_NOTIMPL;
     }
     assert(pUnkSink == pSinkAsDispatch);
@@ -83,15 +86,17 @@ HRESULT STDMETHODCALLTYPE CProxiedConnectionPoint::Advise(IUnknown* pUnkSink, DW
 
     if (FAILED(nResult))
     {
-        std::cout << "..." << this << "@CProxiedConnectionPoint::Advise(" << pUnkSink
-                  << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << "..." << this << "@CProxiedConnectionPoint::Advise(" << pUnkSink
+                      << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
         pSinkAsDispatch->Release();
         delete pDispatch;
         return nResult;
     }
 
-    std::cout << "..." << this << "@CProxiedConnectionPoint::Advise(" << pUnkSink
-              << "): " << *pdwCookie << ": S_OK" << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "..." << this << "@CProxiedConnectionPoint::Advise(" << pUnkSink
+                  << "): " << *pdwCookie << ": S_OK" << std::endl;
 
     mpAdvisedSinks->maAdvisedSinks[*pdwCookie] = pDispatch;
 
@@ -102,14 +107,16 @@ HRESULT STDMETHODCALLTYPE CProxiedConnectionPoint::Unadvise(DWORD dwCookie)
 {
     HRESULT nResult;
 
-    std::cout << this << "@CProxiedConnectionPoint::Unadvise(" << dwCookie << ")..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedConnectionPoint::Unadvise(" << dwCookie << ")..." << std::endl;
 
     nResult = mpCPToProxy->Unadvise(dwCookie);
 
     if (mpAdvisedSinks->maAdvisedSinks.count(dwCookie) == 0)
     {
-        std::cout << "..." << this << "@CProxiedConnectionPoint::Unadvise(" << dwCookie
-                  << "): E_POINTER" << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << "..." << this << "@CProxiedConnectionPoint::Unadvise(" << dwCookie
+                      << "): E_POINTER" << std::endl;
         return E_POINTER;
     }
     CProxiedSink::forgetExistingSink(mpAdvisedSinks->maAdvisedSinks[dwCookie]);
@@ -119,13 +126,15 @@ HRESULT STDMETHODCALLTYPE CProxiedConnectionPoint::Unadvise(DWORD dwCookie)
 
     if (FAILED(nResult))
     {
-        std::cout << "..." << this << "@CProxiedConnectionPoint::Unadvise(" << dwCookie
-                  << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << "..." << this << "@CProxiedConnectionPoint::Unadvise(" << dwCookie
+                      << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
         return nResult;
     }
 
-    std::cout << "..." << this << "@CProxiedConnectionPoint::Unadvise(" << dwCookie << "): S_OK"
-              << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "..." << this << "@CProxiedConnectionPoint::Unadvise(" << dwCookie << "): S_OK"
+                  << std::endl;
 
     return S_OK;
 }
@@ -137,20 +146,23 @@ HRESULT STDMETHODCALLTYPE CProxiedConnectionPoint::EnumConnections(IEnumConnecti
     if (!ppEnum)
         return E_POINTER;
 
-    std::cout << this << "@CProxiedConnectionPoint::EnumConnections..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedConnectionPoint::EnumConnections..." << std::endl;
 
     nResult = mpCPToProxy->EnumConnections(ppEnum);
     if (FAILED(nResult))
     {
-        std::cout << "..." << this << "@CProxiedConnectionPoint::EnumConnections: "
-                  << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << "..." << this << "@CProxiedConnectionPoint::EnumConnections: "
+                      << WindowsErrorStringFromHRESULT(nResult) << std::endl;
         return nResult;
     }
 
     *ppEnum = reinterpret_cast<IEnumConnections*>(
         new CProxiedEnumConnections(mpBaseClassUnknown, *ppEnum));
 
-    std::cout << "..." << this << "@CProxiedConnectionPoint::EnumConnections: S_OK" << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "..." << this << "@CProxiedConnectionPoint::EnumConnections: S_OK" << std::endl;
 
     return S_OK;
 }

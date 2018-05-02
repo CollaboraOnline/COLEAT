@@ -34,8 +34,9 @@ CProxiedConnectionPointContainer::CProxiedConnectionPointContainer(
     , mpProvideClassInfo(pProvideClassInfo)
     , mpConnectionPoints(new ConnectionPointMapHolder())
 {
-    std::cout << this << "@CProxiedConnectionPointContainer::CTOR(" << pBaseClassUnknown << ", "
-              << pCPCToProxy << ", " << pProvideClassInfo << ")" << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedConnectionPointContainer::CTOR(" << pBaseClassUnknown << ", "
+                  << pCPCToProxy << ", " << pProvideClassInfo << ")" << std::endl;
 }
 
 HRESULT STDMETHODCALLTYPE
@@ -46,7 +47,8 @@ CProxiedConnectionPointContainer::EnumConnectionPoints(IEnumConnectionPoints** p
     if (!ppEnum)
         return E_POINTER;
 
-    std::cout << this << "@CProxiedConnectionPointContainer::EnumConnectionPoints" << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedConnectionPointContainer::EnumConnectionPoints" << std::endl;
 
     IEnumConnectionPoints* pEnumConnectionPoints;
     nResult = mpCPCToProxy->EnumConnectionPoints(&pEnumConnectionPoints);
@@ -70,15 +72,17 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
 
     if (mpConnectionPoints->maConnectionPoints.count(riid))
     {
-        std::cout << this << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid
-                  << "): S_OK" << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << this << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid
+                      << "): S_OK" << std::endl;
         *ppCP = mpConnectionPoints->maConnectionPoints[riid];
         (*ppCP)->AddRef();
         return S_OK;
     }
 
-    std::cout << this << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid << ")..."
-              << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid << ")..."
+                  << std::endl;
 
     for (const auto aMapEntry : aOutgoingInterfaceMap)
     {
@@ -100,10 +104,11 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
                 nResult = mpProvideClassInfo->GetClassInfo(&pCoclassTI);
                 if (FAILED(nResult))
                 {
-                    std::cout << "..." << this
-                              << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid
-                              << "): GetClassInfo failed: "
-                              << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+                    if (getParam()->mbVerbose)
+                        std::cout << "..." << this
+                                  << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid
+                                  << "): GetClassInfo failed: "
+                                  << WindowsErrorStringFromHRESULT(nResult) << std::endl;
                     return nResult;
                 }
 
@@ -111,10 +116,11 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
                 nResult = pCoclassTI->GetTypeAttr(&pCoclassTA);
                 if (FAILED(nResult))
                 {
-                    std::cout << "..." << this
-                              << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid
-                              << "): GetTypeAttr failed: " << WindowsErrorStringFromHRESULT(nResult)
-                              << std::endl;
+                    if (getParam()->mbVerbose)
+                        std::cout << "..." << this
+                                  << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid
+                                  << "): GetTypeAttr failed: " << WindowsErrorStringFromHRESULT(nResult)
+                                  << std::endl;
                     return nResult;
                 }
 
@@ -124,10 +130,11 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
                     nResult = pCoclassTI->GetImplTypeFlags(i, &nImplTypeFlags);
                     if (FAILED(nResult))
                     {
-                        std::cout << "..." << this
-                                  << "@CProxiedConnectionPointContainer::FindConnectionPoint("
-                                  << riid << "): GetImplTypeFlags failed: "
-                                  << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+                        if (getParam()->mbVerbose)
+                            std::cout << "..." << this
+                                      << "@CProxiedConnectionPointContainer::FindConnectionPoint("
+                                      << riid << "): GetImplTypeFlags failed: "
+                                      << WindowsErrorStringFromHRESULT(nResult) << std::endl;
                         pCoclassTI->ReleaseTypeAttr(pCoclassTA);
                         return nResult;
                     }
@@ -140,10 +147,11 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
                     nResult = pCoclassTI->GetRefTypeOfImplType(i, &nHrefType);
                     if (FAILED(nResult))
                     {
-                        std::cout << "..." << this
-                                  << "@CProxiedConnectionPointContainer::FindConnectionPoint("
-                                  << riid << "): GetRefTypeOfImplType failed: "
-                                  << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+                        if (getParam()->mbVerbose)
+                            std::cout << "..." << this
+                                      << "@CProxiedConnectionPointContainer::FindConnectionPoint("
+                                      << riid << "): GetRefTypeOfImplType failed: "
+                                      << WindowsErrorStringFromHRESULT(nResult) << std::endl;
                         pCoclassTI->ReleaseTypeAttr(pCoclassTA);
                         return nResult;
                     }
@@ -151,10 +159,11 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
                     nResult = pCoclassTI->GetRefTypeInfo(nHrefType, &pTI);
                     if (FAILED(nResult))
                     {
-                        std::cout << "..." << this
-                                  << "@CProxiedConnectionPointContainer::FindConnectionPoint("
-                                  << riid << "): GetRefTypeInfo failed: "
-                                  << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+                        if (getParam()->mbVerbose)
+                            std::cout << "..." << this
+                                      << "@CProxiedConnectionPointContainer::FindConnectionPoint("
+                                      << riid << "): GetRefTypeInfo failed: "
+                                      << WindowsErrorStringFromHRESULT(nResult) << std::endl;
                         pCoclassTI->ReleaseTypeAttr(pCoclassTA);
                         return nResult;
                     }
@@ -168,17 +177,19 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
             nResult = mpCPCToProxy->FindConnectionPoint(aProxiedOrReplacementIID, &pCP);
             if (FAILED(nResult))
             {
-                std::cout << "..." << this
-                          << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid
-                          << ") (" << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult)
-                          << std::endl;
+                if (getParam()->mbVerbose)
+                    std::cout << "..." << this
+                              << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid
+                              << ") (" << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult)
+                              << std::endl;
                 return nResult;
             }
             *ppCP = reinterpret_cast<IConnectionPoint*>(new CProxiedConnectionPoint(
                 nullptr, this, pCP, aMapEntry.maSourceInterfaceInProxiedApp, pTI, aMapEntry));
 
-            std::cout << "..." << this << "@CProxiedConnectionPointContainer::FindConnectionPoint("
-                      << riid << "): S_OK" << std::endl;
+            if (getParam()->mbVerbose)
+                std::cout << "..." << this << "@CProxiedConnectionPointContainer::FindConnectionPoint("
+                          << riid << "): S_OK" << std::endl;
 
             mpConnectionPoints->maConnectionPoints[riid] = *ppCP;
             (*ppCP)->AddRef();
@@ -187,8 +198,9 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
         }
     }
 
-    std::cout << this << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid << ") ("
-              << __LINE__ << "): CONNECT_E_NOCONNECTION" << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedConnectionPointContainer::FindConnectionPoint(" << riid << ") ("
+                  << __LINE__ << "): CONNECT_E_NOCONNECTION" << std::endl;
     return CONNECT_E_NOCONNECTION;
 }
 

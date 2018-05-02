@@ -42,7 +42,8 @@ CProxiedSink::CProxiedSink(IDispatch* pDispatchToProxy, ITypeInfo* pTypeInfoOfOu
     , mpTypeInfoOfOutgoingInterface(pTypeInfoOfOutgoingInterface)
     , maMapEntry(rMapEntry)
 {
-    std::cout << this << "@CProxiedSink::CTOR" << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedSink::CTOR" << std::endl;
     maActiveSinks[this] = pDispatchToProxy;
 }
 
@@ -51,14 +52,18 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::GetTypeInfoCount(UINT* pctinfo)
     if (!pctinfo)
         return E_POINTER;
 
-    std::cout << this << "@CProxiedSink::GetTypeInfoCount..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedSink::GetTypeInfoCount..." << std::endl;
     *pctinfo = 0;
     HRESULT nResult = mpDispatchToProxy->GetTypeInfoCount(pctinfo);
-    std::cout << "..." << this
-              << "@CProxiedSink::GetTypeInfoCount: " << WindowsErrorStringFromHRESULT(nResult);
-    if (nResult == S_OK)
-        std::cout << ": " << *pctinfo;
-    std::cout << std::endl;
+    if (getParam()->mbVerbose)
+    {
+        std::cout << "..." << this
+                  << "@CProxiedSink::GetTypeInfoCount: " << WindowsErrorStringFromHRESULT(nResult);
+        if (nResult == S_OK)
+            std::cout << ": " << *pctinfo;
+        std::cout << std::endl;
+    }
     return nResult;
 }
 
@@ -67,11 +72,13 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::GetTypeInfo(UINT iTInfo, LCID lcid, ITyp
     if (!ppTInfo)
         return E_POINTER;
 
-    std::cout << this << "@CProxiedSink::GetTypeInfo..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedSink::GetTypeInfo..." << std::endl;
     HRESULT nResult = mpDispatchToProxy->GetTypeInfo(iTInfo, lcid, ppTInfo);
-    std::cout << "..." << this
-              << "@CProxiedSink::GetTypeInfo: " << WindowsErrorStringFromHRESULT(nResult)
-              << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "..." << this
+                  << "@CProxiedSink::GetTypeInfo: " << WindowsErrorStringFromHRESULT(nResult)
+                  << std::endl;
     return nResult;
 }
 
@@ -81,11 +88,13 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::GetIDsOfNames(REFIID riid, LPOLESTR* rgs
     if (*rgDispId)
         return E_POINTER;
 
-    std::cout << this << "@CProxiedSink::GetIDsOfNames..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedSink::GetIDsOfNames..." << std::endl;
     HRESULT nResult = mpDispatchToProxy->GetIDsOfNames(riid, rgszNames, cNames, lcid, rgDispId);
-    std::cout << "..." << this
-              << "@CProxiedSink::GetIDsOfNames: " << WindowsErrorStringFromHRESULT(nResult)
-              << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "..." << this
+                  << "@CProxiedSink::GetIDsOfNames: " << WindowsErrorStringFromHRESULT(nResult)
+                  << std::endl;
     return nResult;
 }
 
@@ -96,7 +105,8 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
 {
     HRESULT nResult;
 
-    std::cout << this << "@CProxiedSink::Invoke(" << dispIdMember << ")..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedSink::Invoke(" << dispIdMember << ")..." << std::endl;
 
     DISPID nDispIdMemberInClient;
     if (mpTypeInfoOfOutgoingInterface != NULL)
@@ -110,9 +120,10 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
         nResult = mpTypeInfoOfOutgoingInterface->GetNames(dispIdMember, &sName, 1, &nNames);
         if (FAILED(nResult))
         {
-            std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
-                      << "): GetNames failed: " << WindowsErrorStringFromHRESULT(nResult)
-                      << std::endl;
+            if (getParam()->mbVerbose)
+                std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
+                          << "): GetNames failed: " << WindowsErrorStringFromHRESULT(nResult)
+                          << std::endl;
             return nResult;
         }
 
@@ -120,9 +131,10 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
             = mpDispatchToProxy->GetIDsOfNames(IID_NULL, &sName, 1, lcid, &nDispIdMemberInClient);
         if (FAILED(nResult))
         {
-            std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
-                      << "): GetIDsOfNames(" << convertUTF16ToUTF8(sName)
-                      << ") failed: " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+            if (getParam()->mbVerbose)
+                std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
+                          << "): GetIDsOfNames(" << convertUTF16ToUTF8(sName)
+                          << ") failed: " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
             SysFreeString(sName);
             return nResult;
         }
@@ -143,9 +155,10 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
     nResult = ProxiedCallbackInvoke(maIID2, mpDispatchToProxy, nDispIdMemberInClient, riid, lcid,
                                     wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
 
-    std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember << "): maps to Invoke("
-              << nDispIdMemberInClient << "): " << WindowsErrorStringFromHRESULT(nResult)
-              << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember << "): maps to Invoke("
+                  << nDispIdMemberInClient << "): " << WindowsErrorStringFromHRESULT(nResult)
+                  << std::endl;
 
     return nResult;
 }

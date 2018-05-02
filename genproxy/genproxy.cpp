@@ -61,8 +61,6 @@ static std::set<DefaultInterface> aDefaultInterfaces;
 
 static std::vector<OutgoingInterfaceMapping> aOutgoingInterfaceMap;
 
-static bool bGenerateTracing = false;
-
 static void Generate(const std::string& sLibName, ITypeInfo* pTypeInfo);
 
 inline bool operator<(const Callback& a, const Callback& b)
@@ -457,6 +455,8 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
     aCode << "#include <cstdlib>\n";
     aCode << "#include <iostream>\n";
     aCode << "\n";
+    aCode << "#include \"CProxiedUnknown.hpp\"\n";
+    aCode << "\n";
     aCode << "#include \"" << sClass << ".hxx\"\n";
     aCode << "\n";
 
@@ -466,7 +466,8 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
              "UINT* puArgErr)\n";
     aCode << "{\n";
 
-    aCode << "    std::cout << \"" << sClass
+    aCode << "    if (CProxiedUnknown::getParam()->mbVerbose || CProxiedUnknown::getParam()->mbTraceOnly)\n";
+    aCode << "        std::cout << \"" << sClass
           << "CallbackInvoke(\" << pDispatchToProxy << \", \" << dispIdMember << \":\";\n";
 
     aCode << "    HRESULT nResult;\n";
@@ -522,7 +523,8 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
         aCode << "        case " << pFuncDesc->memid << ": // " << convertUTF16ToUTF8(sFuncName)
               << "\n";
         aCode << "            {\n";
-        aCode << "                std::cout << \"" << convertUTF16ToUTF8(sFuncName)
+        aCode << "                if (CProxiedUnknown::getParam()->mbVerbose || CProxiedUnknown::getParam()->mbTraceOnly)\n";
+        aCode << "                    std::cout << \"" << convertUTF16ToUTF8(sFuncName)
               << ")\" << std::endl;\n";
 
         // Go through parameter list declared for the function in the type library, manipulate
@@ -1005,8 +1007,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
     aCode << "\n";
     aCode << "#include \"C" << sClass << ".hxx\"\n";
     aCode << "\n";
-    if (bGenerateTracing)
-        aCode << "#include <iostream>\n";
+    aCode << "#include <iostream>\n";
     aCode << "#include <vector>\n";
     aCode << "\n";
 
@@ -1115,8 +1116,8 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
 
         aCode << "{\n";
 
-        if (bGenerateTracing)
-            aCode << "    std::cout << \"C" << sClass << "::" << sFuncName << "(\";\n";
+        aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
+        aCode << "        std::cout << \"C" << sClass << "::" << sFuncName << "(\";\n";
 
         aCode << "    std::vector<VARIANT> vParams(" << vVtblFuncTable[nFunc].mpFuncDesc->cParams
               << ");\n";
@@ -1195,15 +1196,11 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                 aCode << "    (void) "
                       << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[nParam + 1u]) << ";\n";
 
-                if (bGenerateTracing)
-                {
-                    aCode << "    if(!bGotAll)\n";
-                    aCode << "        std::cout";
-                    if (nParam > 0)
-                        aCode << " << \",\"";
-                    aCode << " << " << sParamName << ";\n";
-                }
-
+                aCode << "    if (!bGotAll && (getParam()->mbVerbose || getParam()->mbTraceOnly))\n";
+                aCode << "        std::cout";
+                if (nParam > 0)
+                    aCode << " << \",\"";
+                aCode << " << " << sParamName << ";\n";
                 continue;
             }
 
@@ -1383,111 +1380,105 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
             }
             aCode << "    }\n";
 
-            if (bGenerateTracing)
+            aCode << "    if (!bGotAll && (getParam()->mbVerbose || getParam()->mbTraceOnly)) //HAHA\n";
+            aCode << "    {\n";
+            aCode << "        std::cout";
+            if (nParam > 0)
+                aCode << " << \",\"";
+            switch (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc.vt)
             {
-                aCode << "    if(!bGotAll)\n";
-                switch (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc.vt)
-                {
-                    case VT_I2:
-                    case VT_I4:
-                    case VT_R4:
-                    case VT_R8:
-                    case VT_BSTR:
-                    case VT_DISPATCH:
-                    case VT_BOOL:
-                    case VT_UI2:
-                    case VT_UI4:
-                    case VT_I8:
-                    case VT_UI8:
-                    case VT_INT:
-                    case VT_UINT:
-                    case VT_INT_PTR:
-                    case VT_UINT_PTR:
-                    case VT_LPSTR:
-                    case VT_LPWSTR:
-                        aCode << "        std::cout";
-                        if (nParam > 0)
-                            aCode << " << \",\"";
+                case VT_I2:
+                case VT_I4:
+                case VT_R4:
+                case VT_R8:
+                case VT_BSTR:
+                case VT_DISPATCH:
+                case VT_BOOL:
+                case VT_UI2:
+                case VT_UI4:
+                case VT_I8:
+                case VT_UI8:
+                case VT_INT:
+                case VT_UINT:
+                case VT_INT_PTR:
+                case VT_UINT_PTR:
+                case VT_LPSTR:
+                case VT_LPWSTR:
+                    aCode << " << " << sParamName << ";\n";
+                    break;
+                case VT_VARIANT:
+                    aCode << " << \"<VARIANT:\" << " << sParamName << ".vt << \">\";\n";
+                    break;
+                case VT_PTR:
+                    if (vVtblFuncTable[nFunc]
+                            .mpFuncDesc->lprgelemdescParam[nParam]
+                            .tdesc.lptdesc->vt
+                        == VT_VARIANT)
+                    {
+                        aCode << " << \"\";\n";
+                        aCode << "        switch(" << sParamName << "->vt)\n";
+                        aCode << "        {\n";
+                        aCode << "        case VT_I2: std::cout << " << sParamName
+                              << "->iVal; break;\n";
+                        aCode << "        case VT_I4: std::cout << " << sParamName
+                              << "->lVal; break;\n";
+                        aCode << "        case VT_R4: std::cout << " << sParamName
+                              << "->fltVal; break;\n";
+                        aCode << "        case VT_R8: std::cout << " << sParamName
+                              << "->dblVal; break;\n";
+                        aCode << "        case VT_BSTR: std::cout << " << sParamName
+                              << "->bstrVal; break;\n";
+                        aCode << "        case VT_DISPATCH: std::cout << " << sParamName
+                              << "->pdispVal; break;\n";
+                        aCode << "        case VT_BOOL: std::cout << " << sParamName
+                              << "->boolVal; break;\n";
+                        aCode << "        case VT_UI2: std::cout << " << sParamName
+                              << "->uiVal; break;\n";
+                        aCode << "        case VT_UI4: std::cout << " << sParamName
+                              << "->ulVal; break;\n";
+                        aCode << "        case VT_I8: std::cout << " << sParamName
+                              << "->llVal; break;\n";
+                        aCode << "        case VT_UI8: std::cout << " << sParamName
+                              << "->ullVal; break;\n";
+                        aCode << "        case VT_INT: std::cout << " << sParamName
+                              << "->intVal; break;\n";
+                        aCode << "        case VT_UINT: std::cout << " << sParamName
+                              << "->uintVal; break;\n";
+                        aCode << "        case VT_INT_PTR: std::cout << " << sParamName
+                              << "->pintVal; break;\n";
+                        aCode << "        case VT_UINT_PTR: std::cout << " << sParamName
+                              << "->puintVal; break;\n";
+                        aCode << "        case VT_LPSTR: std::cout << " << sParamName
+                              << "->pcVal; break;\n";
+                        aCode << "        case VT_LPWSTR: std::cout << (LPWSTR)" << sParamName
+                              << "->byref; break;\n";
+                        aCode << "        default: std::cout << " << sParamName
+                              << "->byref; break;\n";
+                        aCode << "        }\n";
+                    }
+                    else
+                    {
                         aCode << " << " << sParamName << ";\n";
-                        break;
-                    case VT_VARIANT:
-                        aCode << "        std::cout";
+                    }
+                    break;
+                case VT_USERDEFINED:
+                    aCode << " << \"<USERDEFINED>\";\n";
+                    break;
+                default:
+                    if (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc.vt
+                        & VT_BYREF)
+                    {
                         if (nParam > 0)
-                            aCode << " << \",\"";
-                        aCode << " << \"<VARIANT:\" << " << sParamName << ".vt << \">\";\n";
-                        break;
-                    case VT_PTR:
-                        if (vVtblFuncTable[nFunc]
-                                .mpFuncDesc->lprgelemdescParam[nParam]
-                                .tdesc.lptdesc->vt
-                            == VT_VARIANT)
-                        {
-                            aCode << "        switch(" << sParamName << "->vt)\n";
-                            aCode << "        {\n";
-                            aCode << "        case VT_I2: std::cout << " << sParamName
-                                  << "->iVal; break;\n";
-                            aCode << "        case VT_I4: std::cout << " << sParamName
-                                  << "->lVal; break;\n";
-                            aCode << "        case VT_R4: std::cout << " << sParamName
-                                  << "->fltVal; break;\n";
-                            aCode << "        case VT_R8: std::cout << " << sParamName
-                                  << "->dblVal; break;\n";
-                            aCode << "        case VT_BSTR: std::cout << " << sParamName
-                                  << "->bstrVal; break;\n";
-                            aCode << "        case VT_DISPATCH: std::cout << " << sParamName
-                                  << "->pdispVal; break;\n";
-                            aCode << "        case VT_BOOL: std::cout << " << sParamName
-                                  << "->boolVal; break;\n";
-                            aCode << "        case VT_UI2: std::cout << " << sParamName
-                                  << "->uiVal; break;\n";
-                            aCode << "        case VT_UI4: std::cout << " << sParamName
-                                  << "->ulVal; break;\n";
-                            aCode << "        case VT_I8: std::cout << " << sParamName
-                                  << "->llVal; break;\n";
-                            aCode << "        case VT_UI8: std::cout << " << sParamName
-                                  << "->ullVal; break;\n";
-                            aCode << "        case VT_INT: std::cout << " << sParamName
-                                  << "->intVal; break;\n";
-                            aCode << "        case VT_UINT: std::cout << " << sParamName
-                                  << "->uintVal; break;\n";
-                            aCode << "        case VT_INT_PTR: std::cout << " << sParamName
-                                  << "->pintVal; break;\n";
-                            aCode << "        case VT_UINT_PTR: std::cout << " << sParamName
-                                  << "->puintVal; break;\n";
-                            aCode << "        case VT_LPSTR: std::cout << " << sParamName
-                                  << "->pcVal; break;\n";
-                            aCode << "        case VT_LPWSTR: std::cout << (LPWSTR)" << sParamName
-                                  << "->byref; break;\n";
-                            aCode << "        default: std::cout << " << sParamName
-                                  << "->byref; break;\n";
-                            aCode << "        }\n";
-                        }
-                        else
-                        {
-                            aCode << "        std::cout << " << sParamName << ";\n";
-                        }
-                        break;
-                    case VT_USERDEFINED:
-                        aCode << "        std::cout";
-                        if (nParam > 0)
-                            aCode << " << \",\"";
-                        aCode << " << \"<USERDEFINED>\";\n";
-                        break;
-                    default:
-                        if (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc.vt
-                            & VT_BYREF)
-                        {
-                            if (nParam > 0)
-                                aCode << " << \",\";\n";
-                            aCode << " << " << sParamName << ";\n";
-                        }
-                        break;
-                }
+                            aCode << " << \",\";\n";
+                        aCode << " << " << sParamName << ";\n";
+                    }
+                    break;
             }
+            aCode << "    }\n";
         }
 
-        if (bGenerateTracing)
-            aCode << "    std::cout << \")\" << std::endl;\n";
+        aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
+        aCode << "        std::cout << \")\" << std::endl;\n";
 
         aCode << "    std::vector<VARIANT> vReverseParams;\n";
 
@@ -1949,7 +1940,6 @@ static void Usage(wchar_t** argv)
                  "interface IIDs\n"
                  "                                 and the proxied application's source interface "
                  "IIDs in file\n"
-                 "    -T                           Generate verbose tracing outout.\n"
                  "  If no -M option is given, does not do any COM server redirection.\n"
                  "  For instance: "
               << convertUTF16ToUTF8(programName(argv[0]))
@@ -2122,9 +2112,6 @@ int wmain(int argc, wchar_t** argv)
                 argi++;
                 break;
             }
-            case 'T':
-                bGenerateTracing = true;
-                break;
             default:
                 Usage(argv);
         }

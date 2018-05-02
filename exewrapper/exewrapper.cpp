@@ -119,6 +119,7 @@ int wmain(int argc, wchar_t** argv)
 
     bool bDebug = false;
     bool bTraceOnly = false;
+    bool bVerbose = false;
 
     while (argi < argc && argv[argi][0] == L'-')
     {
@@ -131,6 +132,9 @@ int wmain(int argc, wchar_t** argv)
             }
             case L't':
                 bTraceOnly = true;
+                break;
+            case L'v':
+                bVerbose = true;
                 break;
             default:
                 Usage(argv);
@@ -238,6 +242,7 @@ int wmain(int argc, wchar_t** argv)
     aParam.mpGetLastError.pVoid = GetProcAddress(hKernel32, "GetLastError");
     aParam.mpGetProcAddress.pVoid = GetProcAddress(hKernel32, "GetProcAddress");
     aParam.mbTraceOnly = bTraceOnly;
+    aParam.mbVerbose = bVerbose;
     strcpy_s(aParam.msInjectedDllMainFunction, ThreadProcParam::NFUNCTION,
              "InjectedDllMainFunction");
     wcscpy_s(aParam.msFileName, ThreadProcParam::NFILENAME, sDllFileName);

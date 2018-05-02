@@ -44,16 +44,16 @@ bool CProxiedCoclass::IsActive() { return mbIsActive; }
 IDispatch* CProxiedCoclass::createDispatchToProxy(const InterfaceMapping& rMapping)
 {
     const IID aProxiedOrReplacementIID
-        = (CProxiedDispatch::getParam()->mbTraceOnly ? rMapping.maFromCoclass
-                                                     : rMapping.maReplacementCoclass);
+        = (getParam()->mbTraceOnly ? rMapping.maFromCoclass : rMapping.maReplacementCoclass);
 
     // If we are only tracing, there replacement app does not have to be installed, as we won't
     // actually instantiate any COM service using its CLSID. The mpReplacementAppUnknown and
     // mpReplacementAppDispatch fields in this object will actually be those of the real
     // ("proxied") application.
 
-    std::cout << this << "@CProxiedCoclass::CTOR: CoCreateInstance(" << aProxiedOrReplacementIID
-              << ")..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedCoclass::CTOR: CoCreateInstance(" << aProxiedOrReplacementIID
+                  << ")..." << std::endl;
 
     if (FAILED(CoCreateInstance(aProxiedOrReplacementIID, NULL, CLSCTX_LOCAL_SERVER, IID_IDispatch,
                                 (void**)&mpReplacementAppDispatch)))
@@ -62,24 +62,27 @@ IDispatch* CProxiedCoclass::createDispatchToProxy(const InterfaceMapping& rMappi
         std::exit(1);
     }
 
-#if 1
+#if 0
     HRESULT hr;
     ITypeInfo* pAppTI;
-    std::cout << "Calling " << mpReplacementAppDispatch << "->GetTypeInfo(0)\n";
+    if (getParam()->mbVerbose)
+        std::cout << "Calling " << mpReplacementAppDispatch << "->GetTypeInfo(0)\n";
     if (FAILED((hr = mpReplacementAppDispatch->GetTypeInfo(0, LOCALE_USER_DEFAULT, &pAppTI))))
     {
         std::cerr << "GetTypeInfo failed" << std::endl;
         exit(1);
     }
 
-    std::cout << "And calling GetTypeAttr on that\n";
+    if (getParam()->mbVerbose)
+        std::cout << "And calling GetTypeAttr on that\n";
     TYPEATTR* pTypeAttr;
     if (FAILED((hr = pAppTI->GetTypeAttr(&pTypeAttr))))
     {
         std::cerr << "GetTypeAttr failed" << std::endl;
         exit(1);
     }
-    std::cout << "Got type attr, guid=" << pTypeAttr->guid << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "Got type attr, guid=" << pTypeAttr->guid << std::endl;
 #endif
     return mpReplacementAppDispatch;
 }
@@ -96,7 +99,8 @@ HRESULT STDMETHODCALLTYPE CProxiedCoclass::QueryInterface(REFIID riid, void** pp
 
     if (IsEqualIID(riid, IID_IUnknown))
     {
-        std::cout << this << "@CProxiedCoclass::QueryInterface(IID_IUnknown): self" << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << this << "@CProxiedCoclass::QueryInterface(IID_IUnknown): self" << std::endl;
         AddRef();
         *ppvObject = this;
         return S_OK;
@@ -104,27 +108,31 @@ HRESULT STDMETHODCALLTYPE CProxiedCoclass::QueryInterface(REFIID riid, void** pp
 
     if (IsEqualIID(riid, IID_IDispatch))
     {
-        std::cout << this << "@CProxiedCoclass::QueryInterface(IID_IDispatch): self" << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << this << "@CProxiedCoclass::QueryInterface(IID_IDispatch): self" << std::endl;
         AddRef();
         *ppvObject = reinterpret_cast<IDispatch*>(this);
         return S_OK;
     }
 
-    std::cout << this << "@CProxiedCoclass::QueryInterface(" << riid << ")..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedCoclass::QueryInterface(" << riid << ")..." << std::endl;
 
     IDispatch* pDefault;
     std::string sFoundDefault;
     if (DefaultInterfaceCreator(this, riid, &pDefault, mpReplacementAppDispatch, sFoundDefault))
     {
-        std::cout << "..." << this << "@CProxiedCoclass::QueryInterface(" << riid << "): new "
-                  << sFoundDefault << ": " << pDefault << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << "..." << this << "@CProxiedCoclass::QueryInterface(" << riid << "): new "
+                      << sFoundDefault << ": " << pDefault << std::endl;
         pDefault->AddRef();
         *ppvObject = pDefault;
         return S_OK;
     }
 
-    std::cout << "..." << this << "@CProxiedCoclass::QueryInterface(" << riid << "): E_NOINTERFACE"
-              << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "..." << this << "@CProxiedCoclass::QueryInterface(" << riid << "): E_NOINTERFACE"
+                  << std::endl;
     return E_NOINTERFACE;
 }
 

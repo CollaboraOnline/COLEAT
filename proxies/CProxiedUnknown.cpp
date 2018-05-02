@@ -49,8 +49,9 @@ CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknown
     // FIXME: Must delete mpUnknownMap when Release() returns zero?
     , mpExtraInterfaces(new UnknownMapHolder())
 {
-    std::cout << this << "@CProxiedUnknown::CTOR(" << pBaseClassUnknown << ", " << pUnknownToProxy
-              << ", " << rIID1 << ", " << rIID2 << ")" << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedUnknown::CTOR(" << pBaseClassUnknown << ", " << pUnknownToProxy
+                  << ", " << rIID1 << ", " << rIID2 << ")" << std::endl;
 }
 
 CProxiedUnknown::CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID1, const IID& rIID2)
@@ -75,14 +76,16 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
     {
         if (mpBaseClassUnknown)
         {
-            std::cout << this << "@CProxiedUnknown::QueryInterface(IID_IUnknown): base: "
-                      << mpBaseClassUnknown << std::endl;
+            if (getParam()->mbVerbose)
+                std::cout << this << "@CProxiedUnknown::QueryInterface(IID_IUnknown): base: "
+                          << mpBaseClassUnknown << std::endl;
             *ppvObject = mpBaseClassUnknown;
         }
         else
         {
-            std::cout << this << "@CProxiedUnknown::QueryInterface(IID_IUnknown): self: " << this
-                      << std::endl;
+            if (getParam()->mbVerbose)
+                std::cout << this << "@CProxiedUnknown::QueryInterface(IID_IUnknown): self: " << this
+                          << std::endl;
             *ppvObject = this;
         }
         AddRef();
@@ -91,8 +94,9 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
 
     if (!IsEqualIID(maIID1, IID_NULL) && IsEqualIID(riid, maIID1))
     {
-        std::cout << this << "@CProxiedUnknown::QueryInterface(" << riid << "): self: " << this
-                  << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << this << "@CProxiedUnknown::QueryInterface(" << riid << "): self: " << this
+                      << std::endl;
         *ppvObject = this;
         AddRef();
         return S_OK;
@@ -100,8 +104,9 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
 
     if (!IsEqualIID(maIID2, IID_NULL) && IsEqualIID(riid, maIID2))
     {
-        std::cout << this << "@CProxiedUnknown::QueryInterface(" << riid << "): self: " << this
-                  << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << this << "@CProxiedUnknown::QueryInterface(" << riid << "): self: " << this
+                      << std::endl;
         *ppvObject = this;
         AddRef();
         return S_OK;
@@ -110,13 +115,15 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
     auto p = mpExtraInterfaces->maExtraInterfaces.find(riid);
     if (p != mpExtraInterfaces->maExtraInterfaces.end())
     {
-        std::cout << this << "@CProxiedUnknown::QueryInterface(" << riid
-                  << "): found: " << p->second << ": S_OK" << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << this << "@CProxiedUnknown::QueryInterface(" << riid
+                      << "): found: " << p->second << ": S_OK" << std::endl;
         *ppvObject = p->second;
         return S_OK;
     }
 
-    std::cout << this << "@CProxiedUnknown::QueryInterface(" << riid << ")..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedUnknown::QueryInterface(" << riid << ")..." << std::endl;
 
     // OK, at this stage we have to query the real object for it
 
@@ -131,8 +138,9 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
 
         mpExtraInterfaces->maExtraInterfaces[riid] = *ppvObject;
 
-        std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid << "): S_OK"
-                  << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid << "): S_OK"
+                      << std::endl;
 
         return S_OK;
     }
@@ -147,9 +155,10 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
         {
             if (!getParam()->mbTraceOnly)
             {
-                std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid
-                          << "): IConnectionPointContainer but not IProvideClassInfo: E_NOINTERFACE"
-                          << std::endl;
+                if (getParam()->mbVerbose)
+                    std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid
+                              << "): IConnectionPointContainer but not IProvideClassInfo: E_NOINTERFACE"
+                              << std::endl;
                 ((IUnknown*)*ppvObject)->Release();
                 return E_NOINTERFACE;
             }
@@ -160,16 +169,20 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
 
         mpExtraInterfaces->maExtraInterfaces[riid] = *ppvObject;
 
-        std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid << "): S_OK"
-                  << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid << "): S_OK"
+                      << std::endl;
 
         return S_OK;
     }
 
-    std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid << "): ";
-    if (nResult == S_OK)
-        std::cout << *ppvObject << ": ";
-    std::cout << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+    if (getParam()->mbVerbose)
+    {
+        std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid << "): ";
+        if (nResult == S_OK)
+            std::cout << *ppvObject << ": ";
+        std::cout << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+    }
 
     if (nResult == S_OK)
         mpExtraInterfaces->maExtraInterfaces[riid] = *ppvObject;
@@ -180,7 +193,8 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
 ULONG STDMETHODCALLTYPE CProxiedUnknown::AddRef()
 {
     ULONG nRetval = mpUnknownToProxy->AddRef();
-    std::cout << this << "@CProxiedUnknown::AddRef: " << nRetval << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedUnknown::AddRef: " << nRetval << std::endl;
 
     return nRetval;
 }
@@ -188,7 +202,8 @@ ULONG STDMETHODCALLTYPE CProxiedUnknown::AddRef()
 ULONG STDMETHODCALLTYPE CProxiedUnknown::Release()
 {
     ULONG nRetval = mpUnknownToProxy->Release();
-    std::cout << this << "@CProxiedUnknown::Release: " << nRetval << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedUnknown::Release: " << nRetval << std::endl;
 
     return nRetval;
 }

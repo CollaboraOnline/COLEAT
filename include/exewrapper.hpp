@@ -36,6 +36,7 @@ struct ThreadProcParam
     FunPtr mpGetProcAddress;
 
     bool mbPassedSizeCheck;
+    bool mbVerbose;
     bool mbTraceOnly;
 
     static const int NFUNCTION = 100;

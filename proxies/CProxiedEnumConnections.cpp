@@ -26,7 +26,8 @@ CProxiedEnumConnections::CProxiedEnumConnections(IUnknown* pBaseClassUnknown,
     : CProxiedUnknown(pBaseClassUnknown, pECToProxy, IID_IEnumConnections)
     , mpECToProxy(pECToProxy)
 {
-    std::cout << this << "@CProxiedEnumConnections::CTOR" << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedEnumConnections::CTOR" << std::endl;
 }
 
 HRESULT STDMETHODCALLTYPE CProxiedEnumConnections::Next(ULONG cConnections, LPCONNECTDATA rgcd,
@@ -34,13 +35,15 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumConnections::Next(ULONG cConnections, LPCO
 {
     HRESULT nResult;
 
-    std::cout << this << "@CProxiedEnumConnections::Next(" << cConnections << ")..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedEnumConnections::Next(" << cConnections << ")..." << std::endl;
 
     nResult = mpECToProxy->Next(cConnections, rgcd, pcFetched);
     if (FAILED(nResult) || nResult == S_FALSE)
     {
-        std::cout << "..." << this << "@CProxiedEnumConnections::Next(" << cConnections << ") ("
-                  << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << "..." << this << "@CProxiedEnumConnections::Next(" << cConnections << ") ("
+                      << __LINE__ << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
         return nResult;
     }
 
@@ -59,15 +62,19 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumConnections::Next(ULONG cConnections, LPCO
         {
             rgcd[i].pUnk = new CProxiedUnknown(rgcd[i].pUnk, IID_NULL);
         }
-        std::cout << "..." << this << "@CProxiedEnumConnections::Next(" << cConnections
-                  << "): " << i << ": " << rgcd[i].pUnk << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << "..." << this << "@CProxiedEnumConnections::Next(" << cConnections
+                      << "): " << i << ": " << rgcd[i].pUnk << std::endl;
     }
 
-    std::cout << "..." << this << "@CProxiedEnumConnections::Next(" << cConnections << ") ("
-              << __LINE__ << "): ";
-    if (pcFetched)
-        std::cout << *pcFetched << ": ";
-    std::cout << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+    if (getParam()->mbVerbose)
+    {
+        std::cout << "..." << this << "@CProxiedEnumConnections::Next(" << cConnections << ") ("
+                  << __LINE__ << "): ";
+        if (pcFetched)
+            std::cout << *pcFetched << ": ";
+        std::cout << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+    }
 
     return nResult;
 }
@@ -76,12 +83,14 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumConnections::Skip(ULONG cConnections)
 {
     HRESULT nResult;
 
-    std::cout << this << "@CProxiedEnumConnections::Skip(" << cConnections << ")..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedEnumConnections::Skip(" << cConnections << ")..." << std::endl;
 
     nResult = mpECToProxy->Skip(cConnections);
 
-    std::cout << "..." << this << "@CProxiedEnumConnections::Skip(" << cConnections
-              << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "..." << this << "@CProxiedEnumConnections::Skip(" << cConnections
+                  << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 
     return nResult;
 }
@@ -90,20 +99,23 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumConnections::Reset()
 {
     HRESULT nResult;
 
-    std::cout << this << "@CProxiedEnumConnections::Reset..." << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedEnumConnections::Reset..." << std::endl;
 
     nResult = mpECToProxy->Reset();
 
-    std::cout << "..." << this
-              << "@CProxiedEnumConnections::Reset: " << WindowsErrorStringFromHRESULT(nResult)
-              << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << "..." << this
+                  << "@CProxiedEnumConnections::Reset: " << WindowsErrorStringFromHRESULT(nResult)
+                  << std::endl;
 
     return nResult;
 }
 
 HRESULT STDMETHODCALLTYPE CProxiedEnumConnections::Clone(IEnumConnections** /* ppEnum */)
 {
-    std::cout << this << "@CProxiedEnumConnections::Clone: E_NOTIMPL" << std::endl;
+    if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedEnumConnections::Clone: E_NOTIMPL" << std::endl;
 
     return E_NOTIMPL;
 }
