@@ -147,7 +147,7 @@ HRESULT CProxiedDispatch::genericInvoke(std::string sFuncName, int nInvKind,
                 std::abort();
         }
     }
-    std::cout << "..." << this << "@CProxiedDispatch::Invoke(" << sFuncName << "): S_OK"
+    std::cout << "..." << this << "@CProxiedDispatch::genericInvoke(" << sFuncName << "): S_OK"
               << std::endl;
 
     return S_OK;
