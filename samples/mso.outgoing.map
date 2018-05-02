@@ -1,0 +1,6 @@
+# Word.ApplicationEvents4 - Writer.ApplicationOutgoing
+# (The LibreOffice name does not actually occur as such anywhere. The closest
+# corresponding thing would be ooo.vba.word.XApplicationOutgoing.)
+{00020A01-0000-0000-C000-000000000046} {82154422-0FBF-11D4-8313-005004526AB4}
+# Excel.Appevents - Calc.ApplicationOutgoing
+{00024413-0000-0000-C000-000000000046} {82154427-0FBF-11D4-8313-005004526AB4}

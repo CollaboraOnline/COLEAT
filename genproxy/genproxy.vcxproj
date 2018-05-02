@@ -107,7 +107,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>$(OutDir)$(TargetName)$(TargetExt) -I ..\mso.interfaces.list -d  ..\generated -O ..\mso.outgoing.map -M ..\mso.interface.map -T ..\..\..\MSWORD.OLB ..\..\..\excel2007.exe</Command>
+      <Command>mkdir ..\generated &amp; $(OutDir)$(TargetName)$(TargetExt) -I ..\samples\mso.interfaces.list -d  ..\generated -O ..\samples\mso.outgoing.map -M ..\samples\mso.interface.map -T ..\..\MSWORD.OLB ..\..\excel2007.exe</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -126,7 +126,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>$(OutDir)$(TargetName)$(TargetExt) -I ..\mso.interfaces.list -d  ..\generated -O ..\mso.outgoing.map -M ..\mso.interface.map -T ..\..\..\MSWORD.OLB ..\..\..\excel2007.exe</Command>
+      <Command>mkdir ..\generated &amp; $(OutDir)$(TargetName)$(TargetExt) -I ..\samples\mso.interfaces.list -d  ..\generated -O ..\samples\mso.outgoing.map -M ..\samples\mso.interface.map -T ..\..\MSWORD.OLB ..\..\excel2007.exe</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -149,7 +149,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>$(OutDir)$(TargetName)$(TargetExt) -I ..\mso.interfaces.list -d  ..\generated -O ..\mso.outgoing.map -M ..\mso.interface.map -T ..\..\..\MSWORD.OLB ..\..\..\excel2007.exe</Command>
+      <Command>mkdir ..\generated &amp; $(OutDir)$(TargetName)$(TargetExt) -I ..\samples\mso.interfaces.list -d  ..\generated -O ..\samples\mso.outgoing.map -M ..\samples\mso.interface.map -T ..\..\MSWORD.OLB ..\..\excel2007.exe</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -172,7 +172,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>$(OutDir)$(TargetName)$(TargetExt) -I ..\mso.interfaces.list -d  ..\generated -O ..\mso.outgoing.map -M ..\mso.interface.map -T ..\..\..\MSWORD.OLB ..\..\..\excel2007.exe</Command>
+      <Command>mkdir ..\generated &amp; $(OutDir)$(TargetName)$(TargetExt) -I ..\samples\mso.interfaces.list -d  ..\generated -O ..\samples\mso.outgoing.map -M ..\samples\mso.interface.map -T ..\..\MSWORD.OLB ..\..\excel2007.exe</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

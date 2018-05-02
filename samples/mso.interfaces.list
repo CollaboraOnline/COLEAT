@@ -1,0 +1,13 @@
+Word.Application
+Word._Application
+Word.Document
+Word._Document
+Word.Documents
+Word.ApplicationEvents4
+Word.DocumentEvents2
+Excel.Application
+Excel._Application
+Excel.Workbook
+Excel._Workbook
+Excel.Workbooks
+Excel.AppEvents
