@@ -1459,7 +1459,12 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                     aCode << " << (" << sParamName << " ? \"True\" : \"False\");\n";
                     break;
                 case VT_VARIANT:
-                    aCode << " << \"<VARIANT:\" << " << sParamName << ".vt << \">\";\n";
+                    aCode << " << \"\";\n";
+                    aCode << "        if (" << sParamName << ".vt == VT_ERROR\n";
+                    aCode << "            && " << sParamName << ".scode == DISP_E_PARAMNOTFOUND)\n";
+                    aCode << "            std::cout << \"(empty)\";\n";
+                    aCode << "        else\n";
+                    aCode << "            std::cout << " << sParamName << ";\n";
                     break;
                 case VT_PTR:
                     if (vVtblFuncTable[nFunc]
