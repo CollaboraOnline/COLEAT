@@ -10,6 +10,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4668 4820 4917)
 
+#include <cassert>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -28,6 +29,8 @@
 #include "CProxiedUnknown.hpp"
 
 static ThreadProcParam* pGlobalParam;
+
+unsigned CProxiedUnknown::mnIndent = 0;
 
 CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy,
                                  const IID& rIID)
@@ -62,6 +65,16 @@ CProxiedUnknown::CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID1, co
 void CProxiedUnknown::setParam(ThreadProcParam* pParam) { pGlobalParam = pParam; }
 
 ThreadProcParam* CProxiedUnknown::getParam() { return pGlobalParam; }
+
+void CProxiedUnknown::increaseIndent() { mnIndent++; }
+
+void CProxiedUnknown::decreaseIndent()
+{
+    assert(mnIndent > 0);
+    mnIndent--;
+}
+
+std::string CProxiedUnknown::indent() { return std::string(mnIndent * 4, ' '); }
 
 // IUnknown
 

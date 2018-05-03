@@ -11,7 +11,7 @@
 #define INCLUDED_CProxiedUnknown_hpp
 
 #pragma warning(push)
-#pragma warning(disable: 4668 4820 4917)
+#pragma warning(disable : 4668 4820 4917)
 
 #include <map>
 
@@ -23,24 +23,21 @@
 #include "exewrapper.hpp"
 #include "utils.hpp"
 
-class CProxiedUnknown: public IUnknown
+class CProxiedUnknown : public IUnknown
 {
 public:
-    CProxiedUnknown(IUnknown* pBaseClassUnknown,
-                    IUnknown* pUnknownToProxy,
-                    const IID& rIID);
-    CProxiedUnknown(IUnknown* pUnknownToProxy,
-                    const IID& rIID);
-    CProxiedUnknown(IUnknown* pBaseClassUnknown,
-                    IUnknown* pUnknownToProxy,
-                    const IID& rIID1,
+    CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy, const IID& rIID);
+    CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID);
+    CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy, const IID& rIID1,
                     const IID& rIID2);
-    CProxiedUnknown(IUnknown* pUnknownToProxy,
-                    const IID& rIID1,
-                    const IID& rIID2);
+    CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID1, const IID& rIID2);
 
     static void setParam(ThreadProcParam* pParam);
     static ThreadProcParam* getParam();
+
+    static void increaseIndent();
+    static void decreaseIndent();
+    static std::string indent();
 
 protected:
     const IID maIID1;
@@ -76,6 +73,8 @@ private:
     };
 
     UnknownMapHolder* const mpExtraInterfaces;
+
+    static unsigned mnIndent;
 
 public:
     // IUnknown

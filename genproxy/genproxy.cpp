@@ -1137,11 +1137,11 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         aCode << "{\n";
 
         aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
-        aCode << "        std::cout << \"" << sLibName << "." << sTypeName
+        aCode << "        std::cout << indent() << \"" << sLibName << "." << sTypeName
               << "<\" << (mpBaseClassUnknown ? mpBaseClassUnknown : this) << \">."
               << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[0]);
         if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET)
-            aCode << " -> \";\n";
+            aCode << "\";\n";
         else if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUT
                  || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
             aCode << " = \";\n";
@@ -1512,7 +1512,8 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
         {
             aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
-            aCode << "        std::cout << \")\";\n";
+            aCode << "        std::cout << \")";
+            aCode << "\";\n";
         }
 
         aCode << "    std::vector<VARIANT> vReverseParams;\n";
@@ -1533,12 +1534,16 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         }
 
         // Call CProxiedDispatch::genericInvoke()
+        aCode << "    increaseIndent();\n";
         aCode << "    HRESULT nResult = genericInvoke(\""
               << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[0]) << "\", "
               << vVtblFuncTable[nFunc].mpFuncDesc->invkind << ", "
               << "vReverseParams, " << sRetvalName << ");\n";
+        aCode << "    decreaseIndent();\n";
         if (nRetvalParam >= 0)
         {
+            aCode << "    // nRetvalParam = " << nRetvalParam << "\n";
+            aCode << "    std::cout << \" -> \";\n";
             switch (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nRetvalParam].tdesc.vt)
             {
                 case VT_I2:
@@ -1557,16 +1562,36 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                 case VT_UINT:
                 case VT_HRESULT:
                 case VT_USERDEFINED:
-                    // Nothing necessary.
+                    // Unclear
                     break;
                 case VT_DISPATCH:
                     // Unclear what todo. We have no idea what the actual interface of the returned
                     // value is, do we? Or should we call GetTypeInfo at run-time? But that would be
                     // little use either. Let's just punt here too and let the returned IDispatch pointer
                     // be returned as such.
+                    if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET
+                        || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
+                    {
+                        aCode << "        if (getParam()->mbVerbose || "
+                                 "getParam()->mbTraceOnly)\n";
+                        aCode << "            std::cout << *"
+                              << convertUTF16ToUTF8(
+                                     vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
+                              << ";\n";
+                    }
                     break;
                 case VT_VARIANT:
                     // This one is unclear, too.
+                    if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET
+                        || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
+                    {
+                        aCode << "        if (getParam()->mbVerbose || "
+                                 "getParam()->mbTraceOnly)\n";
+                        aCode << "            std::cout << *"
+                              << convertUTF16ToUTF8(
+                                     vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
+                              << ";\n";
+                    }
                     break;
                 case VT_PTR:
                     if (vVtblFuncTable[nFunc]
@@ -1606,6 +1631,21 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                         {
                             aCode << "    if (nResult == S_OK)\n";
                             aCode << "    {\n";
+
+                            if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET
+                                || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
+                            {
+                                aCode << "        if (getParam()->mbVerbose || "
+                                         "getParam()->mbTraceOnly)\n";
+                                aCode << "            std::cout << *"
+                                      << convertUTF16ToUTF8(
+                                             vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
+                                      << ";\n";
+                            }
+                            aCode << "    }\n";
+                            aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
+                            aCode << "        std::cout <<  \"\\n\";\n";
+
                             aCode << "        *"
                                   << convertUTF16ToUTF8(
                                          vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
@@ -1619,21 +1659,29 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                                   << convertUTF16ToUTF8(
                                          vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
                                   << "));\n";
-                            if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET
-                                || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
-                            {
-                                aCode << "    if (getParam()->mbVerbose || "
-                                         "getParam()->mbTraceOnly)\n";
-                                aCode << "        std::cout << *"
-                                      << convertUTF16ToUTF8(
-                                             vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
-                                      << " << \"\\n\";\n";
-                            }
-                            else
-                                aCode << "    std::cout << \"\\n\";\n";
-                            aCode << "    }\n";
                         }
                         pReferencedTypeInfo->ReleaseTypeAttr(pReferencedTypeAttr);
+                    }
+                    else if (isDirectlyPrintableType(
+                                 vVtblFuncTable[nFunc]
+                                     .mpFuncDesc->lprgelemdescParam[nRetvalParam]
+                                     .tdesc.lptdesc->vt))
+                    {
+                        if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET
+                            || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
+                        {
+                            aCode << "    if (nResult == S_OK)\n";
+                            aCode << "    {\n";
+                            aCode << "        if (getParam()->mbVerbose || "
+                                     "getParam()->mbTraceOnly)\n";
+                            aCode << "            std::cout << *"
+                                  << convertUTF16ToUTF8(
+                                         vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
+                                  << ";\n";
+                            aCode << "    }\n";
+                            aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
+                            aCode << "        std::cout <<  \"\\n\";\n";
+                        }
                     }
                     break;
                 default:

@@ -101,8 +101,8 @@ inline bool GetWindowsErrorString(DWORD nErrorCode, LPWSTR* pPMsgBuf)
     }
 
     std::size_t nLen = std::wcslen(*pPMsgBuf);
-    if (nLen > 2 && (*pPMsgBuf)[nLen-2] == L'\r' && (*pPMsgBuf)[nLen-1] == L'\n')
-        (*pPMsgBuf)[nLen-2] = L'\0';
+    if (nLen > 2 && (*pPMsgBuf)[nLen - 2] == L'\r' && (*pPMsgBuf)[nLen - 1] == L'\n')
+        (*pPMsgBuf)[nLen - 2] = L'\0';
     return true;
 }
 
@@ -184,13 +184,10 @@ inline void tryToEnsureStdHandlesOpen()
         STARTUPINFOW aStartupInfo;
         aStartupInfo.cb = sizeof(aStartupInfo);
         GetStartupInfoW(&aStartupInfo);
-        if ((aStartupInfo.dwFlags & STARTF_USESTDHANDLES) == STARTF_USESTDHANDLES &&
-            aStartupInfo.hStdInput != INVALID_HANDLE_VALUE &&
-            aStartupInfo.hStdInput != NULL &&
-            aStartupInfo.hStdOutput != INVALID_HANDLE_VALUE &&
-            aStartupInfo.hStdOutput != NULL &&
-            aStartupInfo.hStdError != INVALID_HANDLE_VALUE &&
-            aStartupInfo.hStdError != NULL)
+        if ((aStartupInfo.dwFlags & STARTF_USESTDHANDLES) == STARTF_USESTDHANDLES
+            && aStartupInfo.hStdInput != INVALID_HANDLE_VALUE && aStartupInfo.hStdInput != NULL
+            && aStartupInfo.hStdOutput != INVALID_HANDLE_VALUE && aStartupInfo.hStdOutput != NULL
+            && aStartupInfo.hStdError != INVALID_HANDLE_VALUE && aStartupInfo.hStdError != NULL)
         {
             // If standard handles had been passed to this process, use them
             SetStdHandle(STD_INPUT_HANDLE, aStartupInfo.hStdInput);
@@ -280,6 +277,85 @@ inline std::basic_ostream<char, traits>& operator<<(std::basic_ostream<char, tra
 
     CoTaskMemFree(pRiid);
     return stream;
+}
+
+inline bool isHighSurrogate(wchar_t c) { return (0xD800 <= c && c <= 0xDBFF); }
+
+inline bool isLowSurrogate(wchar_t c) { return (0xDC00 <= c && c <= 0xDFFF); }
+
+inline UINT surrogatePair(const wchar_t* pWchar)
+{
+    return (UINT)((((pWchar[0] - 0xD800) << 10) | (pWchar[1] - 0xDC00)) | 0x010000);
+}
+
+template <typename traits>
+inline std::basic_ostream<char, traits>&
+outputWcharString(wchar_t* pWchar, UINT nLength, std::basic_ostream<char, traits>& rStream)
+{
+    if (pWchar == nullptr)
+    {
+        rStream << "(null)";
+        return rStream;
+    }
+
+    rStream << "\"";
+    if (nLength > 100)
+    {
+        nLength = 100;
+        if (isHighSurrogate(pWchar[nLength - 1]) && isLowSurrogate(pWchar[nLength]))
+            nLength++;
+    }
+
+    for (UINT i = 0; i < nLength; i++)
+    {
+        if (isHighSurrogate(pWchar[i]) && i < nLength - 1 && isLowSurrogate(pWchar[i + 1]))
+        {
+            rStream << "\\u{" << std::hex << surrogatePair(pWchar + i) << std::dec << "}";
+            i++;
+        }
+        else if (pWchar[i] == '"' || pWchar[i] == '\\')
+            rStream << '\\' << (char)pWchar[i];
+        else if (pWchar[i] >= ' ' && pWchar[i] <= '~')
+            rStream << (char)pWchar[i];
+        else
+            rStream << "\\u{" << std::hex << (UINT)pWchar[i] << std::dec << "}";
+    }
+
+    rStream << "\"";
+
+    return rStream;
+}
+
+template <typename traits>
+inline std::basic_ostream<char, traits>& operator<<(std::basic_ostream<char, traits>& stream,
+                                                    const BSTR& rBstr)
+{
+    return outputWcharString(rBstr, SysStringLen(rBstr), stream);
+}
+
+inline bool isDirectlyPrintableType(VARTYPE nVt)
+{
+    switch (nVt)
+    {
+        case VT_I2:
+        case VT_I4:
+        case VT_R4:
+        case VT_R8:
+        case VT_BSTR:
+        case VT_BOOL:
+        case VT_I1:
+        case VT_UI1:
+        case VT_UI2:
+        case VT_UI4:
+        case VT_I8:
+        case VT_UI8:
+        case VT_INT:
+        case VT_UINT:
+        case VT_HRESULT:
+            return true;
+        default:
+            return false;
+    }
 }
 
 #endif // INCLUDED_UTILS_HPP
