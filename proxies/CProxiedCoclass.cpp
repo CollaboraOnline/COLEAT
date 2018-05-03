@@ -38,9 +38,9 @@ CProxiedCoclass::CProxiedCoclass(const InterfaceMapping& rMapping)
     assert(!mbIsActive);
     mbIsActive = true;
 
-    if (getParam()->mbTraceOnly)
+    if (getParam()->mbVerbose || getParam()->mbTraceOnly)
         std::cout << "new " << rMapping.msFromLibName << "." << rMapping.msFromCoclassName << " -> "
-                  << this << std::endl;
+                  << this << "\n";
 }
 
 bool CProxiedCoclass::IsActive() { return mbIsActive; }

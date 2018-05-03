@@ -31,6 +31,7 @@
 static ThreadProcParam* pGlobalParam;
 
 unsigned CProxiedUnknown::mnIndent = 0;
+bool CProxiedUnknown::mbIsAtBeginningOfLine = true;
 
 CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy,
                                  const IID& rIID)

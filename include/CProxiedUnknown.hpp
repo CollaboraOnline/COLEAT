@@ -39,6 +39,8 @@ public:
     static void decreaseIndent();
     static std::string indent();
 
+    static bool mbIsAtBeginningOfLine;
+
 protected:
     const IID maIID1;
     const IID maIID2;

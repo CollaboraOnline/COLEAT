@@ -13,6 +13,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4668 4820 4917)
 
+#include <cctype>
 #include <codecvt>
 #include <cstdio>
 #include <iomanip>
@@ -122,7 +123,7 @@ inline std::string WindowsErrorString(DWORD nErrorCode)
     return sResult;
 }
 
-inline std::string WindowsErrorStringFromHRESULT(HRESULT nResult)
+inline std::string WindowsHRESULTString(HRESULT nResult)
 {
     // Return common HRESULT codes symbolically. This is for developer use anyway, much easier to
     // read "E_NOTIMPL" than the English prose description.
@@ -152,7 +153,17 @@ inline std::string WindowsErrorStringFromHRESULT(HRESULT nResult)
             return "E_FAIL";
         case E_ACCESSDENIED:
             return "E_ACCESSDENIED";
+        default:
+            return to_hex((uint64_t)nResult, 8);
     }
+}
+
+inline std::string WindowsErrorStringFromHRESULT(HRESULT nResult)
+{
+    std::string sSymbolic = WindowsHRESULTString(nResult);
+
+    if (!(sSymbolic.length() == 8 && std::isxdigit(sSymbolic[0]) && std::isxdigit(sSymbolic[1])))
+        return sSymbolic;
 
     // See https://blogs.msdn.microsoft.com/oldnewthing/20061103-07/?p=29133
     // Also https://social.msdn.microsoft.com/Forums/vstudio/en-US/c33d9a4a-1077-4efd-99e8-0c222743d2f8
@@ -352,7 +363,12 @@ inline bool isDirectlyPrintableType(VARTYPE nVt)
         case VT_INT:
         case VT_UINT:
         case VT_HRESULT:
+        case VT_PTR:
+        case VT_INT_PTR:
+        case VT_UINT_PTR:
+        case VT_CLSID:
             return true;
+
         default:
             return false;
     }
