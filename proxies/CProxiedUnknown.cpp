@@ -50,8 +50,8 @@ CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknown
     , mpExtraInterfaces(new UnknownMapHolder())
 {
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedUnknown::CTOR(" << pBaseClassUnknown << ", " << pUnknownToProxy
-                  << ", " << rIID1 << ", " << rIID2 << ")" << std::endl;
+        std::cout << this << "@CProxiedUnknown::CTOR(" << pBaseClassUnknown << ", "
+                  << pUnknownToProxy << ", " << rIID1 << ", " << rIID2 << ")" << std::endl;
 }
 
 CProxiedUnknown::CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID1, const IID& rIID2)
@@ -84,7 +84,8 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
         else
         {
             if (getParam()->mbVerbose)
-                std::cout << this << "@CProxiedUnknown::QueryInterface(IID_IUnknown): self: " << this
+                std::cout << this
+                          << "@CProxiedUnknown::QueryInterface(IID_IUnknown): self: " << this
                           << std::endl;
             *ppvObject = this;
         }
@@ -156,9 +157,10 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
             if (!getParam()->mbTraceOnly)
             {
                 if (getParam()->mbVerbose)
-                    std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid
-                              << "): IConnectionPointContainer but not IProvideClassInfo: E_NOINTERFACE"
-                              << std::endl;
+                    std::cout
+                        << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid
+                        << "): IConnectionPointContainer but not IProvideClassInfo: E_NOINTERFACE"
+                        << std::endl;
                 ((IUnknown*)*ppvObject)->Release();
                 return E_NOINTERFACE;
             }

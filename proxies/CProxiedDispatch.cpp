@@ -29,8 +29,8 @@ CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDisp
     , mpDispatchToProxy(pDispatchToProxy)
 {
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedDispatch::CTOR(" << pBaseClassUnknown << ", " << pDispatchToProxy
-                  << ")" << std::endl;
+        std::cout << this << "@CProxiedDispatch::CTOR(" << pBaseClassUnknown << ", "
+                  << pDispatchToProxy << ")" << std::endl;
 }
 
 CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
@@ -45,15 +45,16 @@ CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDisp
     , mpDispatchToProxy(pDispatchToProxy)
 {
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedDispatch::CTOR(" << pBaseClassUnknown << ", " << pDispatchToProxy
-                  << ", " << rIID1 << ", " << rIID2 << ")" << std::endl;
+        std::cout << this << "@CProxiedDispatch::CTOR(" << pBaseClassUnknown << ", "
+                  << pDispatchToProxy << ", " << rIID1 << ", " << rIID2 << ")" << std::endl;
 }
 
 HRESULT CProxiedDispatch::genericInvoke(std::string sFuncName, int nInvKind,
                                         std::vector<VARIANT>& rParameters, void* pRetval)
 {
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedDispatch::genericInvoke(" << sFuncName << ")..." << std::endl;
+        std::cout << this << "@CProxiedDispatch::genericInvoke(" << sFuncName << ")..."
+                  << std::endl;
 
     HRESULT nResult = S_OK;
 
@@ -166,9 +167,8 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::GetTypeInfoCount(UINT* pctinfo)
     nResult = mpDispatchToProxy->GetTypeInfoCount(pctinfo);
 
     if (getParam()->mbVerbose)
-        std::cout << "..." << this
-                  << "@CProxiedDispatch::GetTypeInfoCount:" << WindowsErrorStringFromHRESULT(nResult)
-                  << std::endl;
+        std::cout << "..." << this << "@CProxiedDispatch::GetTypeInfoCount:"
+                  << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 
     return nResult;
 }

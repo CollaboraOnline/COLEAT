@@ -156,9 +156,9 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
                                     wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
 
     if (getParam()->mbVerbose)
-        std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember << "): maps to Invoke("
-                  << nDispIdMemberInClient << "): " << WindowsErrorStringFromHRESULT(nResult)
-                  << std::endl;
+        std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
+                  << "): maps to Invoke(" << nDispIdMemberInClient
+                  << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 
     return nResult;
 }

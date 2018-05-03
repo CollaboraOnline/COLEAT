@@ -39,7 +39,8 @@ CProxiedCoclass::CProxiedCoclass(const InterfaceMapping& rMapping)
     mbIsActive = true;
 
     if (getParam()->mbTraceOnly)
-        std::cout << "new " << rMapping.msFromLibName << "." << rMapping.msFromCoclassName << " -> " << this << std::endl;
+        std::cout << "new " << rMapping.msFromLibName << "." << rMapping.msFromCoclassName << " -> "
+                  << this << std::endl;
 }
 
 bool CProxiedCoclass::IsActive() { return mbIsActive; }
@@ -103,7 +104,8 @@ HRESULT STDMETHODCALLTYPE CProxiedCoclass::QueryInterface(REFIID riid, void** pp
     if (IsEqualIID(riid, IID_IUnknown))
     {
         if (getParam()->mbVerbose)
-            std::cout << this << "@CProxiedCoclass::QueryInterface(IID_IUnknown): self" << std::endl;
+            std::cout << this << "@CProxiedCoclass::QueryInterface(IID_IUnknown): self"
+                      << std::endl;
         AddRef();
         *ppvObject = this;
         return S_OK;
@@ -112,7 +114,8 @@ HRESULT STDMETHODCALLTYPE CProxiedCoclass::QueryInterface(REFIID riid, void** pp
     if (IsEqualIID(riid, IID_IDispatch))
     {
         if (getParam()->mbVerbose)
-            std::cout << this << "@CProxiedCoclass::QueryInterface(IID_IDispatch): self" << std::endl;
+            std::cout << this << "@CProxiedCoclass::QueryInterface(IID_IDispatch): self"
+                      << std::endl;
         AddRef();
         *ppvObject = reinterpret_cast<IDispatch*>(this);
         return S_OK;
@@ -134,8 +137,8 @@ HRESULT STDMETHODCALLTYPE CProxiedCoclass::QueryInterface(REFIID riid, void** pp
     }
 
     if (getParam()->mbVerbose)
-        std::cout << "..." << this << "@CProxiedCoclass::QueryInterface(" << riid << "): E_NOINTERFACE"
-                  << std::endl;
+        std::cout << "..." << this << "@CProxiedCoclass::QueryInterface(" << riid
+                  << "): E_NOINTERFACE" << std::endl;
     return E_NOINTERFACE;
 }
 

@@ -72,8 +72,8 @@ HRESULT STDMETHODCALLTYPE CProxiedConnectionPoint::Advise(IUnknown* pUnkSink, DW
     if (FAILED(nResult))
     {
         if (getParam()->mbVerbose)
-            std::cerr << "..." << this << "@CProxiedConnectionPoint::Advise: Sink is not an IDispatch"
-                      << std::endl;
+            std::cerr << "..." << this
+                      << "@CProxiedConnectionPoint::Advise: Sink is not an IDispatch" << std::endl;
         return E_NOTIMPL;
     }
     assert(pUnkSink == pSinkAsDispatch);
@@ -108,7 +108,8 @@ HRESULT STDMETHODCALLTYPE CProxiedConnectionPoint::Unadvise(DWORD dwCookie)
     HRESULT nResult;
 
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedConnectionPoint::Unadvise(" << dwCookie << ")..." << std::endl;
+        std::cout << this << "@CProxiedConnectionPoint::Unadvise(" << dwCookie << ")..."
+                  << std::endl;
 
     nResult = mpCPToProxy->Unadvise(dwCookie);
 
@@ -162,7 +163,8 @@ HRESULT STDMETHODCALLTYPE CProxiedConnectionPoint::EnumConnections(IEnumConnecti
         new CProxiedEnumConnections(mpBaseClassUnknown, *ppEnum));
 
     if (getParam()->mbVerbose)
-        std::cout << "..." << this << "@CProxiedConnectionPoint::EnumConnections: S_OK" << std::endl;
+        std::cout << "..." << this << "@CProxiedConnectionPoint::EnumConnections: S_OK"
+                  << std::endl;
 
     return S_OK;
 }

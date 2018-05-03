@@ -116,9 +116,8 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumConnectionPoints::Reset()
     HRESULT nResult = mpECPToProxy->Reset();
 
     if (getParam()->mbVerbose)
-        std::cout << this
-                  << "@CProxiedEnumConnectionPoints::Reset: " << WindowsErrorStringFromHRESULT(nResult)
-                  << std::endl;
+        std::cout << this << "@CProxiedEnumConnectionPoints::Reset: "
+                  << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 
     return nResult;
 }

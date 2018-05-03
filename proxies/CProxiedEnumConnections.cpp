@@ -36,7 +36,8 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumConnections::Next(ULONG cConnections, LPCO
     HRESULT nResult;
 
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedEnumConnections::Next(" << cConnections << ")..." << std::endl;
+        std::cout << this << "@CProxiedEnumConnections::Next(" << cConnections << ")..."
+                  << std::endl;
 
     nResult = mpECToProxy->Next(cConnections, rgcd, pcFetched);
     if (FAILED(nResult) || nResult == S_FALSE)
@@ -84,7 +85,8 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumConnections::Skip(ULONG cConnections)
     HRESULT nResult;
 
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedEnumConnections::Skip(" << cConnections << ")..." << std::endl;
+        std::cout << this << "@CProxiedEnumConnections::Skip(" << cConnections << ")..."
+                  << std::endl;
 
     nResult = mpECToProxy->Skip(cConnections);
 
