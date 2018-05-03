@@ -1467,46 +1467,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                             .tdesc.lptdesc->vt
                         == VT_VARIANT)
                     {
-                        aCode << " << \"\";\n";
-                        aCode << "        switch(" << sParamName << "->vt)\n";
-                        aCode << "        {\n";
-                        aCode << "        case VT_I2: std::cout << " << sParamName
-                              << "->iVal; break;\n";
-                        aCode << "        case VT_I4: std::cout << " << sParamName
-                              << "->lVal; break;\n";
-                        aCode << "        case VT_R4: std::cout << " << sParamName
-                              << "->fltVal; break;\n";
-                        aCode << "        case VT_R8: std::cout << " << sParamName
-                              << "->dblVal; break;\n";
-                        aCode << "        case VT_BSTR: std::cout << " << sParamName
-                              << "->bstrVal; break;\n";
-                        aCode << "        case VT_DISPATCH: std::cout << " << sParamName
-                              << "->pdispVal; break;\n";
-                        aCode << "        case VT_BOOL: std::cout << (" << sParamName
-                              << "->boolVal  ? \"True\" : \"False\"); break;\n";
-                        aCode << "        case VT_UI2: std::cout << " << sParamName
-                              << "->uiVal; break;\n";
-                        aCode << "        case VT_UI4: std::cout << " << sParamName
-                              << "->ulVal; break;\n";
-                        aCode << "        case VT_I8: std::cout << " << sParamName
-                              << "->llVal; break;\n";
-                        aCode << "        case VT_UI8: std::cout << " << sParamName
-                              << "->ullVal; break;\n";
-                        aCode << "        case VT_INT: std::cout << " << sParamName
-                              << "->intVal; break;\n";
-                        aCode << "        case VT_UINT: std::cout << " << sParamName
-                              << "->uintVal; break;\n";
-                        aCode << "        case VT_INT_PTR: std::cout << " << sParamName
-                              << "->pintVal; break;\n";
-                        aCode << "        case VT_UINT_PTR: std::cout << " << sParamName
-                              << "->puintVal; break;\n";
-                        aCode << "        case VT_LPSTR: std::cout << " << sParamName
-                              << "->pcVal; break;\n";
-                        aCode << "        case VT_LPWSTR: std::cout << (LPWSTR)" << sParamName
-                              << "->byref; break;\n";
-                        aCode << "        default: std::cout << " << sParamName
-                              << "->byref; break;\n";
-                        aCode << "        }\n";
+                        aCode << " << *" << sParamName << ";\n";
                     }
                     else
                     {
