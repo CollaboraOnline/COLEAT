@@ -106,7 +106,8 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
     HRESULT nResult;
 
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedSink::Invoke(" << dispIdMember << ")..." << std::endl;
+        std::cout << this << "@CProxiedSink::Invoke(0x" << to_hex(dispIdMember) << ")..."
+                  << std::endl;
 
     DISPID nDispIdMemberInClient;
     if (mpTypeInfoOfOutgoingInterface != NULL)
@@ -121,7 +122,7 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
         if (FAILED(nResult))
         {
             if (getParam()->mbVerbose)
-                std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
+                std::cout << "..." << this << "@CProxiedSink::Invoke(0x" << to_hex(dispIdMember)
                           << "): GetNames failed: " << WindowsErrorStringFromHRESULT(nResult)
                           << std::endl;
             return nResult;
@@ -132,7 +133,7 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
         if (FAILED(nResult))
         {
             if (getParam()->mbVerbose)
-                std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
+                std::cout << "..." << this << "@CProxiedSink::Invoke(0x" << to_hex(dispIdMember)
                           << "): GetIDsOfNames(" << convertUTF16ToUTF8(sName)
                           << ") failed: " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
             SysFreeString(sName);
@@ -156,8 +157,8 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
                                     wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
 
     if (getParam()->mbVerbose)
-        std::cout << "..." << this << "@CProxiedSink::Invoke(" << dispIdMember
-                  << "): maps to Invoke(" << nDispIdMemberInClient
+        std::cout << "..." << this << "@CProxiedSink::Invoke(0x" << to_hex(dispIdMember)
+                  << "): maps to Invoke(0x" << to_hex(nDispIdMemberInClient)
                   << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 
     return nResult;

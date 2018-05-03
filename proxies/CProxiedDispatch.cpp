@@ -215,13 +215,14 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
     HRESULT nResult;
 
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedDispatch::Invoke(" << dispIdMember << ")..." << std::endl;
+        std::cout << this << "@CProxiedDispatch::Invoke(0x" << to_hex(dispIdMember) << ")..."
+                  << std::endl;
 
     nResult = mpDispatchToProxy->Invoke(dispIdMember, riid, lcid, wFlags, pDispParams, pVarResult,
                                         pExcepInfo, puArgErr);
 
     if (getParam()->mbVerbose)
-        std::cout << "..." << this << "@CProxiedDispatch::Invoke(" << dispIdMember
+        std::cout << "..." << this << "@CProxiedDispatch::Invoke(0x" << to_hex(dispIdMember)
                   << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 
     return nResult;

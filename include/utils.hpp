@@ -63,18 +63,20 @@ inline wchar_t* programName(const wchar_t* sPathname)
     return pRetval;
 }
 
-inline std::string to_hex(uint64_t n, int w = 0)
+inline std::string to_uhex(uint32_t n, int w = 0)
 {
     std::stringstream aStringStream;
     aStringStream << std::setfill('0') << std::setw(w) << std::hex << n;
     return aStringStream.str();
 }
 
+inline std::string to_hex(int32_t n, int w = 0) { return to_uhex((uint32_t)n, w); }
+
 inline std::string IID_initializer(const IID& aIID)
 {
     std::string sResult;
-    sResult = "{0x" + to_hex(aIID.Data1, 8) + ",0x" + to_hex(aIID.Data2, 4) + ",0x"
-              + to_hex(aIID.Data3, 4);
+    sResult = "{0x" + to_uhex(aIID.Data1, 8) + ",0x" + to_uhex(aIID.Data2, 4) + ",0x"
+              + to_uhex(aIID.Data3, 4);
     for (int i = 0; i < 8; ++i)
         sResult += ",0x" + to_hex(aIID.Data4[i], 2);
     sResult += "}";
@@ -113,7 +115,7 @@ inline std::string WindowsErrorString(DWORD nErrorCode)
 
     if (!GetWindowsErrorString(nErrorCode, &pMsgBuf))
     {
-        return to_hex(nErrorCode);
+        return to_uhex(nErrorCode, 8);
     }
 
     std::string sResult(convertUTF16ToUTF8(pMsgBuf));
@@ -154,7 +156,7 @@ inline std::string WindowsHRESULTString(HRESULT nResult)
         case E_ACCESSDENIED:
             return "E_ACCESSDENIED";
         default:
-            return to_hex((uint64_t)nResult, 8);
+            return to_hex(nResult, 8);
     }
 }
 

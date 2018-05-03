@@ -311,7 +311,7 @@ static std::string TypeToString(const std::string& sLibName, ITypeInfo* pTypeInf
             nResult = pReferencedTypeInfo->GetTypeAttr(&pTypeAttr);
 
         if (FAILED(nResult))
-            sResult = "/* USERDEFINED:" + to_hex(aTypeDesc.hreftype) + " */ void*";
+            sResult = "/* USERDEFINED:" + to_uhex(aTypeDesc.hreftype) + " */ void*";
         else
         {
             if (pTypeAttr->typekind == TKIND_DISPATCH || pTypeAttr->typekind == TKIND_COCLASS)
