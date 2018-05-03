@@ -11,10 +11,6 @@
   Word.Application is mentioned in the -I file, it should not be
   necessary to mention Word._Application and Word.ApplicationEvents4.)
 
-- Add std::cout flushing at key points in the generated code that
-  produces the trace output. (Just replace output of \n with output of
-  std::endl.)
-
 - Make sure we have just one CProxiedFoo object for each real COM
   object. Currently we can get several if a method that creates one
   causes a calback first where the real object is passed as a

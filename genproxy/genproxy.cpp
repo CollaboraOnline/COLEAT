@@ -532,7 +532,7 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
                  "CProxiedUnknown::getParam()->mbTraceOnly)\n";
         aCode << "                {\n";
         aCode << "                    std::cout << \"" << convertUTF16ToUTF8(sFuncName)
-              << "\\n\";\n";
+              << "\" << std::endl;\n";
         aCode << "                    CProxiedUnknown::mbIsAtBeginningOfLine = true;\n";
         aCode << "                }\n";
 
@@ -1665,7 +1665,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                                       << " << \"\\n\";\n";
                                 aCode << "        else\n";
                                 aCode << "            std::cout << \" -> \" << "
-                                         "WindowsHRESULTString(nResult) << \"\\n\";\n";
+                                         "WindowsHRESULTString(nResult) << std::endl;\n";
                                 aCode << "        mbIsAtBeginningOfLine = true;\n";
                                 aCode << "    }\n";
                             }
@@ -1689,7 +1689,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                                   << " << \"\\n\";\n";
                             aCode << "        else\n";
                             aCode << "            std::cout << WindowsHRESULTString(nResult) << "
-                                     "\"\\n\";\n";
+                                     "std::endl;\n";
                             aCode << "        mbIsAtBeginningOfLine = true;\n";
                         }
                     }
@@ -1702,7 +1702,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                         aCode << "            std::cout << \"?\\n\";\n";
                         aCode << "        else\n";
                         aCode << "            std::cout << WindowsHRESULTString(nResult) << "
-                                 "\"\\n\";\n";
+                                 "std::endl;\n";
                         aCode << "        mbIsAtBeginningOfLine = true;\n";
                         aCode << "    }\n";
                     }
@@ -1720,7 +1720,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         {
             aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
             aCode << "    {\n";
-            aCode << "        std::cout << \"\\n\";\n";
+            aCode << "        std::cout << std::endl;\n";
             aCode << "        mbIsAtBeginningOfLine = true;\n";
             aCode << "    }\n";
         }
