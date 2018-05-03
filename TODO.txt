@@ -13,7 +13,7 @@
 
 - Make sure we have just one CProxiedFoo object for each real COM
   object. Currently we can get several if a method that creates one
-  causes a calback first where the real object is passed as a
+  causes a callback first where the real object is passed as a
   parameter.
 
   For instance: during the call to genericInvoke() in
@@ -22,5 +22,5 @@
   new CWord_Document to proxy it. (That is needed in case the event
   handler calls interesting stuff on the object that we want to trace
   or wrap.) Back in CWord_Documents::Open(), after genericInvoke has
-  returned, we again create a new CWord_Document to prxy the return
+  returned, we again create a new CWord_Document to proxy the return
   value from that function.
