@@ -85,7 +85,7 @@ private:
         std::size_t nLength = (std::size_t)rStream.tellg();
         rStream.seekg(0, std::ios::beg);
         std::vector<char> vBuf(nLength + 1);
-        rStream.read(vBuf.data(), nLength);
+        rStream.read(vBuf.data(), (std::streamsize)nLength);
         vBuf[nLength] = '\0';
         rStream.close();
         if (!rStream.good())

@@ -182,7 +182,7 @@ int wmain(int argc, wchar_t** argv)
     // Start exewrapper, pass it the inheritable handle to the wrapped process and its startup
     // thread, and after those the same command-line arguments we got.
 
-    wcscpy_s(pAfterSlash, NFILENAME - (pAfterSlash - sFileName), L"exewrapper-");
+    wcscpy_s(pAfterSlash, NFILENAME - (std::size_t)(pAfterSlash - sFileName), L"exewrapper-");
     wcscat_s(pAfterSlash, NFILENAME - wcslen(sFileName), pArchOfWrappedProcess);
     wcscat_s(pAfterSlash, NFILENAME - wcslen(sFileName), L".exe");
 
