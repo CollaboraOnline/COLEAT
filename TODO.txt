@@ -10,3 +10,21 @@
   interface and default source interface, if any. (For instance, if
   Word.Application is mentioned in the -I file, it should not be
   necessary to mention Word._Application and Word.ApplicationEvents4.)
+
+- Add std::cout flushing at key points in the generated code that
+  produces the trace output. (Just replace output of \n with output of
+  std::endl.)
+
+- Make sure we have just one CProxiedFoo object for each real COM
+  object. Currently we can get several if a method that creates one
+  causes a calback first where the real object is passed as a
+  parameter.
+
+  For instance: during the call to genericInvoke() in
+  CWord_Documents::Open() a DocumentOpen event is generated and then
+  in the DocumentOpen case in Word_ApplicationEvents4.cxx we create a
+  new CWord_Document to proxy it. (That is needed in case the event
+  handler calls interesting stuff on the object that we want to trace
+  or wrap.) Back in CWord_Documents::Open(), after genericInvoke has
+  returned, we again create a new CWord_Document to prxy the return
+  value from that function.
