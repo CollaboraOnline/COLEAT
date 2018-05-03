@@ -24,8 +24,11 @@
 
 #include "CProxiedDispatch.hpp"
 
-CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy)
-    : CProxiedUnknown(pBaseClassUnknown, pDispatchToProxy, IID_IDispatch)
+#include "ProxyCreator.hxx"
+
+CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
+                                   const char* sLibName)
+    : CProxiedUnknown(pBaseClassUnknown, pDispatchToProxy, IID_IDispatch, sLibName)
     , mpDispatchToProxy(pDispatchToProxy)
 {
     if (getParam()->mbVerbose)
@@ -34,14 +37,14 @@ CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDisp
 }
 
 CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
-                                   const IID& rIID)
-    : CProxiedDispatch(pBaseClassUnknown, pDispatchToProxy, IID_IDispatch, rIID)
+                                   const IID& rIID, const char* sLibName)
+    : CProxiedDispatch(pBaseClassUnknown, pDispatchToProxy, IID_IDispatch, rIID, sLibName)
 {
 }
 
 CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
-                                   const IID& rIID1, const IID& rIID2)
-    : CProxiedUnknown(pBaseClassUnknown, pDispatchToProxy, rIID1, rIID2)
+                                   const IID& rIID1, const IID& rIID2, const char* sLibName)
+    : CProxiedUnknown(pBaseClassUnknown, pDispatchToProxy, rIID1, rIID2, sLibName)
     , mpDispatchToProxy(pDispatchToProxy)
 {
     if (getParam()->mbVerbose)
@@ -214,14 +217,135 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
 {
     HRESULT nResult;
 
-    if (getParam()->mbVerbose)
+    ITypeInfo* pTI = NULL;
+    FUNCDESC* pFuncDesc = NULL;
+
+    nResult = mpDispatchToProxy->GetTypeInfo(0, LOCALE_USER_DEFAULT, &pTI);
+
+    TYPEATTR* pTA = NULL;
+    if (!FAILED(nResult))
+        nResult = pTI->GetTypeAttr(&pTA);
+
+    if (!FAILED(nResult))
+    {
+        for (UINT i = 0; i < pTA->cFuncs; ++i)
+        {
+            nResult = pTI->GetFuncDesc(i, &pFuncDesc);
+            if (FAILED(nResult))
+                break;
+
+            if (pFuncDesc->memid == dispIdMember
+                && (((wFlags & DISPATCH_METHOD) && pFuncDesc->invkind == INVOKE_FUNC)
+                    || ((wFlags & DISPATCH_PROPERTYGET) && pFuncDesc->invkind == INVOKE_PROPERTYGET)
+                    || ((wFlags & DISPATCH_PROPERTYPUT) && pFuncDesc->invkind == INVOKE_PROPERTYPUT)
+                    || ((wFlags & DISPATCH_PROPERTYPUTREF)
+                        && pFuncDesc->invkind == INVOKE_PROPERTYPUTREF)))
+                break;
+            pTI->ReleaseFuncDesc(pFuncDesc);
+            pFuncDesc = NULL;
+        }
+    }
+
+    if (getParam()->mbTraceOnly)
+    {
+        std::cout << msLibName << "." << std::flush;
+
+        if (pTI == NULL)
+            std::cout << "?";
+        else
+        {
+            BSTR sTypeName = NULL;
+            nResult = pTI->GetDocumentation(MEMBERID_NIL, &sTypeName, NULL, NULL, NULL);
+
+            if (FAILED(nResult))
+                std::cout << "?";
+            else
+            {
+                std::cout << convertUTF16ToUTF8(sTypeName);
+                SysFreeString(sTypeName);
+            }
+        }
+
+        std::cout << "<" << (mpBaseClassUnknown ? mpBaseClassUnknown : this) << ">.";
+
+        if (pTI == NULL)
+            std::cout << "?";
+        else
+        {
+            BSTR sFuncName = NULL;
+            nResult = pTI->GetDocumentation(dispIdMember, &sFuncName, NULL, NULL, NULL);
+
+            if (FAILED(nResult))
+                std::cout << "?";
+            else
+            {
+                std::cout << convertUTF16ToUTF8(sFuncName);
+                SysFreeString(sFuncName);
+            }
+        }
+
+        mbIsAtBeginningOfLine = false;
+    }
+    else if (getParam()->mbVerbose)
         std::cout << this << "@CProxiedDispatch::Invoke(0x" << to_hex(dispIdMember) << ")..."
                   << std::endl;
 
+    increaseIndent();
     nResult = mpDispatchToProxy->Invoke(dispIdMember, riid, lcid, wFlags, pDispParams, pVarResult,
                                         pExcepInfo, puArgErr);
+    decreaseIndent();
 
-    if (getParam()->mbVerbose)
+    if (pFuncDesc != NULL)
+    {
+        if (pFuncDesc->invkind == INVOKE_FUNC || pFuncDesc->invkind == INVOKE_PROPERTYGET)
+        {
+            if (pVarResult != NULL && pVarResult->vt == VT_DISPATCH
+                && pFuncDesc->elemdescFunc.tdesc.vt == VT_PTR)
+            {
+                ITypeInfo* pResultTI;
+                nResult = pVarResult->pdispVal->GetTypeInfo(0, LOCALE_USER_DEFAULT, &pResultTI);
+                TYPEATTR* pResultTA = NULL;
+                if (!FAILED(nResult))
+                {
+                    nResult = pResultTI->GetTypeAttr(&pResultTA);
+                }
+                if (!FAILED(nResult))
+                {
+                    pVarResult->pdispVal = ProxyCreator(pResultTA->guid, pVarResult->pdispVal);
+                    pResultTI->ReleaseTypeAttr(pResultTA);
+                }
+            }
+        }
+    }
+
+    if (getParam()->mbTraceOnly)
+    {
+        if (pFuncDesc != NULL)
+        {
+            if (pFuncDesc->invkind == INVOKE_FUNC || pFuncDesc->invkind == INVOKE_PROPERTYGET)
+            {
+                if (pVarResult != NULL)
+                    std::cout << " -> " << *pVarResult;
+            }
+            else if (pFuncDesc->invkind == INVOKE_PROPERTYPUT
+                     || pFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
+            {
+                if (pDispParams->cArgs > 0)
+                    std::cout << " = " << pDispParams->rgvarg[pDispParams->cArgs - 1];
+            }
+        }
+        else
+        {
+            if (pVarResult != NULL)
+                std::cout << " -> " << *pVarResult;
+        }
+        std::cout << std::endl;
+        mbIsAtBeginningOfLine = true;
+
+        if (pFuncDesc != NULL)
+            pTI->ReleaseFuncDesc(pFuncDesc);
+    }
+    else if (getParam()->mbVerbose)
         std::cout << "..." << this << "@CProxiedDispatch::Invoke(0x" << to_hex(dispIdMember)
                   << "): " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
 

@@ -11,7 +11,7 @@
 #define INCLUDED_CProxiedConnectionPoint_hpp
 
 #pragma warning(push)
-#pragma warning(disable: 4668 4820 4917)
+#pragma warning(disable : 4668 4820 4917)
 
 #include <map>
 #include <string>
@@ -37,7 +37,7 @@ class CProxiedConnectionPoint : public CProxiedUnknown
 private:
     struct AdvisedSinkHolder
     {
-	std::map<DWORD, IDispatch*> maAdvisedSinks;
+        std::map<DWORD, IDispatch*> maAdvisedSinks;
     };
 
     CProxiedConnectionPointContainer* mpContainer;
@@ -48,16 +48,17 @@ private:
     AdvisedSinkHolder* const mpAdvisedSinks;
 
 public:
-    CProxiedConnectionPoint(IUnknown *pBaseClassUnknown,
+    CProxiedConnectionPoint(IUnknown* pBaseClassUnknown,
                             CProxiedConnectionPointContainer* pContainer,
-                            IConnectionPoint* pCPToProxy,
-                            IID aIID,
+                            IConnectionPoint* pCPToProxy, IID aIID,
                             ITypeInfo* pTypeInfoOfOutgoingInterface,
-                            const OutgoingInterfaceMapping& rMapEntry);
+                            const OutgoingInterfaceMapping& rMapEntry, const char* sLibName);
+
     // IConnectionPoint
     virtual HRESULT STDMETHODCALLTYPE GetConnectionInterface(IID* pIID);
 
-    virtual HRESULT STDMETHODCALLTYPE GetConnectionPointContainer(IConnectionPointContainer** ppCPC);
+    virtual HRESULT STDMETHODCALLTYPE
+    GetConnectionPointContainer(IConnectionPointContainer** ppCPC);
 
     virtual HRESULT STDMETHODCALLTYPE Advise(IUnknown* pUnkSink, DWORD* pdwCookie);
 

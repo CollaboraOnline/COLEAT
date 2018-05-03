@@ -29,7 +29,8 @@
 bool CProxiedCoclass::mbIsActive = false;
 
 CProxiedCoclass::CProxiedCoclass(const InterfaceMapping& rMapping)
-    : CProxiedDispatch(nullptr, createDispatchToProxy(rMapping), rMapping.maFromDefault)
+    : CProxiedDispatch(nullptr, createDispatchToProxy(rMapping), rMapping.maFromDefault,
+                       rMapping.msFromLibName)
     , maProxiedAppCoclassIID(rMapping.maFromCoclass)
     , maProxiedAppDefaultIID(rMapping.maFromDefault)
     , maReplacementAppCoclassIID(rMapping.maReplacementCoclass)

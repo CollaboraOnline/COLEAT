@@ -63,6 +63,13 @@ inline wchar_t* programName(const wchar_t* sPathname)
     return pRetval;
 }
 
+inline std::string to_ullhex(uint64_t n, int w = 0)
+{
+    std::stringstream aStringStream;
+    aStringStream << std::setfill('0') << std::setw(w) << std::hex << n;
+    return aStringStream.str();
+}
+
 inline std::string to_uhex(uint32_t n, int w = 0)
 {
     std::stringstream aStringStream;
@@ -90,6 +97,164 @@ inline std::string IID_to_string(const IID& aIID)
     if (StringFromIID(aIID, &pRiid) != S_OK)
         return "?";
     return convertUTF16ToUTF8(pRiid);
+}
+
+inline std::string VARTYPE_to_string(VARTYPE nVt)
+{
+    if (nVt == VT_ILLEGAL)
+        return "ILLEGAL";
+
+    std::string sResult;
+
+    if (nVt & VT_VECTOR)
+        sResult += "VECTOR:";
+    if (nVt & VT_ARRAY)
+        sResult += "ARRAY:";
+    if (nVt & VT_BYREF)
+        sResult += "BYREF:";
+
+    switch (nVt & VT_TYPEMASK)
+    {
+        case VT_EMPTY:
+            sResult += "EMPTY";
+            break;
+        case VT_NULL:
+            sResult += "NULL";
+            break;
+        case VT_I2:
+            sResult += "I2";
+            break;
+        case VT_I4:
+            sResult += "I4";
+            break;
+        case VT_R4:
+            sResult += "R4";
+            break;
+        case VT_R8:
+            sResult += "R8";
+            break;
+        case VT_CY:
+            sResult += "CY";
+            break;
+        case VT_DATE:
+            sResult += "DATE";
+            break;
+        case VT_BSTR:
+            sResult += "BSTR";
+            break;
+        case VT_DISPATCH:
+            sResult += "DISPATCH";
+            break;
+        case VT_ERROR:
+            sResult += "ERROR";
+            break;
+        case VT_BOOL:
+            sResult += "BOOL";
+            break;
+        case VT_VARIANT:
+            sResult += "VARIANT";
+            break;
+        case VT_UNKNOWN:
+            sResult += "UNKNOWN";
+            break;
+        case VT_DECIMAL:
+            sResult += "DECIMAL";
+            break;
+        case VT_I1:
+            sResult += "I1";
+            break;
+        case VT_UI1:
+            sResult += "UI1";
+            break;
+        case VT_UI2:
+            sResult += "UI2";
+            break;
+        case VT_UI4:
+            sResult += "UI4";
+            break;
+        case VT_I8:
+            sResult += "I8";
+            break;
+        case VT_UI8:
+            sResult += "UI8";
+            break;
+        case VT_INT:
+            sResult += "INT";
+            break;
+        case VT_UINT:
+            sResult += "UINT";
+            break;
+        case VT_VOID:
+            sResult += "VOID";
+            break;
+        case VT_HRESULT:
+            sResult += "HRESULT";
+            break;
+        case VT_PTR:
+            sResult += "PTR";
+            break;
+        case VT_SAFEARRAY:
+            sResult += "SAFEARRAY";
+            break;
+        case VT_CARRAY:
+            sResult += "CARRAY";
+            break;
+        case VT_USERDEFINED:
+            sResult += "USERDEFINED";
+            break;
+        case VT_LPSTR:
+            sResult += "LPSTR";
+            break;
+        case VT_LPWSTR:
+            sResult += "LPWSTR";
+            break;
+        case VT_RECORD:
+            sResult += "RECORD";
+            break;
+        case VT_INT_PTR:
+            sResult += "INT_PTR";
+            break;
+        case VT_UINT_PTR:
+            sResult += "UINT_PTR";
+            break;
+        case VT_FILETIME:
+            sResult += "FILETIME";
+            break;
+        case VT_BLOB:
+            sResult += "BLOB";
+            break;
+        case VT_STREAM:
+            sResult += "STREAM";
+            break;
+        case VT_STORAGE:
+            sResult += "STORAGE";
+            break;
+        case VT_STREAMED_OBJECT:
+            sResult += "STREAMED_OBJECT";
+            break;
+        case VT_STORED_OBJECT:
+            sResult += "STORED_OBJECT";
+            break;
+        case VT_BLOB_OBJECT:
+            sResult += "BLOB_OBJECT";
+            break;
+        case VT_CF:
+            sResult += "CF";
+            break;
+        case VT_CLSID:
+            sResult += "CLSID";
+            break;
+        case VT_VERSIONED_STREAM:
+            sResult += "VERSIONED_STREAM";
+            break;
+        case VT_BSTR_BLOB:
+            sResult += "BSTR_BLOB";
+            break;
+        default:
+            sResult += "?(" + std::to_string(nVt & VT_TYPEMASK) + ")";
+            break;
+    }
+    return sResult;
 }
 
 inline bool GetWindowsErrorString(DWORD nErrorCode, LPWSTR* pPMsgBuf)
@@ -125,7 +290,7 @@ inline std::string WindowsErrorString(DWORD nErrorCode)
     return sResult;
 }
 
-inline std::string WindowsHRESULTString(HRESULT nResult)
+inline std::string HRESULT_to_string(HRESULT nResult)
 {
     // Return common HRESULT codes symbolically. This is for developer use anyway, much easier to
     // read "E_NOTIMPL" than the English prose description.
@@ -162,7 +327,7 @@ inline std::string WindowsHRESULTString(HRESULT nResult)
 
 inline std::string WindowsErrorStringFromHRESULT(HRESULT nResult)
 {
-    std::string sSymbolic = WindowsHRESULTString(nResult);
+    std::string sSymbolic = HRESULT_to_string(nResult);
 
     if (!(sSymbolic.length() == 8 && std::isxdigit(sSymbolic[0]) && std::isxdigit(sSymbolic[1])))
         return sSymbolic;
@@ -302,8 +467,41 @@ inline UINT surrogatePair(const wchar_t* pWchar)
 }
 
 template <typename traits>
+inline std::basic_ostream<char, traits>& outputCharString(const char* pChar, UINT nLength,
+                                                          std::basic_ostream<char, traits>& rStream)
+{
+    if (pChar == nullptr)
+    {
+        rStream << "(null)";
+        return rStream;
+    }
+
+    rStream << "\"";
+    if (nLength > 100)
+        nLength = 100;
+
+    for (UINT i = 0; i < nLength; i++)
+    {
+        if (pChar[i] == '"' || pChar[i] == '\\')
+            rStream << '\\' << pChar[i];
+        else if (pChar[i] == '\n')
+            rStream << "\\n";
+        else if (pChar[i] == '\r')
+            rStream << "\\r";
+        else if (pChar[i] >= ' ' && pChar[i] <= '~')
+            rStream << pChar[i];
+        else
+            rStream << "\\x" << std::hex << (UINT)pChar[i] << std::dec;
+    }
+
+    rStream << "\"";
+
+    return rStream;
+}
+
+template <typename traits>
 inline std::basic_ostream<char, traits>&
-outputWcharString(wchar_t* pWchar, UINT nLength, std::basic_ostream<char, traits>& rStream)
+outputWcharString(const wchar_t* pWchar, UINT nLength, std::basic_ostream<char, traits>& rStream)
 {
     if (pWchar == nullptr)
     {
@@ -328,6 +526,10 @@ outputWcharString(wchar_t* pWchar, UINT nLength, std::basic_ostream<char, traits
         }
         else if (pWchar[i] == '"' || pWchar[i] == '\\')
             rStream << '\\' << (char)pWchar[i];
+        else if (pWchar[i] == '\n')
+            rStream << "\\n";
+        else if (pWchar[i] == '\r')
+            rStream << "\\r";
         else if (pWchar[i] >= ' ' && pWchar[i] <= '~')
             rStream << (char)pWchar[i];
         else
@@ -344,6 +546,108 @@ inline std::basic_ostream<char, traits>& operator<<(std::basic_ostream<char, tra
                                                     const BSTR& rBstr)
 {
     return outputWcharString(rBstr, SysStringLen(rBstr), stream);
+}
+
+template <typename traits>
+inline std::basic_ostream<char, traits>& operator<<(std::basic_ostream<char, traits>& stream,
+                                                    const VARIANT& rVariant)
+{
+    if (rVariant.vt & (VT_VECTOR | VT_ARRAY))
+    {
+        return stream << VARTYPE_to_string(rVariant.vt);
+    }
+
+    if (rVariant.vt & VT_BYREF)
+        return stream << rVariant.byref;
+
+    switch (rVariant.vt & VT_TYPEMASK)
+    {
+        case VT_I2:
+            stream << rVariant.iVal;
+            break;
+        case VT_I4:
+            stream << rVariant.lVal;
+            break;
+        case VT_R4:
+            stream << rVariant.fltVal;
+            break;
+        case VT_R8:
+            stream << rVariant.dblVal;
+            break;
+        case VT_CY:
+            stream << rVariant.cyVal.int64;
+            break;
+        case VT_DATE:
+            stream << (double)rVariant.date;
+            break; // FIXME
+        case VT_BSTR:
+            stream << rVariant.bstrVal;
+            break;
+        case VT_DISPATCH:
+            stream << rVariant.pdispVal;
+            break;
+        case VT_ERROR:
+            stream << to_hex(rVariant.lVal, 8);
+            break;
+        case VT_BOOL:
+            stream << (rVariant.boolVal ? "True" : "False");
+            break;
+        case VT_UNKNOWN:
+            stream << rVariant.punkVal;
+            break;
+        case VT_DECIMAL:
+            stream << to_uhex(rVariant.decVal.Hi32, 8) << to_ullhex(rVariant.decVal.Lo64, 16);
+            break;
+        case VT_I1:
+            stream << (int)rVariant.bVal;
+            break;
+        case VT_UI1:
+            stream << (unsigned int)rVariant.bVal;
+            break;
+        case VT_UI2:
+            stream << (unsigned short)rVariant.iVal;
+            break;
+        case VT_UI4:
+            stream << (unsigned int)rVariant.lVal;
+            break;
+        case VT_I8:
+            stream << rVariant.llVal;
+            break;
+        case VT_UI8:
+            stream << (unsigned long long)rVariant.llVal;
+            break;
+        case VT_INT:
+            stream << rVariant.lVal;
+            break;
+        case VT_UINT:
+            stream << (unsigned int)rVariant.lVal;
+            break;
+        case VT_HRESULT:
+            stream << HRESULT_to_string(rVariant.lVal);
+            break;
+        case VT_PTR:
+        case VT_CARRAY:
+            stream << rVariant.byref;
+            break;
+        case VT_SAFEARRAY:
+            stream << rVariant.parray;
+            break;
+        case VT_LPSTR:
+            outputCharString(rVariant.pcVal, (UINT)std::strlen(rVariant.pcVal), stream);
+            break;
+        case VT_LPWSTR:
+            outputWcharString((const wchar_t*)rVariant.byref,
+                              (UINT)wcslen((const wchar_t*)rVariant.byref), stream);
+            break;
+        case VT_INT_PTR:
+        case VT_UINT_PTR:
+            stream << rVariant.plVal;
+            break;
+        default:
+            stream << "?(" << (rVariant.vt & VT_TYPEMASK) << ")";
+            break;
+    }
+    return stream;
 }
 
 inline bool isDirectlyPrintableType(VARTYPE nVt)

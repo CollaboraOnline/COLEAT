@@ -11,7 +11,7 @@
 #define INCLUDED_CProxiedSink_hpp
 
 #pragma warning(push)
-#pragma warning(disable: 4668 4820 4917)
+#pragma warning(disable : 4668 4820 4917)
 
 #include <map>
 
@@ -44,10 +44,9 @@ public:
 
     static void forgetExistingSink(IUnknown* pUnk);
 
-    CProxiedSink(IDispatch* pDispatchToProxy,
-                 ITypeInfo* pTypeInfoOfOutgoingInterface,
-                 const OutgoingInterfaceMapping& rMapEntry,
-                 const IID& aOutgoingIID);
+    CProxiedSink(IDispatch* pDispatchToProxy, ITypeInfo* pTypeInfoOfOutgoingInterface,
+                 const OutgoingInterfaceMapping& rMapEntry, const IID& aOutgoingIID,
+                 const char* sLibName);
 
     // IDispatch
 
@@ -58,9 +57,10 @@ public:
     virtual HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR* rgszNames, UINT cNames,
                                                     LCID lcid, DISPID* rgDispId);
 
-    virtual HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags,
-                                             DISPPARAMS* pDispParams, VARIANT* pVarResult,
-                                             EXCEPINFO* pExcepInfo, UINT* puArgErr);
+    virtual HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid,
+                                             WORD wFlags, DISPPARAMS* pDispParams,
+                                             VARIANT* pVarResult, EXCEPINFO* pExcepInfo,
+                                             UINT* puArgErr);
 };
 
 #endif // INCLUDED_CProxiedSink_hpp

@@ -11,7 +11,7 @@
 #define INCLUDED_CProxiedEnumConnections_hpp
 
 #pragma warning(push)
-#pragma warning(disable: 4668 4820 4917)
+#pragma warning(disable : 4668 4820 4917)
 
 #include <map>
 #include <string>
@@ -35,7 +35,8 @@ private:
     IEnumConnections* mpECToProxy;
 
 public:
-    CProxiedEnumConnections(IUnknown* pBaseClassUnknown, IEnumConnections* pECToProxy);
+    CProxiedEnumConnections(IUnknown* pBaseClassUnknown, IEnumConnections* pECToProxy,
+                            const char* sLibName);
 
     // IEnumConnections
 

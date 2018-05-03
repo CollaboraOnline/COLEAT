@@ -27,8 +27,9 @@ CProxiedConnectionPoint::CProxiedConnectionPoint(IUnknown* pBaseClassUnknown,
                                                  CProxiedConnectionPointContainer* pContainer,
                                                  IConnectionPoint* pCPToProxy, IID aIID,
                                                  ITypeInfo* pTypeInfoOfOutgoingInterface,
-                                                 const OutgoingInterfaceMapping& rMapEntry)
-    : CProxiedUnknown(pBaseClassUnknown, pCPToProxy, IID_IConnectionPoint)
+                                                 const OutgoingInterfaceMapping& rMapEntry,
+                                                 const char* sLibName)
+    : CProxiedUnknown(pBaseClassUnknown, pCPToProxy, IID_IConnectionPoint, sLibName)
     , mpContainer(pContainer)
     , mpCPToProxy(pCPToProxy)
     , maIID(aIID)
@@ -78,8 +79,8 @@ HRESULT STDMETHODCALLTYPE CProxiedConnectionPoint::Advise(IUnknown* pUnkSink, DW
     }
     assert(pUnkSink == pSinkAsDispatch);
 
-    IDispatch* pDispatch = reinterpret_cast<IDispatch*>(
-        new CProxiedSink(pSinkAsDispatch, mpTypeInfoOfOutgoingInterface, maMapEntry, maIID));
+    IDispatch* pDispatch = reinterpret_cast<IDispatch*>(new CProxiedSink(
+        pSinkAsDispatch, mpTypeInfoOfOutgoingInterface, maMapEntry, maIID, msLibName));
 
     *pdwCookie = 0;
     nResult = mpCPToProxy->Advise(pDispatch, pdwCookie);
@@ -160,7 +161,7 @@ HRESULT STDMETHODCALLTYPE CProxiedConnectionPoint::EnumConnections(IEnumConnecti
     }
 
     *ppEnum = reinterpret_cast<IEnumConnections*>(
-        new CProxiedEnumConnections(mpBaseClassUnknown, *ppEnum));
+        new CProxiedEnumConnections(mpBaseClassUnknown, *ppEnum, msLibName));
 
     if (getParam()->mbVerbose)
         std::cout << "..." << this << "@CProxiedConnectionPoint::EnumConnections: S_OK"

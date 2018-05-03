@@ -26,11 +26,13 @@
 class CProxiedUnknown : public IUnknown
 {
 public:
-    CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy, const IID& rIID);
-    CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID);
+    CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy, const IID& rIID,
+                    const char* sLibName);
+    CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID, const char* sLibName);
     CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy, const IID& rIID1,
-                    const IID& rIID2);
-    CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID1, const IID& rIID2);
+                    const IID& rIID2, const char* sLibName);
+    CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID1, const IID& rIID2,
+                    const char* sLibName);
 
     static void setParam(ThreadProcParam* pParam);
     static ThreadProcParam* getParam();
@@ -42,9 +44,10 @@ public:
     static bool mbIsAtBeginningOfLine;
 
 protected:
+    IUnknown* const mpBaseClassUnknown;
     const IID maIID1;
     const IID maIID2;
-    IUnknown* const mpBaseClassUnknown;
+    const char* const msLibName;
 
 private:
     IUnknown* const mpUnknownToProxy;

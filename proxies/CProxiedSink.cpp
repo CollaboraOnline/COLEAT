@@ -36,8 +36,9 @@ IUnknown* CProxiedSink::existingSink(IUnknown* pUnk)
 void CProxiedSink::forgetExistingSink(IUnknown* pUnk) { maActiveSinks.erase(pUnk); }
 
 CProxiedSink::CProxiedSink(IDispatch* pDispatchToProxy, ITypeInfo* pTypeInfoOfOutgoingInterface,
-                           const OutgoingInterfaceMapping& rMapEntry, const IID& aOutgoingIID)
-    : CProxiedUnknown(pDispatchToProxy, IID_IDispatch, aOutgoingIID)
+                           const OutgoingInterfaceMapping& rMapEntry, const IID& aOutgoingIID,
+                           const char* sLibName)
+    : CProxiedUnknown(pDispatchToProxy, IID_IDispatch, aOutgoingIID, sLibName)
     , mpDispatchToProxy(pDispatchToProxy)
     , mpTypeInfoOfOutgoingInterface(pTypeInfoOfOutgoingInterface)
     , maMapEntry(rMapEntry)

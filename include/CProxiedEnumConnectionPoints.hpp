@@ -11,7 +11,7 @@
 #define INCLUDED_CProxiedEnumConnectionPoints_hpp
 
 #pragma warning(push)
-#pragma warning(disable: 4668 4820 4917)
+#pragma warning(disable : 4668 4820 4917)
 
 #include <map>
 #include <string>
@@ -38,7 +38,7 @@ private:
 public:
     CProxiedEnumConnectionPoints(IUnknown* pBaseClassUnknown,
                                  CProxiedConnectionPointContainer* pCPC,
-                                 IEnumConnectionPoints* pECPToProxy);
+                                 IEnumConnectionPoints* pECPToProxy, const char* sLibName);
 
     // IEnumConnectionPoints
     virtual HRESULT STDMETHODCALLTYPE Next(ULONG cConnections, LPCONNECTIONPOINT* ppCP,

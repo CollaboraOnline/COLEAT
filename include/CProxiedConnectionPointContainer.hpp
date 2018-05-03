@@ -11,7 +11,7 @@
 #define INCLUDED_CProxiedConnectionPointContainer_hpp
 
 #pragma warning(push)
-#pragma warning(disable: 4668 4820 4917)
+#pragma warning(disable : 4668 4820 4917)
 
 #include <map>
 #include <string>
@@ -40,7 +40,7 @@ public:
 
     CProxiedConnectionPointContainer(IUnknown* pBaseClassUnknown,
                                      IConnectionPointContainer* pCPCToProxy,
-                                     IProvideClassInfo* pProvideClassInfo);
+                                     IProvideClassInfo* pProvideClassInfo, const char* sLibName);
 
     // IConnectionPointContainer
     virtual HRESULT STDMETHODCALLTYPE EnumConnectionPoints(IEnumConnectionPoints** ppEnum);

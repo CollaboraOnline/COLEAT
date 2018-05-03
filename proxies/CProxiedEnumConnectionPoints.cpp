@@ -24,8 +24,9 @@
 
 CProxiedEnumConnectionPoints::CProxiedEnumConnectionPoints(IUnknown* pBaseClassUnknown,
                                                            CProxiedConnectionPointContainer* pCPC,
-                                                           IEnumConnectionPoints* pECPToProxy)
-    : CProxiedUnknown(pBaseClassUnknown, pECPToProxy, IID_IEnumConnectionPoints)
+                                                           IEnumConnectionPoints* pECPToProxy,
+                                                           const char* sLibName)
+    : CProxiedUnknown(pBaseClassUnknown, pECPToProxy, IID_IEnumConnectionPoints, sLibName)
     , mpCPC(pCPC)
     , mpECPToProxy(pECPToProxy)
 {
@@ -136,8 +137,8 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumConnectionPoints::Clone(IEnumConnectionPoi
                       << WindowsErrorStringFromHRESULT(nResult) << std::endl;
         return nResult;
     }
-    *ppEnum = reinterpret_cast<IEnumConnectionPoints*>(
-        new CProxiedEnumConnectionPoints(mpBaseClassUnknown, mpCPC, pEnumConnectionPoints));
+    *ppEnum = reinterpret_cast<IEnumConnectionPoints*>(new CProxiedEnumConnectionPoints(
+        mpBaseClassUnknown, mpCPC, pEnumConnectionPoints, msLibName));
 
     if (getParam()->mbVerbose)
         std::cout << "..." << this << "@CProxiedEnumConnectionPoints::Clone: S_OK" << std::endl;

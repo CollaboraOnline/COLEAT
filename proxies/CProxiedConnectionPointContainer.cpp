@@ -28,8 +28,8 @@
 
 CProxiedConnectionPointContainer::CProxiedConnectionPointContainer(
     IUnknown* pBaseClassUnknown, IConnectionPointContainer* pCPCToProxy,
-    IProvideClassInfo* pProvideClassInfo)
-    : CProxiedUnknown(pBaseClassUnknown, pCPCToProxy, IID_IConnectionPointContainer)
+    IProvideClassInfo* pProvideClassInfo, const char* sLibName)
+    : CProxiedUnknown(pBaseClassUnknown, pCPCToProxy, IID_IConnectionPointContainer, sLibName)
     , mpCPCToProxy(pCPCToProxy)
     , mpProvideClassInfo(pProvideClassInfo)
     , mpConnectionPoints(new ConnectionPointMapHolder())
@@ -57,7 +57,7 @@ CProxiedConnectionPointContainer::EnumConnectionPoints(IEnumConnectionPoints** p
         return nResult;
 
     *ppEnum = reinterpret_cast<IEnumConnectionPoints*>(
-        new CProxiedEnumConnectionPoints(nullptr, this, pEnumConnectionPoints));
+        new CProxiedEnumConnectionPoints(nullptr, this, pEnumConnectionPoints, msLibName));
 
     return S_OK;
 }
@@ -185,7 +185,8 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
                 return nResult;
             }
             *ppCP = reinterpret_cast<IConnectionPoint*>(new CProxiedConnectionPoint(
-                nullptr, this, pCP, aMapEntry.maSourceInterfaceInProxiedApp, pTI, aMapEntry));
+                nullptr, this, pCP, aMapEntry.maSourceInterfaceInProxiedApp, pTI, aMapEntry,
+                msLibName));
 
             if (getParam()->mbVerbose)
                 std::cout << "..." << this

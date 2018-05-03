@@ -51,6 +51,13 @@ struct DefaultInterface
     const IID maIID;
 };
 
+struct Dispatch
+{
+    const std::string msLibName;
+    const std::string msName;
+    const IID maIID;
+};
+
 static std::string sOutputFolder = "generated";
 
 static std::set<IID> aAlreadyHandledIIDs;
@@ -58,7 +65,7 @@ static std::set<std::string> aOnlyTheseInterfaces;
 
 static std::set<Callback> aCallbacks;
 static std::set<DefaultInterface> aDefaultInterfaces;
-
+static std::vector<Dispatch> aDispatches;
 static std::vector<InterfaceMapping> aInterfaceMap;
 static std::vector<OutgoingInterfaceMapping> aOutgoingInterfaceMap;
 
@@ -1006,6 +1013,8 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         }
     }
 
+    aDispatches.push_back({ sLibName, sTypeName, pVtblTypeAttr->guid });
+
     const std::string sClass = sLibName + "_" + sTypeName;
 
     // Open output files
@@ -1055,14 +1064,14 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
     aCode << "C" << sClass << "::C" << sClass
           << "(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy) :\n";
     aCode << "    CProxiedDispatch(pBaseClassUnknown, pDispatchToProxy, "
-          << IID_initializer(pVtblTypeAttr->guid) << ")\n";
+          << IID_initializer(pVtblTypeAttr->guid) << ", \"" << sLibName << "\")\n";
     aCode << "{\n";
     aCode << "}\n";
     aCode << "\n";
     aCode << "C" << sClass << "::C" << sClass
           << "(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& aIID) :\n";
     aCode << "    CProxiedDispatch(pBaseClassUnknown, pDispatchToProxy, "
-          << IID_initializer(pVtblTypeAttr->guid) << ", aIID)\n";
+          << IID_initializer(pVtblTypeAttr->guid) << ", aIID, \"" << sLibName << "\")\n";
     aCode << "{\n";
     aCode << "}\n";
     aCode << "\n";
@@ -1667,7 +1676,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                                       << " << \"\\n\";\n";
                                 aCode << "        else\n";
                                 aCode << "            std::cout << \" -> \" << "
-                                         "WindowsHRESULTString(nResult) << std::endl;\n";
+                                         "HRESULT_to_string(nResult) << std::endl;\n";
                                 aCode << "        mbIsAtBeginningOfLine = true;\n";
                                 aCode << "    }\n";
                             }
@@ -1690,7 +1699,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                                          vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
                                   << " << \"\\n\";\n";
                             aCode << "        else\n";
-                            aCode << "            std::cout << WindowsHRESULTString(nResult) << "
+                            aCode << "            std::cout << HRESULT_to_string(nResult) << "
                                      "std::endl;\n";
                             aCode << "        mbIsAtBeginningOfLine = true;\n";
                         }
@@ -1703,7 +1712,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                         aCode << "        if (nResult == S_OK)\n";
                         aCode << "            std::cout << \"?\\n\";\n";
                         aCode << "        else\n";
-                        aCode << "            std::cout << WindowsHRESULTString(nResult) << "
+                        aCode << "            std::cout << HRESULT_to_string(nResult) << "
                                  "std::endl;\n";
                         aCode << "        mbIsAtBeginningOfLine = true;\n";
                         aCode << "    }\n";
@@ -2022,6 +2031,48 @@ static void GenerateOutgoingInterfaceMap()
     aHeader.close();
 }
 
+static void GenerateProxyCreator()
+{
+    if (aDispatches.size() == 0)
+        return;
+
+    const std::string sHeader = sOutputFolder + "/ProxyCreator.hxx";
+    OutputFile aHeader(sHeader);
+
+    aHeader << "// Generated file. Do not edit.\n";
+    aHeader << "\n";
+    aHeader << "#ifndef INCLUDED_ProxyCreator_HXX\n";
+    aHeader << "#define INCLUDED_ProxyCreator_HXX\n";
+    aHeader << "\n";
+
+    for (const auto i : aDispatches)
+    {
+        aHeader << "#include \"C" << i.msLibName << "_" << i.msName << ".hxx\"\n";
+    }
+
+    aHeader << "\n";
+
+    aHeader << "static IDispatch* "
+            << "ProxyCreator(const IID& aIID, IDispatch* pDispatchToProxy)\n";
+    aHeader << "{\n";
+
+    for (const auto i : aDispatches)
+    {
+        aHeader << "    const IID aIID_" << i.msLibName << "_" << i.msName << " = "
+                << IID_initializer(i.maIID) << ";\n";
+        aHeader << "    if (IsEqualIID(aIID, aIID_" << i.msLibName << "_" << i.msName << "))\n";
+        aHeader << "        return reinterpret_cast<IDispatch*>(new C" << i.msLibName << "_"
+                << i.msName << "(nullptr, pDispatchToProxy));\n";
+    }
+
+    aHeader << "    return pDispatchToProxy;\n";
+    aHeader << "};\n";
+    aHeader << "\n";
+    aHeader << "#endif // INCLUDED_ProxyCreator_HXX\n";
+
+    aHeader.close();
+}
+
 static void GenerateInterfaceMapping()
 {
     if (aInterfaceMap.size() == 0)
@@ -2052,7 +2103,7 @@ static void GenerateInterfaceMapping()
 
     aHeader << "};\n";
     aHeader << "\n";
-    aHeader << "#endif // INCLUDED__InterfaceMapping_HXX\n";
+    aHeader << "#endif // INCLUDED_InterfaceMapping_HXX\n";
 
     aHeader.close();
 }
@@ -2343,6 +2394,8 @@ int wmain(int argc, wchar_t** argv)
             std::exit(1);
         }
     }
+
+    GenerateProxyCreator();
 
     GenerateInterfaceMapping();
 

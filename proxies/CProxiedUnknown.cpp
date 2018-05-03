@@ -34,21 +34,22 @@ unsigned CProxiedUnknown::mnIndent = 0;
 bool CProxiedUnknown::mbIsAtBeginningOfLine = true;
 
 CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy,
-                                 const IID& rIID)
-    : CProxiedUnknown(pBaseClassUnknown, pUnknownToProxy, rIID, IID_NULL)
+                                 const IID& rIID, const char* sLibName)
+    : CProxiedUnknown(pBaseClassUnknown, pUnknownToProxy, rIID, IID_NULL, sLibName)
 {
 }
 
-CProxiedUnknown::CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID)
-    : CProxiedUnknown(nullptr, pUnknownToProxy, rIID)
+CProxiedUnknown::CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID, const char* sLibName)
+    : CProxiedUnknown(nullptr, pUnknownToProxy, rIID, sLibName)
 {
 }
 
 CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy,
-                                 const IID& rIID1, const IID& rIID2)
+                                 const IID& rIID1, const IID& rIID2, const char* sLibName)
     : mpBaseClassUnknown(pBaseClassUnknown)
     , maIID1(rIID1)
     , maIID2(rIID2)
+    , msLibName(sLibName)
     , mpUnknownToProxy(pUnknownToProxy)
     // FIXME: Must delete mpUnknownMap when Release() returns zero?
     , mpExtraInterfaces(new UnknownMapHolder())
@@ -58,8 +59,9 @@ CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknown
                   << pUnknownToProxy << ", " << rIID1 << ", " << rIID2 << ")" << std::endl;
 }
 
-CProxiedUnknown::CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID1, const IID& rIID2)
-    : CProxiedUnknown(nullptr, pUnknownToProxy, rIID1, rIID2)
+CProxiedUnknown::CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID1, const IID& rIID2,
+                                 const char* sLibName)
+    : CProxiedUnknown(nullptr, pUnknownToProxy, rIID1, rIID2, sLibName)
 {
 }
 
@@ -149,7 +151,7 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
     if (nResult == S_OK && IsEqualIID(riid, IID_IDispatch))
     {
         *ppvObject = new CProxiedDispatch(mpBaseClassUnknown ? mpBaseClassUnknown : this,
-                                          (IDispatch*)*ppvObject);
+                                          (IDispatch*)*ppvObject, msLibName);
 
         mpExtraInterfaces->maExtraInterfaces[riid] = *ppvObject;
 
@@ -179,9 +181,9 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
                 return E_NOINTERFACE;
             }
         }
-        *ppvObject
-            = new CProxiedConnectionPointContainer(mpBaseClassUnknown ? mpBaseClassUnknown : this,
-                                                   (IConnectionPointContainer*)*ppvObject, pPCI);
+        *ppvObject = new CProxiedConnectionPointContainer(
+            mpBaseClassUnknown ? mpBaseClassUnknown : this, (IConnectionPointContainer*)*ppvObject,
+            pPCI, msLibName);
 
         mpExtraInterfaces->maExtraInterfaces[riid] = *ppvObject;
 

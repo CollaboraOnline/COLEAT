@@ -22,8 +22,8 @@
 #include "CProxiedSink.hpp"
 
 CProxiedEnumConnections::CProxiedEnumConnections(IUnknown* pBaseClassUnknown,
-                                                 IEnumConnections* pECToProxy)
-    : CProxiedUnknown(pBaseClassUnknown, pECToProxy, IID_IEnumConnections)
+                                                 IEnumConnections* pECToProxy, const char* sLibName)
+    : CProxiedUnknown(pBaseClassUnknown, pECToProxy, IID_IEnumConnections, sLibName)
     , mpECToProxy(pECToProxy)
 {
     if (getParam()->mbVerbose)
@@ -61,7 +61,7 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumConnections::Next(ULONG cConnections, LPCO
         }
         else
         {
-            rgcd[i].pUnk = new CProxiedUnknown(rgcd[i].pUnk, IID_NULL);
+            rgcd[i].pUnk = new CProxiedUnknown(rgcd[i].pUnk, IID_NULL, msLibName);
         }
         if (getParam()->mbVerbose)
             std::cout << "..." << this << "@CProxiedEnumConnections::Next(" << cConnections

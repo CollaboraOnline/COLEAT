@@ -11,7 +11,7 @@
 #define INCLUDED_CProxiedDispatch_hpp
 
 #pragma warning(push)
-#pragma warning(disable: 4668 4820 4917)
+#pragma warning(disable : 4668 4820 4917)
 
 #include <string>
 #include <vector>
@@ -23,28 +23,23 @@
 
 #include "CProxiedUnknown.hpp"
 
-class CProxiedDispatch: public CProxiedUnknown
+class CProxiedDispatch : public CProxiedUnknown
 {
 public:
-    CProxiedDispatch(IUnknown* pBaseClassUnknown,
-                     IDispatch* pDispatchToProxy);
+    CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
+                     const char* sLibName);
 
-    CProxiedDispatch(IUnknown* pBaseClassUnknown,
-                     IDispatch* pDispatchToProxy,
-                     const IID& rIID);
+    CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& rIID,
+                     const char* sLibName);
 
-    CProxiedDispatch(IUnknown* pBaseClassUnknown,
-                     IDispatch* pDispatchToProxy,
-                     const IID& rIID1,
-                     const IID& rIID2);
+    CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& rIID1,
+                     const IID& rIID2, const char* sLibName);
 
 private:
     IDispatch* const mpDispatchToProxy;
 
 public:
-    HRESULT genericInvoke(std::string sFuncName,
-                          int nInvKind,
-                          std::vector<VARIANT>& rParameters,
+    HRESULT genericInvoke(std::string sFuncName, int nInvKind, std::vector<VARIANT>& rParameters,
                           void* pRetval);
 
     // IDispatch
@@ -55,9 +50,10 @@ public:
     virtual HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR* rgszNames, UINT cNames,
                                                     LCID lcid, DISPID* rgDispId);
 
-    virtual HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags,
-                                             DISPPARAMS* pDispParams, VARIANT* pVarResult,
-                                             EXCEPINFO* pExcepInfo, UINT* puArgErr);
+    virtual HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid,
+                                             WORD wFlags, DISPPARAMS* pDispParams,
+                                             VARIANT* pVarResult, EXCEPINFO* pExcepInfo,
+                                             UINT* puArgErr);
 };
 
 #endif // INCLUDED_CProxiedDispatch_hpp
