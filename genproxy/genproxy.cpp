@@ -1434,7 +1434,6 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                 case VT_R8:
                 case VT_BSTR:
                 case VT_DISPATCH:
-                case VT_BOOL:
                 case VT_UI2:
                 case VT_UI4:
                 case VT_I8:
@@ -1446,6 +1445,9 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                 case VT_LPSTR:
                 case VT_LPWSTR:
                     aCode << " << " << sParamName << ";\n";
+                    break;
+                case VT_BOOL:
+                    aCode << " << (" << sParamName << " ? \"True\" : \"False\");\n";
                     break;
                 case VT_VARIANT:
                     aCode << " << \"<VARIANT:\" << " << sParamName << ".vt << \">\";\n";
@@ -1471,8 +1473,8 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                               << "->bstrVal; break;\n";
                         aCode << "        case VT_DISPATCH: std::cout << " << sParamName
                               << "->pdispVal; break;\n";
-                        aCode << "        case VT_BOOL: std::cout << " << sParamName
-                              << "->boolVal; break;\n";
+                        aCode << "        case VT_BOOL: std::cout << (" << sParamName
+                              << "->boolVal  ? \"True\" : \"False\"); break;\n";
                         aCode << "        case VT_UI2: std::cout << " << sParamName
                               << "->uiVal; break;\n";
                         aCode << "        case VT_UI4: std::cout << " << sParamName
