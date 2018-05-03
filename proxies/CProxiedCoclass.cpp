@@ -37,6 +37,9 @@ CProxiedCoclass::CProxiedCoclass(const InterfaceMapping& rMapping)
     // We logged in createDispatchToProxy(), which is called only above
     assert(!mbIsActive);
     mbIsActive = true;
+
+    if (getParam()->mbTraceOnly)
+        std::cout << "new " << rMapping.msFromLibName << "." << rMapping.msFromCoclassName << " -> " << this << std::endl;
 }
 
 bool CProxiedCoclass::IsActive() { return mbIsActive; }

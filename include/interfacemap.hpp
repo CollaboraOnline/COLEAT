@@ -20,6 +20,8 @@
 struct InterfaceMapping
 {
     IID maFromCoclass, maFromDefault, maReplacementCoclass;
+    const char* msFromLibName;
+    const char* msFromCoclassName;
 };
     
 #endif // INCLUDED_INTERFACEMAP_HPP

@@ -59,6 +59,7 @@ static std::set<std::string> aOnlyTheseInterfaces;
 static std::set<Callback> aCallbacks;
 static std::set<DefaultInterface> aDefaultInterfaces;
 
+static std::vector<InterfaceMapping> aInterfaceMap;
 static std::vector<OutgoingInterfaceMapping> aOutgoingInterfaceMap;
 
 static void Generate(const std::string& sLibName, ITypeInfo* pTypeInfo);
@@ -719,6 +720,23 @@ static void GenerateCoclass(const std::string& sLibName, const std::string& sTyp
 
     std::cout << sLibName << "." << sTypeName << " (coclass)\n";
 
+    // Fill in the information in aInterfaceMap.
+    for (auto& i : aInterfaceMap)
+    {
+        if (IsEqualIID(i.maFromCoclass, pTypeAttr->guid))
+        {
+            i.msFromLibName = _strdup(sLibName.c_str());
+
+            BSTR sCoclassName;
+            nResult = pTypeInfo->GetDocumentation(MEMBERID_NIL, &sCoclassName, NULL, NULL, NULL);
+            if (FAILED(nResult))
+                i.msFromCoclassName = _strdup(IID_to_string(i.maFromCoclass).c_str());
+            else
+                i.msFromCoclassName = _strdup(convertUTF16ToUTF8(sCoclassName).c_str());
+            break;
+        }
+    }
+
     std::string sDefaultInterface;
 
     for (UINT i = 0; i < pTypeAttr->cImplTypes; ++i)
@@ -1117,7 +1135,18 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         aCode << "{\n";
 
         aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
-        aCode << "        std::cout << \"C" << sClass << "::" << sFuncName << "(\";\n";
+        aCode << "        std::cout << \"" << sLibName << "." << sTypeName
+              << "<\" << (mpBaseClassUnknown ? mpBaseClassUnknown : this) << \">."
+              << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[0]);
+        if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET)
+            aCode << " -> \";\n";
+        else if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUT
+                 || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
+            aCode << " = \";\n";
+        else if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
+            aCode << "(\";\n";
+        else
+            assert(!"Unexpected invkind");
 
         aCode << "    std::vector<VARIANT> vParams(" << vVtblFuncTable[nFunc].mpFuncDesc->cParams
               << ");\n";
@@ -1477,8 +1506,11 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
             aCode << "    }\n";
         }
 
-        aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
-        aCode << "        std::cout << \")\" << std::endl;\n";
+        if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
+        {
+            aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
+            aCode << "        std::cout << \")\" << std::endl;\n";
+        }
 
         aCode << "    std::vector<VARIANT> vReverseParams;\n";
 
@@ -1570,6 +1602,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                             || pReferencedTypeAttr->typekind == TKIND_COCLASS)
                         {
                             aCode << "    if (nResult == S_OK)\n";
+                            aCode << "    {\n";
                             aCode << "        *"
                                   << convertUTF16ToUTF8(
                                          vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
@@ -1583,6 +1616,17 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                                   << convertUTF16ToUTF8(
                                          vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
                                   << "));\n";
+                            if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET
+                                || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
+                            {
+                                aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
+                                aCode << "        std::cout << *" << convertUTF16ToUTF8(
+                                    vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
+                                      << " << \"\\n\";\n";
+                            }
+                            else
+                                aCode << "    std::cout << \"\\n\";\n";
+                            aCode << "    }\n";
                         }
                         pReferencedTypeInfo->ReleaseTypeAttr(pReferencedTypeAttr);
                     }
@@ -1596,6 +1640,8 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                     std::exit(1);
             }
         }
+        else
+            aCode << "    std::cout << \"\\n\";\n";
         aCode << "    return nResult;\n";
         aCode << "}\n";
     }
@@ -1892,9 +1938,9 @@ static void GenerateOutgoingInterfaceMap()
     aHeader.close();
 }
 
-static void GenerateInterfaceMapping(const std::vector<InterfaceMapping>& rInterfaceMap)
+static void GenerateInterfaceMapping()
 {
-    if (rInterfaceMap.size() == 0)
+    if (aInterfaceMap.size() == 0)
         return;
 
     const std::string sHeader = sOutputFolder + "/InterfaceMapping.hxx";
@@ -1911,11 +1957,13 @@ static void GenerateInterfaceMapping(const std::vector<InterfaceMapping>& rInter
     aHeader << "const static InterfaceMapping aInterfaceMap[] =\n";
     aHeader << "{\n";
 
-    for (const auto i : rInterfaceMap)
+    for (const auto i : aInterfaceMap)
     {
-        aHeader << "    { " << IID_initializer(i.maFromCoclass) << ", "
-                << IID_initializer(i.maFromDefault) << ", "
-                << IID_initializer(i.maReplacementCoclass) << "},\n";
+        aHeader << "    { " << IID_initializer(i.maFromCoclass) << ",\n"
+                << "      " << IID_initializer(i.maFromDefault) << ",\n"
+                << "      " << IID_initializer(i.maReplacementCoclass) << ",\n"
+                << "      \"" << i.msFromLibName << "\",\n"
+                << "      \"" << i.msFromCoclassName << "\" },\n";
     }
 
     aHeader << "};\n";
@@ -1966,14 +2014,15 @@ static bool parseMapping(const char* pLine, InterfaceMapping& rMapping)
         || FAILED(IIDFromString(pColon2 + 1, &rMapping.maReplacementCoclass)))
         return false;
 
+    rMapping.msFromLibName = "";
+    rMapping.msFromCoclassName = "";
+
     return true;
 }
 
 int wmain(int argc, wchar_t** argv)
 {
     int argi = 1;
-
-    std::vector<InterfaceMapping> aInterfaceMap;
 
     while (argi < argc && argv[argi][0] == L'-')
     {
@@ -2211,7 +2260,7 @@ int wmain(int argc, wchar_t** argv)
         }
     }
 
-    GenerateInterfaceMapping(aInterfaceMap);
+    GenerateInterfaceMapping();
 
     GenerateOutgoingInterfaceMap();
 
