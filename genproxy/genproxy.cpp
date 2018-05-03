@@ -1512,7 +1512,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
         {
             aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
-            aCode << "        std::cout << \")\" << std::endl;\n";
+            aCode << "        std::cout << \")\";\n";
         }
 
         aCode << "    std::vector<VARIANT> vReverseParams;\n";
@@ -1646,7 +1646,10 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
             }
         }
         else
-            aCode << "    std::cout << \"\\n\";\n";
+        {
+            aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
+            aCode << "        std::cout << \"\\n\";\n";
+        }
         aCode << "    return nResult;\n";
         aCode << "}\n";
     }
