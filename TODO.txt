@@ -24,3 +24,7 @@
   or wrap.) Back in CWord_Documents::Open(), after genericInvoke has
   returned, we again create a new CWord_Document to proxy the return
   value from that function.
+
+- A VT_UNKNOWN VARIANT is an IUnknown pointer. (It is not something
+  "unknown" and weird.) We probably need to handle such in some
+  places.
