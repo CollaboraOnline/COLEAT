@@ -134,7 +134,8 @@ int wmain(int argc, wchar_t** argv)
     if (!CreateProcessW(NULL, pCommandLine, NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL,
                         &aWrappedProcessStartupInfo, &aWrappedProcessInfo))
     {
-        std::cerr << "CreateProcess failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cerr << "CreateProcess(" << convertUTF16ToUTF8(pCommandLine)
+                  << ") failed: " << WindowsErrorString(GetLastError()) << "\n";
         std::exit(1);
     }
 
@@ -224,7 +225,8 @@ int wmain(int argc, wchar_t** argv)
     if (!CreateProcessW(NULL, pCommandLine, NULL, NULL, TRUE, 0, NULL, NULL,
                         &aExeWrapperStartupInfo, &aExeWrapperProcessInfo))
     {
-        std::cerr << "CreateProcess failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cerr << "CreateProcess(" << convertUTF16ToUTF8(sFileName)
+                  << ") failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(aWrappedProcessInfo.hProcess, 1);
         WaitForSingleObject(aWrappedProcessInfo.hProcess, INFINITE);
         std::exit(1);
