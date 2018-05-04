@@ -1083,7 +1083,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         // Generate the code for one method. They are all of type HRESULT, no?
 
         aCode << "// vtbl entry " << (vVtblFuncTable[nFunc].mpFuncDesc->oVft / sizeof(void*))
-              << "\n";
+              << ", member id " << vVtblFuncTable[nFunc].mpFuncDesc->memid << "\n";
 
         aCode << "HRESULT ";
         switch (vVtblFuncTable[nFunc].mpFuncDesc->callconv)
