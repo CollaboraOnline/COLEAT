@@ -37,3 +37,6 @@
   getters I think it already works like that. At least the latter.
   Anyway, some out parameters or retvals are marked to be just
   IDispatch*, but presumably could actually be some type we know?
+
+- Print out parameters also in CProxiedDispatch::Invoke, like in the
+  generated proxy methods.

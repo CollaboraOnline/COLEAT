@@ -304,6 +304,8 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
         }
 
         mbIsAtBeginningOfLine = false;
+
+        // FIXME: Print in and inout parameters here
     }
     else if (getParam()->mbVerbose)
         std::cout << this << "@CProxiedDispatch::Invoke(0x" << to_hex(dispIdMember) << ")..."
@@ -345,6 +347,8 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
 
     if (getParam()->mbTraceOnly)
     {
+        // FIXME: Print inout and out parameters here.
+
         if (pFuncDesc != NULL)
         {
             if (pFuncDesc->invkind == INVOKE_FUNC || pFuncDesc->invkind == INVOKE_PROPERTYGET)
