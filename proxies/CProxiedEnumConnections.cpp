@@ -61,7 +61,7 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumConnections::Next(ULONG cConnections, LPCO
         }
         else
         {
-            rgcd[i].pUnk = new CProxiedUnknown(rgcd[i].pUnk, IID_NULL, msLibName);
+            rgcd[i].pUnk = new CProxiedUnknown(nullptr, rgcd[i].pUnk, IID_NULL, msLibName);
         }
         if (getParam()->mbVerbose)
             std::cout << "..." << this << "@CProxiedEnumConnections::Next(" << cConnections

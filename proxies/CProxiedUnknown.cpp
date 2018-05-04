@@ -39,11 +39,6 @@ CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknown
 {
 }
 
-CProxiedUnknown::CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID, const char* sLibName)
-    : CProxiedUnknown(nullptr, pUnknownToProxy, rIID, sLibName)
-{
-}
-
 CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy,
                                  const IID& rIID1, const IID& rIID2, const char* sLibName)
     : mpBaseClassUnknown(pBaseClassUnknown)
@@ -57,12 +52,6 @@ CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknown
     if (getParam()->mbVerbose)
         std::cout << this << "@CProxiedUnknown::CTOR(" << pBaseClassUnknown << ", "
                   << pUnknownToProxy << ", " << rIID1 << ", " << rIID2 << ")" << std::endl;
-}
-
-CProxiedUnknown::CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID1, const IID& rIID2,
-                                 const char* sLibName)
-    : CProxiedUnknown(nullptr, pUnknownToProxy, rIID1, rIID2, sLibName)
-{
 }
 
 void CProxiedUnknown::setParam(ThreadProcParam* pParam) { pGlobalParam = pParam; }

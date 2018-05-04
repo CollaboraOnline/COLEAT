@@ -28,11 +28,8 @@ class CProxiedUnknown : public IUnknown
 public:
     CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy, const IID& rIID,
                     const char* sLibName);
-    CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID, const char* sLibName);
     CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy, const IID& rIID1,
                     const IID& rIID2, const char* sLibName);
-    CProxiedUnknown(IUnknown* pUnknownToProxy, const IID& rIID1, const IID& rIID2,
-                    const char* sLibName);
 
     static void setParam(ThreadProcParam* pParam);
     static ThreadProcParam* getParam();
