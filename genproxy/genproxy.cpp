@@ -1528,7 +1528,6 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         aCode << "    decreaseIndent();\n";
         if (nRetvalParam >= 0)
         {
-            aCode << "    // nRetvalParam = " << nRetvalParam << "\n";
             switch (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nRetvalParam].tdesc.vt)
             {
                 case VT_I2:
