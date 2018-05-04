@@ -90,6 +90,10 @@ public:
     static void setParam(ThreadProcParam* pParam);
     static ThreadProcParam* getParam();
 
+    // Used to keep track of indentation and line breaks in the output in tracing-only (and not
+    // verbose) mode. Not sure whether I should just put these in utils.hpp instead as they don't
+    // really have anything to do with CProxiedUnknown except that it is a handy location as most of
+    // the code is derived from this class.
     static void increaseIndent();
     static void decreaseIndent();
     static std::string indent();
