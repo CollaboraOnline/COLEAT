@@ -1087,16 +1087,16 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
     aCode << "C" << sClass << "* C" << sClass
           << "::get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy)\n";
     aCode << "{\n";
-    aCode << "    CProxiedUnknown* pExisting = find(pDispatchToProxy);\n";
-    aCode << "    if (pExisting != nullptr)\n";
-    aCode << "        return static_cast<C" << sClass << "*>(pExisting);";
-    aCode << "\n";
-    aCode << "    return new C" << sClass << "(pBaseClassUnknown, pDispatchToProxy);\n";
+    aCode << "    return get(pBaseClassUnknown, pDispatchToProxy, IID_NULL);\n";
     aCode << "}\n";
     aCode << "\n";
     aCode << "C" << sClass << "* C" << sClass
           << "::get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& aIID)\n";
     aCode << "{\n";
+    aCode << "    CProxiedUnknown* pExisting = find(pDispatchToProxy);\n";
+    aCode << "    if (pExisting != nullptr)\n";
+    aCode << "        return static_cast<C" << sClass << "*>(pExisting);";
+    aCode << "\n";
     aCode << "    return new C" << sClass << "(pBaseClassUnknown, pDispatchToProxy, aIID);\n";
     aCode << "}\n";
     aCode << "\n";
