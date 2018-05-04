@@ -598,8 +598,8 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
                     std::string sReferencedTypeName(convertUTF16ToUTF8(sReferencedTypeNameBstr));
                     aCode << "                    aLocalDispParams.rgvarg["
                           << (pFuncDesc->cParams - nParam - 1)
-                          << "].pdispVal = reinterpret_cast<IDispatch*>(new C" << sLibName << "_"
-                          << sReferencedTypeName << "(nullptr, aLocalDispParams.rgvarg["
+                          << "].pdispVal = reinterpret_cast<IDispatch*>(C" << sLibName << "_"
+                          << sReferencedTypeName << "::get(nullptr, aLocalDispParams.rgvarg["
                           << (pFuncDesc->cParams - nParam - 1) << "].pdispVal));\n";
 
                     if (!aIncludedHeaders.count(sReferencedTypeName))
@@ -848,6 +848,16 @@ static void GenerateCoclass(const std::string& sLibName, const std::string& sTyp
             << ")\n";
     aHeader << "    {\n";
     aHeader << "    }\n";
+    aHeader << "\n";
+    aHeader << "    static C" << sClass
+            << "* get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy)\n";
+    aHeader << "    {\n";
+    aHeader << "        CProxiedUnknown* pExisting = find(pDispatchToProxy);\n";
+    aHeader << "        if (pExisting != nullptr)\n";
+    aHeader << "            return static_cast<C" << sClass << "*>(pExisting);";
+    aHeader << "\n";
+    aHeader << "        return new C" << sClass << "(pBaseClassUnknown, pDispatchToProxy);\n";
+    aHeader << "    }\n";
     aHeader << "};\n";
 
     aHeader << "\n";
@@ -1076,7 +1086,25 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
     aCode << "}\n";
     aCode << "\n";
 
-    // Then the member functions
+    // The the get() functions
+    aCode << "C" << sClass << "* C" << sClass
+          << "::get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy)\n";
+    aCode << "{\n";
+    aCode << "    CProxiedUnknown* pExisting = find(pDispatchToProxy);\n";
+    aCode << "    if (pExisting != nullptr)\n";
+    aCode << "        return static_cast<C" << sClass << "*>(pExisting);";
+    aCode << "\n";
+    aCode << "    return new C" << sClass << "(pBaseClassUnknown, pDispatchToProxy);\n";
+    aCode << "}\n";
+    aCode << "\n";
+    aCode << "C" << sClass << "* C" << sClass
+          << "::get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& aIID)\n";
+    aCode << "{\n";
+    aCode << "    return new C" << sClass << "(pBaseClassUnknown, pDispatchToProxy, aIID);\n";
+    aCode << "}\n";
+    aCode << "\n";
+
+    // Then the interface member functions
 
     for (UINT nFunc = 0; nFunc < pVtblTypeAttr->cFuncs; ++nFunc)
     {
@@ -1616,13 +1644,13 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                             aCode << "        *"
                                   << convertUTF16ToUTF8(
                                          vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
-                                  << " = new "
+                                  << " = "
                                   << TypeToString(sLibName, pVtblTypeInfo,
                                                   *vVtblFuncTable[nFunc]
                                                        .mpFuncDesc->lprgelemdescParam[nRetvalParam]
                                                        .tdesc.lptdesc->lptdesc,
                                                   sReferencedName)
-                                  << "(nullptr, reinterpret_cast<IDispatch*>(*"
+                                  << "::get(nullptr, reinterpret_cast<IDispatch*>(*"
                                   << convertUTF16ToUTF8(
                                          vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
                                   << "));\n";
@@ -1755,6 +1783,13 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
     aHeader << "\n";
     aHeader << "    C" << sClass
             << "(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& aIID);\n";
+    aHeader << "\n";
+    aHeader << "    static C" << sClass
+            << "* get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy);\n";
+    aHeader << "\n";
+    aHeader
+        << "    static C" << sClass
+        << "* get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& aIID);\n";
     aHeader << "\n";
 
     for (UINT nFunc = 0; nFunc < pVtblTypeAttr->cFuncs; ++nFunc)
@@ -1948,6 +1983,12 @@ static void GenerateDefaultInterfaceCreator()
                "IDispatch* pReplacementAppDispatch, std::string& sClass)\n";
     aHeader << "{\n";
 
+    // Here we use the constructors, not the get() functions, as we know that we should always be
+    // creating new proxy object. This is called from CProxiedCoclass::QueryInterface().
+
+    // Or should we? What if some app calls the coclass object's QueryInterface() for the same IID
+    // several times? Oh well, let's fix that if such a situation arises.
+
     for (auto aDefaultInterface : aDefaultInterfaces)
     {
         aHeader << "    const IID aIID_" << aDefaultInterface.msLibName << "_"
@@ -2065,8 +2106,8 @@ static void GenerateProxyCreator()
         aHeader << "    const IID aIID_" << i.msLibName << "_" << i.msName << " = "
                 << IID_initializer(i.maIID) << ";\n";
         aHeader << "    if (IsEqualIID(aIID, aIID_" << i.msLibName << "_" << i.msName << "))\n";
-        aHeader << "        return reinterpret_cast<IDispatch*>(new C" << i.msLibName << "_"
-                << i.msName << "(nullptr, pDispatchToProxy));\n";
+        aHeader << "        return reinterpret_cast<IDispatch*>(C" << i.msLibName << "_" << i.msName
+                << "::get(nullptr, pDispatchToProxy));\n";
     }
 
     aHeader << "    return pDispatchToProxy;\n";

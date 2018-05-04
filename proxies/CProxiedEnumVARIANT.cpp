@@ -79,6 +79,15 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumVARIANT::Next(ULONG celt, VARIANT* rgVar, 
 
         for (ULONG i = 0; i < nFetched; i++)
         {
+            if (rgVar[i].vt == VT_DISPATCH)
+            {
+                IUnknown* pExisting = find(rgVar[i].pdispVal);
+                if (pExisting != nullptr)
+                {
+                    std::cout << "... Already have proxy for " << rgVar[i].pdispVal << "\n";
+                    rgVar[i].pdispVal = static_cast<IDispatch*>(pExisting);
+                }
+            }
             std::cout << "... " << i << ": " << rgVar[i] << "\n";
         }
         std::cout << std::flush;

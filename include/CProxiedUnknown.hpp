@@ -25,32 +25,20 @@
 
 class CProxiedUnknown : public IUnknown
 {
-public:
-    CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy, const IID& rIID,
-                    const char* sLibName);
-    CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy, const IID& rIID1,
-                    const IID& rIID2, const char* sLibName);
-
-    static void setParam(ThreadProcParam* pParam);
-    static ThreadProcParam* getParam();
-
-    static void increaseIndent();
-    static void decreaseIndent();
-    static std::string indent();
-
-    static bool mbIsAtBeginningOfLine;
-
-protected:
-    IUnknown* const mpBaseClassUnknown;
-    const IID maIID1;
-    const IID maIID2;
-    const char* const msLibName;
-
 private:
     IUnknown* const mpUnknownToProxy;
 
-    // The proxied object might implement more interfaces than the one we know about (from the type
-    // information at proxy generation time). Ones for which the proxied object has responded
+    // We want to have at most one unique CProxiedUnknown object for each COM object.
+
+    struct UnknownMapHolder
+    {
+        std::map<IUnknown*, void*> maMap;
+    };
+
+    static UnknownMapHolder* const mpLookupMap;
+
+    // Also, the proxied object might implement more interfaces than the one we know about (from the
+    // type information at proxy generation time). Ones for which the proxied object has responded
     // positively to a QueryInterface(). We need a map from such discovered "extra" interfaces to
     // our proxy objects for them.
     //
@@ -69,16 +57,45 @@ private:
 
     // Must have this in a separate object pointed to from CProxiedUnknown to avoid "C4265
     // 'CProxiedUnknown': class has virtual functions, but destructor is not virtual".
-    struct UnknownMapHolder
+
+    struct IIDMapHolder
     {
-        std::map<IID, void*> maExtraInterfaces;
+        std::map<IID, void*> maMap;
     };
 
-    UnknownMapHolder* const mpExtraInterfaces;
+    IIDMapHolder* const mpExtraInterfaces;
 
+    // For indenting trace output nicely
     static unsigned mnIndent;
 
+protected:
+    CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy, const IID& rIID,
+                    const char* sLibName);
+    CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy, const IID& rIID1,
+                    const IID& rIID2, const char* sLibName);
+
+    static CProxiedUnknown* find(IUnknown* pUnknownToProxy);
+
+    IUnknown* const mpBaseClassUnknown;
+    const IID maIID1;
+    const IID maIID2;
+    const char* const msLibName;
+
 public:
+    static CProxiedUnknown* get(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy,
+                                const IID& rIID, const char* sLibName);
+    static CProxiedUnknown* get(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy,
+                                const IID& rIID1, const IID& rIID2, const char* sLibName);
+
+    static void setParam(ThreadProcParam* pParam);
+    static ThreadProcParam* getParam();
+
+    static void increaseIndent();
+    static void decreaseIndent();
+    static std::string indent();
+
+    static bool mbIsAtBeginningOfLine;
+
     // IUnknown
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override;
 

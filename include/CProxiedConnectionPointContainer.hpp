@@ -27,6 +27,10 @@
 class CProxiedConnectionPointContainer : public CProxiedUnknown
 {
 private:
+    CProxiedConnectionPointContainer(IUnknown* pBaseClassUnknown,
+                                     IConnectionPointContainer* pCPCToProxy,
+                                     IProvideClassInfo* pProvideClassInfo, const char* sLibName);
+
     struct ConnectionPointMapHolder
     {
         std::map<IID, IConnectionPoint*> maConnectionPoints;
@@ -36,11 +40,12 @@ private:
     ConnectionPointMapHolder* const mpConnectionPoints;
 
 public:
-    IProvideClassInfo* const mpProvideClassInfo;
+    static CProxiedConnectionPointContainer* get(IUnknown* pBaseClassUnknown,
+                                                 IConnectionPointContainer* pCPCToProxy,
+                                                 IProvideClassInfo* pProvideClassInfo,
+                                                 const char* sLibName);
 
-    CProxiedConnectionPointContainer(IUnknown* pBaseClassUnknown,
-                                     IConnectionPointContainer* pCPCToProxy,
-                                     IProvideClassInfo* pProvideClassInfo, const char* sLibName);
+    IProvideClassInfo* const mpProvideClassInfo;
 
     // IConnectionPointContainer
     virtual HRESULT STDMETHODCALLTYPE EnumConnectionPoints(IEnumConnectionPoints** ppEnum);

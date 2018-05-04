@@ -29,12 +29,8 @@
 
 CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
                                    const char* sLibName)
-    : CProxiedUnknown(pBaseClassUnknown, pDispatchToProxy, IID_IDispatch, sLibName)
-    , mpDispatchToProxy(pDispatchToProxy)
+    : CProxiedDispatch(pBaseClassUnknown, pDispatchToProxy, IID_NULL, sLibName)
 {
-    if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedDispatch::CTOR(" << pBaseClassUnknown << ", "
-                  << pDispatchToProxy << ")" << std::endl;
 }
 
 CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
@@ -51,6 +47,28 @@ CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDisp
     if (getParam()->mbVerbose)
         std::cout << this << "@CProxiedDispatch::CTOR(" << pBaseClassUnknown << ", "
                   << pDispatchToProxy << ", " << rIID1 << ", " << rIID2 << ")" << std::endl;
+}
+
+CProxiedDispatch* CProxiedDispatch::get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
+                                        const char* sLibName)
+{
+    return get(pBaseClassUnknown, pDispatchToProxy, IID_NULL, sLibName);
+}
+
+CProxiedDispatch* CProxiedDispatch::get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
+                                        const IID& rIID, const char* sLibName)
+{
+    CProxiedUnknown* pExisting = find(pDispatchToProxy);
+    if (pExisting != nullptr)
+        return static_cast<CProxiedDispatch*>(pExisting);
+
+    return new CProxiedDispatch(pBaseClassUnknown, pDispatchToProxy, rIID, sLibName);
+}
+
+CProxiedDispatch* CProxiedDispatch::get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
+                                        const IID& rIID1, const IID& rIID2, const char* sLibName)
+{
+    return new CProxiedDispatch(pBaseClassUnknown, pDispatchToProxy, rIID1, rIID2, sLibName);
 }
 
 HRESULT CProxiedDispatch::genericInvoke(std::string sFuncName, int nInvKind,

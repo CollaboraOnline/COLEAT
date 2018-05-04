@@ -25,13 +25,11 @@
 
 class CProxiedDispatch : public CProxiedUnknown
 {
-public:
+protected:
     CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
                      const char* sLibName);
-
     CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& rIID,
                      const char* sLibName);
-
     CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& rIID1,
                      const IID& rIID2, const char* sLibName);
 
@@ -39,6 +37,13 @@ private:
     IDispatch* const mpDispatchToProxy;
 
 public:
+    static CProxiedDispatch* get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
+                                 const char* sLibName);
+    static CProxiedDispatch* get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
+                                 const IID& rIID, const char* sLibName);
+    static CProxiedDispatch* get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
+                                 const IID& rIID1, const IID& rIID2, const char* sLibName);
+
     HRESULT genericInvoke(std::string sFuncName, int nInvKind, std::vector<VARIANT>& rParameters,
                           void* pRetval);
 

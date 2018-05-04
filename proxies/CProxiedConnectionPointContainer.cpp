@@ -39,6 +39,15 @@ CProxiedConnectionPointContainer::CProxiedConnectionPointContainer(
                   << pCPCToProxy << ", " << pProvideClassInfo << ")" << std::endl;
 }
 
+CProxiedConnectionPointContainer*
+CProxiedConnectionPointContainer::get(IUnknown* pBaseClassUnknown,
+                                      IConnectionPointContainer* pCPCToProxy,
+                                      IProvideClassInfo* pProvideClassInfo, const char* sLibName)
+{
+    return new CProxiedConnectionPointContainer(pBaseClassUnknown, pCPCToProxy, pProvideClassInfo,
+                                                sLibName);
+}
+
 HRESULT STDMETHODCALLTYPE
 CProxiedConnectionPointContainer::EnumConnectionPoints(IEnumConnectionPoints** ppEnum)
 {

@@ -30,6 +30,8 @@
 
 static ThreadProcParam* pGlobalParam;
 
+CProxiedUnknown::UnknownMapHolder* const CProxiedUnknown::mpLookupMap
+    = new CProxiedUnknown::UnknownMapHolder();
 unsigned CProxiedUnknown::mnIndent = 0;
 bool CProxiedUnknown::mbIsAtBeginningOfLine = true;
 
@@ -46,12 +48,40 @@ CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknown
     , maIID2(rIID2)
     , msLibName(sLibName)
     , mpUnknownToProxy(pUnknownToProxy)
-    // FIXME: Must delete mpUnknownMap when Release() returns zero?
-    , mpExtraInterfaces(new UnknownMapHolder())
+    // FIXME: Must delete mpExtraInterfaces when Release() returns zero?
+    , mpExtraInterfaces(new IIDMapHolder())
 {
     if (getParam()->mbVerbose)
         std::cout << this << "@CProxiedUnknown::CTOR(" << pBaseClassUnknown << ", "
                   << pUnknownToProxy << ", " << rIID1 << ", " << rIID2 << ")" << std::endl;
+    assert(pBaseClassUnknown != NULL || mpLookupMap->maMap.count(pUnknownToProxy) == 0);
+    if (pBaseClassUnknown == NULL)
+        mpLookupMap->maMap[pUnknownToProxy] = this;
+}
+
+CProxiedUnknown* CProxiedUnknown::get(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy,
+                                      const IID& rIID, const char* sLibName)
+{
+    return get(pBaseClassUnknown, pUnknownToProxy, rIID, IID_NULL, sLibName);
+}
+
+CProxiedUnknown* CProxiedUnknown::get(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy,
+                                      const IID& rIID1, const IID& rIID2, const char* sLibName)
+{
+    CProxiedUnknown* pExisting = find(pUnknownToProxy);
+    if (pExisting != nullptr)
+        return pExisting;
+
+    return new CProxiedUnknown(pBaseClassUnknown, pUnknownToProxy, rIID1, rIID2, sLibName);
+}
+
+CProxiedUnknown* CProxiedUnknown::find(IUnknown* pUnknownToProxy)
+{
+    auto p = mpLookupMap->maMap.find(pUnknownToProxy);
+    if (p != mpLookupMap->maMap.end())
+        return reinterpret_cast<CProxiedUnknown*>(p->second);
+
+    return nullptr;
 }
 
 void CProxiedUnknown::setParam(ThreadProcParam* pParam) { pGlobalParam = pParam; }
@@ -118,8 +148,8 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
         return S_OK;
     }
 
-    auto p = mpExtraInterfaces->maExtraInterfaces.find(riid);
-    if (p != mpExtraInterfaces->maExtraInterfaces.end())
+    auto p = mpExtraInterfaces->maMap.find(riid);
+    if (p != mpExtraInterfaces->maMap.end())
     {
         if (getParam()->mbVerbose)
             std::cout << this << "@CProxiedUnknown::QueryInterface(" << riid
@@ -139,10 +169,10 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
 
     if (nResult == S_OK && IsEqualIID(riid, IID_IDispatch))
     {
-        *ppvObject = new CProxiedDispatch(mpBaseClassUnknown ? mpBaseClassUnknown : this,
-                                          (IDispatch*)*ppvObject, msLibName);
+        *ppvObject = CProxiedDispatch::get(mpBaseClassUnknown ? mpBaseClassUnknown : this,
+                                           (IDispatch*)*ppvObject, msLibName);
 
-        mpExtraInterfaces->maExtraInterfaces[riid] = *ppvObject;
+        mpExtraInterfaces->maMap[riid] = *ppvObject;
 
         if (getParam()->mbVerbose)
             std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid << "): S_OK"
@@ -170,11 +200,11 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
                 return E_NOINTERFACE;
             }
         }
-        *ppvObject = new CProxiedConnectionPointContainer(
+        *ppvObject = CProxiedConnectionPointContainer::get(
             mpBaseClassUnknown ? mpBaseClassUnknown : this, (IConnectionPointContainer*)*ppvObject,
             pPCI, msLibName);
 
-        mpExtraInterfaces->maExtraInterfaces[riid] = *ppvObject;
+        mpExtraInterfaces->maMap[riid] = *ppvObject;
 
         if (getParam()->mbVerbose)
             std::cout << "..." << this << "@CProxiedUnknown::QueryInterface(" << riid << "): S_OK"
@@ -192,7 +222,7 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
     }
 
     if (nResult == S_OK)
-        mpExtraInterfaces->maExtraInterfaces[riid] = *ppvObject;
+        mpExtraInterfaces->maMap[riid] = *ppvObject;
 
     return nResult;
 }
@@ -211,6 +241,12 @@ ULONG STDMETHODCALLTYPE CProxiedUnknown::Release()
     ULONG nRetval = mpUnknownToProxy->Release();
     if (getParam()->mbVerbose)
         std::cout << this << "@CProxiedUnknown::Release: " << nRetval << std::endl;
+
+    if (nRetval == 0 && mpBaseClassUnknown == NULL)
+    {
+        assert(mpLookupMap->maMap.count(mpUnknownToProxy) == 1);
+        mpLookupMap->maMap.erase(this);
+    }
 
     return nRetval;
 }
