@@ -97,6 +97,7 @@
       <AdditionalOptions>
       </AdditionalOptions>
       <DisableSpecificWarnings>4514;4626;4710;4711;4820;5027</DisableSpecificWarnings>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -112,6 +113,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)..\include;$(ProjectDir)..\generated;$(ProjectDir)..\..\include</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4514;4626;4710;4711;4820;5027</DisableSpecificWarnings>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -129,6 +131,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)..\include;$(ProjectDir)..\generated;$(ProjectDir)..\..\include</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4514;4626;4710;4711;4820;5027</DisableSpecificWarnings>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -148,6 +151,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)..\include;$(ProjectDir)..\generated;$(ProjectDir)..\..\include</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4514;4626;4710;4711;4820;5027</DisableSpecificWarnings>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -159,9 +163,21 @@
     <ClCompile Include="..\generated\CExcel_Workbooks.cxx" />
     <ClCompile Include="..\generated\CExcel__Application.cxx" />
     <ClCompile Include="..\generated\CExcel__Workbook.cxx" />
+    <ClCompile Include="..\generated\CWord_Bookmark.cxx" />
+    <ClCompile Include="..\generated\CWord_Bookmarks.cxx" />
+    <ClCompile Include="..\generated\CWord_Comment.cxx" />
+    <ClCompile Include="..\generated\CWord_Comments.cxx" />
     <ClCompile Include="..\generated\CWord_Documents.cxx" />
+    <ClCompile Include="..\generated\CWord_Paragraph.cxx" />
+    <ClCompile Include="..\generated\CWord_Paragraphs.cxx" />
+    <ClCompile Include="..\generated\CWord_Range.cxx" />
+    <ClCompile Include="..\generated\CWord_Section.cxx" />
+    <ClCompile Include="..\generated\CWord_Sections.cxx" />
+    <ClCompile Include="..\generated\CWord_Window.cxx" />
+    <ClCompile Include="..\generated\CWord_Windows.cxx" />
     <ClCompile Include="..\generated\CWord__Application.cxx" />
     <ClCompile Include="..\generated\CWord__Document.cxx" />
+    <ClCompile Include="..\generated\CWord__Font.cxx" />
     <ClCompile Include="..\generated\Excel_AppEvents.cxx" />
     <ClCompile Include="..\generated\Word_ApplicationEvents4.cxx" />
     <ClCompile Include="..\generated\Word_DocumentEvents2.cxx" />
