@@ -1628,6 +1628,8 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                                          vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
                                   << "));\n";
 
+                            // FIXME: The code snippet below is copy-pasted right below, and the
+                            // inner part of it once more.
                             if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET
                                 || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
                             {
@@ -1638,9 +1640,9 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                                 aCode << "            std::cout << \" -> \" << *"
                                       << convertUTF16ToUTF8(
                                              vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
-                                      << " << \"\\n\";\n";
+                                      << " << std::endl;\n";
                                 aCode << "        else\n";
-                                aCode << "            std::cout << \" -> \" << "
+                                aCode << "            std::cout << \": \" << "
                                          "HRESULT_to_string(nResult) << std::endl;\n";
                                 aCode << "        mbIsAtBeginningOfLine = true;\n";
                                 aCode << "    }\n";
@@ -1658,15 +1660,18 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                         {
                             aCode << "    if (getParam()->mbVerbose || "
                                      "getParam()->mbTraceOnly)\n";
+                            aCode << "    {\n";
                             aCode << "        if (nResult == S_OK)\n";
                             aCode << "            std::cout << \" -> \" << *"
                                   << convertUTF16ToUTF8(
                                          vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
-                                  << " << \"\\n\";\n";
+                                  << " << std::endl;\n";
                             aCode << "        else\n";
-                            aCode << "            std::cout << HRESULT_to_string(nResult) << "
+                            aCode << "            std::cout << \": \" << "
+                                     "HRESULT_to_string(nResult) << "
                                      "std::endl;\n";
                             aCode << "        mbIsAtBeginningOfLine = true;\n";
+                            aCode << "    }\n";
                         }
                     }
                     else
@@ -1677,7 +1682,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                         aCode << "        if (nResult == S_OK)\n";
                         aCode << "            std::cout << \"?\\n\";\n";
                         aCode << "        else\n";
-                        aCode << "            std::cout << HRESULT_to_string(nResult) << "
+                        aCode << "            std::cout << \": \" << HRESULT_to_string(nResult) << "
                                  "std::endl;\n";
                         aCode << "        mbIsAtBeginningOfLine = true;\n";
                         aCode << "    }\n";
