@@ -152,9 +152,6 @@ public:
     }
 };
 
-// FIXME: These general functions here in the beginning should really be somwhere else. I seem to
-// end up copy-pasting them anyway.
-
 static bool IsIgnoredType(const std::string& sLibName, ITypeInfo* pTypeInfo)
 {
     if (aOnlyTheseInterfaces.size() == 0)
