@@ -28,3 +28,12 @@
 - A VT_UNKNOWN VARIANT is an IUnknown pointer. (It is not something
   "unknown" and weird.) We probably need to handle such in some
   places.
+
+- Add detection of type of objects returned from enumerations: Add a
+  way to check if the objects if of some of the types of interfaces
+  that we handle, and in that case proxy it.
+
+  For objects returned as out parameters from methods or from property
+  getters I think it already works like that. At least the latter.
+  Anyway, some out parameters or retvals are marked to be just
+  IDispatch*, but presumably could actually be some type we know?
