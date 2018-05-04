@@ -23,6 +23,7 @@
 #include "utils.hpp"
 
 #include "CProxiedDispatch.hpp"
+#include "CProxiedEnumVARIANT.hpp"
 
 #include "ProxyCreator.hxx"
 
@@ -314,6 +315,12 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
                     pVarResult->pdispVal = ProxyCreator(pResultTA->guid, pVarResult->pdispVal);
                     pResultTI->ReleaseTypeAttr(pResultTA);
                 }
+            }
+            else if (dispIdMember == DISPID_NEWENUM && pVarResult != NULL
+                     && pVarResult->vt == VT_UNKNOWN
+                     && pFuncDesc->elemdescFunc.tdesc.vt == VT_UNKNOWN)
+            {
+                pVarResult->punkVal = new CProxiedEnumVARIANT(pVarResult->punkVal, msLibName);
             }
         }
     }

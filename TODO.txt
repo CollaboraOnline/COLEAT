@@ -28,3 +28,7 @@
 - A VT_UNKNOWN VARIANT is an IUnknown pointer. (It is not something
   "unknown" and weird.) We probably need to handle such in some
   places.
+
+- Also proxy objects returned by the IEnumVARIANT::Next() calls.
+  Before that, we need to introduce a mechanism to make sure each COM
+  object has at most one proxy object.

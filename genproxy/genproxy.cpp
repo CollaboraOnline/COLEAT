@@ -228,7 +228,7 @@ static std::string VarTypeToString(VARTYPE n)
             sResult = "VARIANT";
             break;
         case VT_UNKNOWN:
-            sResult = "/* UNKNOWN */ void*";
+            sResult = "IUnknown*";
             break;
         case VT_I1:
             sResult = "int8_t";
@@ -1131,9 +1131,8 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
 
                 if (sReferencedName != "" && !aIncludedHeaders.count(sReferencedName))
                 {
-                    // Also output a forward declaration in case of circular dependnecy between headers
+                    // Just output a forward declaration in case of circular dependnecy between headers
                     aHeader << "class " << sReferencedName << ";\n";
-                    // aHeader << "#include \"" << sReferencedName << ".hxx\"\n";
                     aIncludedHeaders.insert(sReferencedName);
                 }
             }
@@ -1649,6 +1648,41 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                             }
                         }
                         pReferencedTypeInfo->ReleaseTypeAttr(pReferencedTypeAttr);
+                    }
+                    else if (vVtblFuncTable[nFunc].mpFuncDesc->memid == DISPID_NEWENUM
+                             && vVtblFuncTable[nFunc]
+                                        .mpFuncDesc->lprgelemdescParam[nRetvalParam]
+                                        .tdesc.vt
+                                    == VT_PTR
+                             && vVtblFuncTable[nFunc]
+                                        .mpFuncDesc->lprgelemdescParam[nRetvalParam]
+                                        .tdesc.lptdesc->vt
+                                    == VT_UNKNOWN)
+                    {
+                        if (!aIncludedHeaders.count("CProxiedEnumVARIANT"))
+                            aHeader << "#include \"CProxiedEnumVARIANT.hpp\"\n";
+
+                        aCode << "    if (nResult == S_OK)\n";
+                        aCode
+                            << "        *"
+                            << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
+                            << " = new CProxiedEnumVARIANT(*"
+                            << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
+                            << ", \"" << sLibName << "\");\n";
+
+                        aCode << "    if (getParam()->mbVerbose || "
+                                 "getParam()->mbTraceOnly)\n";
+                        aCode << "    {\n";
+                        aCode << "        if (nResult == S_OK)\n";
+                        aCode << "            std::cout << *"
+                              << convertUTF16ToUTF8(
+                                     vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
+                              << " << std::endl;\n";
+                        aCode << "        else\n";
+                        aCode << "            std::cout << \": \" << HRESULT_to_string(nResult) << "
+                                 "std::endl;\n";
+                        aCode << "        mbIsAtBeginningOfLine = true;\n";
+                        aCode << "    }\n";
                     }
                     else if (isDirectlyPrintableType(
                                  vVtblFuncTable[nFunc]
