@@ -40,3 +40,7 @@
 
 - Print out parameters also in CProxiedDispatch::Invoke, like in the
   generated proxy methods.
+
+- Split the -t functionality into its two orthogonal aspects: Separate
+  options for a terse pseudo-code-like output and for using original
+  app, not the replacement.
