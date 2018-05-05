@@ -44,3 +44,14 @@
 - Split the -t functionality into its two orthogonal aspects: Separate
   options for a terse pseudo-code-like output and for using original
   app, not the replacement.
+
+- When doing no redirection, just tracing, as long as the client uses
+  late binding, we should be able to trace also interfaces we haven't
+  generated any proxies for, as long as all the necessary type
+  information is available at run-time. I have more or less ignored
+  that approach path since I started looking into VB6-created clients
+  that use early binding where we can trace (or redirect) only
+  interfaces for which we have generated proxies beforehand.
+
+  (Obviously it would be meaningless to do redirection of unknown
+  interfaces; how would the replacement app know what they do?)
