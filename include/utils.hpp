@@ -445,7 +445,7 @@ inline std::basic_ostream<char, traits>& operator<<(std::basic_ostream<char, tra
                          RRF_RT_REG_SZ, NULL, sValue.data(), &nSize)
             == ERROR_SUCCESS)
         {
-            stream << "{" << convertUTF16ToUTF8(sValue.data()) << "}";
+            stream << convertUTF16ToUTF8(sValue.data());
         }
     }
     else
