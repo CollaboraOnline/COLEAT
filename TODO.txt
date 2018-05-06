@@ -25,6 +25,9 @@
   returned, we again create a new CWord_Document to proxy the return
   value from that function.
 
+  Commit 4deff7ec7bb883c93dc42ef5960867267bf3360f attempts to handle
+  this, not sure if it is enough.
+
 - A VT_UNKNOWN VARIANT is an IUnknown pointer. (It is not something
   "unknown" and weird.) We probably need to handle such in some
   places.
