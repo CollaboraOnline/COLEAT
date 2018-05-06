@@ -39,7 +39,7 @@ CProxiedCoclass::CProxiedCoclass(const InterfaceMapping& rMapping)
     assert(!mbIsActive);
     mbIsActive = true;
 
-    if (getParam()->mbVerbose || getParam()->mbTraceOnly)
+    if (getParam()->mbTrace || getParam()->mbVerbose)
         std::cout << "new " << rMapping.msFromLibName << "." << rMapping.msFromCoclassName << " -> "
                   << this << "\n";
 }
@@ -49,7 +49,7 @@ bool CProxiedCoclass::IsActive() { return mbIsActive; }
 IDispatch* CProxiedCoclass::createDispatchToProxy(const InterfaceMapping& rMapping)
 {
     const IID aProxiedOrReplacementIID
-        = (getParam()->mbTraceOnly ? rMapping.maFromCoclass : rMapping.maReplacementCoclass);
+        = (getParam()->mbNoReplacement ? rMapping.maFromCoclass : rMapping.maReplacementCoclass);
 
     // If we are only tracing, there replacement app does not have to be installed, as we won't
     // actually instantiate any COM service using its CLSID. The mpReplacementAppUnknown and

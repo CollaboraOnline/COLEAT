@@ -144,12 +144,12 @@ HRESULT STDMETHODCALLTYPE CProxiedSink::Invoke(DISPID dispIdMember, REFIID riid,
     }
     else
     {
-        // mpTypeInfoOfOutgoingInterface can be NULL only when we are in tracing-only mode, i.e.
+        // mpTypeInfoOfOutgoingInterface can be NULL only when we are in no-replacement mode, i.e.
         // when the client we are tracing is connected to the very application that provided the
         // type information the client was built against. Then we can use the dispIdMember parameter
         // to this function directly also the dispIdMember passed on to when invoking the client
         // callback.
-        assert(getParam()->mbTraceOnly);
+        assert(getParam()->mbNoReplacement);
         nDispIdMemberInClient = dispIdMember;
     }
 

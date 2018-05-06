@@ -189,7 +189,7 @@ HRESULT STDMETHODCALLTYPE CProxiedUnknown::QueryInterface(REFIID riid, void** pp
         nResult = mpUnknownToProxy->QueryInterface(IID_IProvideClassInfo, (void**)&pPCI);
         if (nResult != S_OK)
         {
-            if (!getParam()->mbTraceOnly)
+            if (!getParam()->mbNoReplacement)
             {
                 if (getParam()->mbVerbose)
                     std::cout

@@ -41,10 +41,6 @@
 - Print out parameters also in CProxiedDispatch::Invoke, like in the
   generated proxy methods.
 
-- Split the -t functionality into its two orthogonal aspects: Separate
-  options for a terse pseudo-code-like output and for using original
-  app, not the replacement.
-
 - When doing no redirection, just tracing, as long as the client uses
   late binding, we should be able to trace also interfaces we haven't
   generated any proxies for, as long as all the necessary type

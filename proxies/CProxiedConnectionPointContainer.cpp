@@ -98,14 +98,14 @@ CProxiedConnectionPointContainer::FindConnectionPoint(REFIID riid, IConnectionPo
         if (IsEqualIID(riid, aMapEntry.maSourceInterfaceInProxiedApp))
         {
             const IID aProxiedOrReplacementIID
-                = (getParam()->mbTraceOnly ? aMapEntry.maSourceInterfaceInProxiedApp
-                                           : aMapEntry.maOutgoingInterfaceInReplacement);
+                = (getParam()->mbNoReplacement ? aMapEntry.maSourceInterfaceInProxiedApp
+                                               : aMapEntry.maOutgoingInterfaceInReplacement);
 
             ITypeInfo* pTI = NULL;
 
             if (mpProvideClassInfo == NULL)
             {
-                assert(getParam()->mbTraceOnly);
+                assert(getParam()->mbNoReplacement);
             }
             else
             {

@@ -265,7 +265,7 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
         }
     }
 
-    if (getParam()->mbTraceOnly)
+    if (getParam()->mbTrace)
     {
         std::cout << msLibName << "." << std::flush;
 
@@ -345,7 +345,7 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
         }
     }
 
-    if (getParam()->mbTraceOnly)
+    if (getParam()->mbTrace)
     {
         // FIXME: Print inout and out parameters here.
 

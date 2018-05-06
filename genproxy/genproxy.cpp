@@ -472,7 +472,7 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
     aCode << "{\n";
 
     aCode << "    if (CProxiedUnknown::getParam()->mbVerbose || "
-             "CProxiedUnknown::getParam()->mbTraceOnly)\n";
+             "CProxiedUnknown::getParam()->mbTrace)\n";
     aCode << "    {\n";
     aCode << "        if (!CProxiedUnknown::mbIsAtBeginningOfLine)\n";
     aCode << "            std::cout << \"\\n\" << CProxiedUnknown::indent();\n";
@@ -533,7 +533,7 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
               << "\n";
         aCode << "            {\n";
         aCode << "                if (CProxiedUnknown::getParam()->mbVerbose || "
-                 "CProxiedUnknown::getParam()->mbTraceOnly)\n";
+                 "CProxiedUnknown::getParam()->mbTrace)\n";
         aCode << "                {\n";
         aCode << "                    std::cout << \"" << convertUTF16ToUTF8(sFuncName)
               << "\" << std::endl;\n";
@@ -1175,7 +1175,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
 
         aCode << "{\n";
 
-        aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
+        aCode << "    if (getParam()->mbTrace || getParam()->mbVerbose)\n";
         aCode << "    {\n";
         aCode << "        std::cout << indent() << \"" << sLibName << "." << sTypeName
               << "<\" << (mpBaseClassUnknown ? mpBaseClassUnknown : this) << \">."
@@ -1269,8 +1269,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                 aCode << "    (void) "
                       << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[nParam + 1u]) << ";\n";
 
-                aCode
-                    << "    if (!bGotAll && (getParam()->mbVerbose || getParam()->mbTraceOnly))\n";
+                aCode << "    if (!bGotAll && (getParam()->mbTrace || getParam()->mbVerbose))\n";
                 aCode << "        std::cout";
                 if (nParam > 0)
                     aCode << " << \",\"";
@@ -1454,7 +1453,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
             }
             aCode << "    }\n";
 
-            aCode << "    if (!bGotAll && (getParam()->mbVerbose || getParam()->mbTraceOnly))\n";
+            aCode << "    if (!bGotAll && (getParam()->mbTrace || getParam()->mbVerbose))\n";
             aCode << "    {\n";
             aCode << "        std::cout";
             if (nParam > 0)
@@ -1521,7 +1520,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
 
         if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
         {
-            aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
+            aCode << "    if (getParam()->mbTrace || getParam()->mbVerbose)\n";
             aCode << "        std::cout << \")";
             aCode << "\";\n";
         }
@@ -1580,8 +1579,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                     if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET
                         || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
                     {
-                        aCode << "        if (getParam()->mbVerbose || "
-                                 "getParam()->mbTraceOnly)\n";
+                        aCode << "        if (getParam()->mbTrace || getParam()->mbVerbose)\n";
                         aCode << "            std::cout << *"
                               << convertUTF16ToUTF8(
                                      vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
@@ -1593,8 +1591,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                     if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET
                         || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
                     {
-                        aCode << "        if (getParam()->mbVerbose || "
-                                 "getParam()->mbTraceOnly)\n";
+                        aCode << "        if (getParam()->mbTrace || getParam()->mbVerbose)\n";
                         aCode << "            std::cout << *"
                               << convertUTF16ToUTF8(
                                      vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
@@ -1657,8 +1654,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                             if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET
                                 || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
                             {
-                                aCode << "    if (getParam()->mbVerbose || "
-                                         "getParam()->mbTraceOnly)\n";
+                                aCode << "    if (getParam()->mbTrace || getParam()->mbVerbose)\n";
                                 aCode << "    {\n";
                                 aCode << "        if (nResult == S_OK)\n";
                                 aCode << "            std::cout << \" -> \" << *"
@@ -1695,8 +1691,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                             << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[nRetvalParam + 1u])
                             << ", \"" << sLibName << "\");\n";
 
-                        aCode << "    if (getParam()->mbVerbose || "
-                                 "getParam()->mbTraceOnly)\n";
+                        aCode << "    if (getParam()->mbTrace || getParam()->mbVerbose)\n";
                         aCode << "    {\n";
                         aCode << "        if (nResult == S_OK)\n";
                         aCode << "            std::cout << *"
@@ -1717,8 +1712,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                         if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET
                             || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
                         {
-                            aCode << "    if (getParam()->mbVerbose || "
-                                     "getParam()->mbTraceOnly)\n";
+                            aCode << "    if (getParam()->mbTrace || getParam()->mbVerbose)\n";
                             aCode << "    {\n";
                             aCode << "        if (nResult == S_OK)\n";
                             aCode << "            std::cout << \" -> \" << *"
@@ -1735,8 +1729,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                     }
                     else
                     {
-                        aCode << "    if (getParam()->mbVerbose || "
-                                 "getParam()->mbTraceOnly)\n";
+                        aCode << "    if (getParam()->mbTrace || getParam()->mbVerbose)\n";
                         aCode << "    {\n";
                         aCode << "        if (nResult == S_OK)\n";
                         aCode << "            std::cout << \"?\\n\";\n";
@@ -1758,7 +1751,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         }
         else
         {
-            aCode << "    if (getParam()->mbVerbose || getParam()->mbTraceOnly)\n";
+            aCode << "    if (getParam()->mbTrace || getParam()->mbVerbose)\n";
             aCode << "    {\n";
             aCode << "        std::cout << std::endl;\n";
             aCode << "        mbIsAtBeginningOfLine = true;\n";

@@ -17,14 +17,13 @@
 
 #pragma warning(pop)
 
-union FunPtr
-{
+union FunPtr {
     PVOID pVoid;
     PROC pProc;
     PTHREAD_START_ROUTINE pStartRoutine;
-    HMODULE (WINAPI *pLoadLibraryW)(wchar_t*);
-    DWORD (WINAPI *pGetLastError)();
-    PVOID (WINAPI *pGetProcAddress)(HMODULE, char*);
+    HMODULE(WINAPI* pLoadLibraryW)(wchar_t*);
+    DWORD(WINAPI* pGetLastError)();
+    PVOID(WINAPI* pGetProcAddress)(HMODULE, char*);
 };
 
 struct ThreadProcParam
@@ -36,8 +35,9 @@ struct ThreadProcParam
     FunPtr mpGetProcAddress;
 
     bool mbPassedSizeCheck;
+    bool mbNoReplacement;
+    bool mbTrace;
     bool mbVerbose;
-    bool mbTraceOnly;
 
     static const int NFUNCTION = 100;
     char msInjectedDllMainFunction[NFUNCTION];

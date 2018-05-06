@@ -59,7 +59,7 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumVARIANT::Next(ULONG celt, VARIANT* rgVar, 
 
     nResult = mpEVToProxy->Next(celt, rgVar, pCeltFetched);
 
-    if (getParam()->mbTraceOnly)
+    if (getParam()->mbTrace)
         std::cout << "Enum<" << this << ">.Next(" << celt << "): " << HRESULT_to_string(nResult)
                   << std::endl;
     else if (getParam()->mbVerbose)
@@ -69,7 +69,7 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumVARIANT::Next(ULONG celt, VARIANT* rgVar, 
     if (FAILED(nResult) || nResult == S_FALSE)
         return nResult;
 
-    if (getParam()->mbTraceOnly || getParam()->mbVerbose)
+    if (getParam()->mbTrace || getParam()->mbVerbose)
     {
         ULONG nFetched;
         if (pCeltFetched != NULL)

@@ -74,8 +74,8 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumConnectionPoints::Next(ULONG cConnections,
         for (const auto aMapEntry : aOutgoingInterfaceMap)
         {
             const IID aProxiedOrReplacementIID
-                = (CProxiedUnknown::getParam()->mbTraceOnly ? aMapEntry.maProxiedAppIID
-                                                            : aMapEntry.maReplacementIID);
+                = (CProxiedUnknown::getParam()->mbNoReplacement ? aMapEntry.maProxiedAppIID
+                                                                : aMapEntry.maReplacementIID);
 
             if (IsEqualIID(aIID, aProxiedOrReplacementIID))
             {

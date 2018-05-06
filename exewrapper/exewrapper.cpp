@@ -118,7 +118,8 @@ int wmain(int argc, wchar_t** argv)
     int argi = 3;
 
     bool bDebug = false;
-    bool bTraceOnly = false;
+    bool bNoReplacement = false;
+    bool bTrace = false;
     bool bVerbose = false;
 
     while (argi < argc && argv[argi][0] == L'-')
@@ -130,8 +131,11 @@ int wmain(int argc, wchar_t** argv)
                 bDebug = true;
                 break;
             }
+            case L'n':
+                bNoReplacement = true;
+                break;
             case L't':
-                bTraceOnly = true;
+                bTrace = true;
                 break;
             case L'v':
                 bVerbose = true;
@@ -241,7 +245,8 @@ int wmain(int argc, wchar_t** argv)
     aParam.mpLoadLibraryW.pVoid = GetProcAddress(hKernel32, "LoadLibraryW");
     aParam.mpGetLastError.pVoid = GetProcAddress(hKernel32, "GetLastError");
     aParam.mpGetProcAddress.pVoid = GetProcAddress(hKernel32, "GetProcAddress");
-    aParam.mbTraceOnly = bTraceOnly;
+    aParam.mbNoReplacement = bNoReplacement;
+    aParam.mbTrace = bTrace;
     aParam.mbVerbose = bVerbose;
     strcpy_s(aParam.msInjectedDllMainFunction, ThreadProcParam::NFUNCTION,
              "InjectedDllMainFunction");
