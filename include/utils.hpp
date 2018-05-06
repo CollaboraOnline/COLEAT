@@ -680,6 +680,22 @@ inline bool isDirectlyPrintableType(VARTYPE nVt)
     }
 }
 
+inline std::string prettyCodeAddress(void* pCode)
+{
+    HMODULE hModule;
+    if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, (wchar_t*)pCode, &hModule))
+        return to_ullhex((uintptr_t)pCode);
+
+    const DWORD NFILENAME = 1000;
+    static wchar_t sFileName[NFILENAME];
+
+    DWORD nSizeOut = GetModuleFileNameW(hModule, sFileName, NFILENAME);
+    if (nSizeOut == 0 || nSizeOut == NFILENAME)
+        return to_ullhex((uintptr_t)pCode);
+
+    return convertUTF16ToUTF8(baseName(sFileName)) + "!" + to_ullhex((uintptr_t)pCode);
+}
+
 #endif // INCLUDED_UTILS_HPP
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab cinoptions=b1,g0,N-s cinkeys+=0=break: */
