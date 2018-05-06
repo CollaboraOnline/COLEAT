@@ -52,5 +52,13 @@
   that use early binding where we can trace (or redirect) only
   interfaces for which we have generated proxies beforehand.
 
+  The condition above is quite a bold one, though. Can we be sure that
+  random clients (that aren't generic interpreters, like cscript,
+  which by necessity use late binding) really do use late binding,
+  that they only use IDispatch::Invoke to call methods, and not
+  directly call the methods of interfaces they "know"? Probably no. To
+  handle such, we would need to generate vtables and trampolines at
+  run-time.
+
   (Obviously it would be meaningless to do redirection of unknown
   interfaces; how would the replacement app know what they do?)
