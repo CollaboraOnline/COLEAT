@@ -372,10 +372,10 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
         else
         {
             if (pVarResult != NULL)
-            {
                 std::cout << " -> " << *pVarResult;
-                mbIsAtBeginningOfLine = true;
-            }
+
+            std::cout << std::endl;
+            mbIsAtBeginningOfLine = true;
         }
 
         if (pFuncDesc != NULL)
