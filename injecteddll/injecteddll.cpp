@@ -76,6 +76,13 @@ static void printCreateInstanceResult(void* pV)
 {
     HRESULT nResult;
     IDispatch* pDispatch = NULL;
+
+    // Silence verbosity while doing the QueryInterface() etc calls here, they might go through our
+    // proxies, and it is pointless to do verbose logging those proxies for caused by fetching of
+    // information for verbose logging...
+    bool bWasVerbose = pGlobalParamPtr->mbVerbose;
+    pGlobalParamPtr->mbVerbose = false;
+
     nResult = ((IUnknown*)pV)->QueryInterface(IID_IDispatch, (void**)&pDispatch);
 
     ITypeInfo* pTI = NULL;
@@ -102,6 +109,8 @@ static void printCreateInstanceResult(void* pV)
         SysFreeString(sTypeName);
     if (sLibName != NULL)
         SysFreeString(sLibName);
+
+    pGlobalParamPtr->mbVerbose = bWasVerbose;
 }
 
 static HRESULT WINAPI myCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext,
@@ -145,7 +154,7 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
         std::cout << "myCoCreateInstanceEx(" << clsid << ", " << dwCount << ") from "
                   << prettyCodeAddress(_ReturnAddress()) << std::endl;
         for (DWORD j = 0; j < dwCount; ++j)
-            std::cout << "   " << *pResults[j].pIID << std::endl;
+            std::cout << "   " << j << "(" << dwCount << "): " << *pResults[j].pIID << std::endl;
     }
 
     for (int i = 0; i < sizeof(aInterfaceMap) / sizeof(aInterfaceMap[0]); ++i)
@@ -160,14 +169,23 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
                 pResults[j].hr
                     = pCoclass->QueryInterface(*pResults[j].pIID, (void**)&pResults[j].pItf);
                 if (pResults[j].hr == S_OK)
-                {
                     ++nSuccess;
-                    if (pGlobalParamPtr->mbVerbose)
+            }
+            if (pGlobalParamPtr->mbVerbose)
+            {
+                for (DWORD j = 0; j < dwCount; ++j)
+                {
+                    std::cout << "...myCoCreateInstanceEx(" << clsid << "): " << j << "(" << dwCount
+                              << "): "
+                              << ": ";
+                    if (pResults[j].hr == S_OK)
                     {
-                        std::cout << "...myCoCreateInstanceEx(" << clsid << "): result for "
-                                  << *pResults[j].pIID << ": ";
+                        std::cout << *pResults[j].pIID << ": ";
                         printCreateInstanceResult(pResults[j].pItf);
                     }
+                    else
+                        std::cout << HRESULT_to_string(pResults[j].hr) << std::endl;
+                    ;
                 }
             }
             if (nSuccess == dwCount)
