@@ -72,6 +72,38 @@ static void storeError(ThreadProcParam* pParam, const wchar_t* pPrefix,
     }
 }
 
+static void printCreateInstanceResult(void* pV)
+{
+    HRESULT nResult;
+    IDispatch* pDispatch = NULL;
+    nResult = ((IUnknown*)pV)->QueryInterface(IID_IDispatch, (void**)&pDispatch);
+
+    ITypeInfo* pTI = NULL;
+    if (nResult == S_OK)
+        nResult = pDispatch->GetTypeInfo(0, LOCALE_SYSTEM_DEFAULT, &pTI);
+
+    BSTR sTypeName = NULL;
+    if (nResult == S_OK)
+        nResult = pTI->GetDocumentation(MEMBERID_NIL, &sTypeName, NULL, NULL, NULL);
+
+    ITypeLib* pTL = NULL;
+    UINT nIndex;
+    if (nResult == S_OK)
+        nResult = pTI->GetContainingTypeLib(&pTL, &nIndex);
+
+    BSTR sLibName = NULL;
+    if (nResult == S_OK)
+        nResult = pTL->GetDocumentation(-1, &sLibName, NULL, NULL, NULL);
+
+    std::cout << pV << " (" << (sLibName != NULL ? convertUTF16ToUTF8(sLibName) : "?") << "."
+              << (sTypeName != NULL ? convertUTF16ToUTF8(sTypeName) : "?") << ")" << std::endl;
+
+    if (sTypeName != NULL)
+        SysFreeString(sTypeName);
+    if (sLibName != NULL)
+        SysFreeString(sLibName);
+}
+
 static HRESULT WINAPI myCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext,
                                          REFIID riid, LPVOID* ppv)
 {
@@ -79,6 +111,8 @@ static HRESULT WINAPI myCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, D
         std::cout << "myCoCreateInstance(" << rclsid << ", " << riid << ") from "
                   << prettyCodeAddress(_ReturnAddress()) << std::endl;
 
+    // Is it one of the interfaces we have generated proxies for? In that case return a proxy for it
+    // to the client.
     for (int i = 0; i < sizeof(aInterfaceMap) / sizeof(aInterfaceMap[0]); ++i)
     {
         if (IsEqualIID(rclsid, aInterfaceMap[i].maFromCoclass))
@@ -90,7 +124,16 @@ static HRESULT WINAPI myCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, D
         }
     }
 
-    return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
+    HRESULT nResult = CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
+
+    if (nResult == S_OK && pGlobalParamPtr->mbVerbose)
+    {
+        std::cout << "...myCoCreateInstance(" << rclsid << ", " << riid << ")"
+                  << " -> ";
+        printCreateInstanceResult(*ppv);
+    }
+
+    return nResult;
 }
 
 static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, DWORD dwClsCtx,
@@ -102,8 +145,7 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
         std::cout << "myCoCreateInstanceEx(" << clsid << ", " << dwCount << ") from "
                   << prettyCodeAddress(_ReturnAddress()) << std::endl;
         for (DWORD j = 0; j < dwCount; ++j)
-            std::cout << "   " << *pResults[j].pIID << "\n";
-        std::cout << std::flush;
+            std::cout << "   " << *pResults[j].pIID << std::endl;
     }
 
     for (int i = 0; i < sizeof(aInterfaceMap) / sizeof(aInterfaceMap[0]); ++i)
@@ -117,8 +159,16 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
             {
                 pResults[j].hr
                     = pCoclass->QueryInterface(*pResults[j].pIID, (void**)&pResults[j].pItf);
-                if (SUCCEEDED(pResults[j].hr))
+                if (pResults[j].hr == S_OK)
+                {
                     ++nSuccess;
+                    if (pGlobalParamPtr->mbVerbose)
+                    {
+                        std::cout << "...myCoCreateInstanceEx(" << clsid << "): result for "
+                                  << *pResults[j].pIID << ": ";
+                        printCreateInstanceResult(pResults[j].pItf);
+                    }
+                }
             }
             if (nSuccess == dwCount)
                 return S_OK;
