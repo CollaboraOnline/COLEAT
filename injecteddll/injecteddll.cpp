@@ -41,28 +41,54 @@ static ThreadProcParam* pGlobalParamPtr;
 
 static int nHookedFunctions = 0;
 
-static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModuleName,
-                 const wchar_t* sDll, const wchar_t* sFunction, PVOID pOwnFunction);
+static bool hook(bool bMandatory, ThreadProcParam* pParam, HMODULE hModule,
+                 const wchar_t* sModuleName, const wchar_t* sDll, const wchar_t* sFunction,
+                 PVOID pOwnFunction);
 
 static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags);
 
-static void storeError(ThreadProcParam* pParam, const wchar_t* pPrefix,
-                       const wchar_t* pPrefix2 = nullptr, const wchar_t* pPrefix3 = nullptr,
-                       const wchar_t* pPrefix4 = nullptr)
+static void showMessage(bool bIsError, ThreadProcParam* pParam)
+{
+    if (pParam->mbPassedInjectedThread)
+    {
+        if (bIsError)
+            std::cerr << convertUTF16ToUTF8(pParam->msErrorExplanation) << std::endl;
+        else if (pParam->mbVerbose)
+            std::cout << convertUTF16ToUTF8(pParam->msErrorExplanation) << std::endl;
+    }
+    else
+    {
+        pParam->mbMessageIsError = bIsError;
+        if (SetEvent(pParam->mhMessageEvent))
+            WaitForSingleObject(pParam->mhMessageEvent, 1000);
+    }
+}
+
+static void storeMessage(bool bIsError, ThreadProcParam* pParam, const wchar_t* pMsg,
+                         const wchar_t* pMsg2 = nullptr, const wchar_t* pMsg3 = nullptr,
+                         const wchar_t* pMsg4 = nullptr, const wchar_t* pMsg5 = nullptr,
+                         const wchar_t* pMsg6 = nullptr)
 {
     LPWSTR pMsgBuf;
-    wcscpy_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION, pPrefix);
-    if (pPrefix2)
+    wcscpy_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION, pMsg);
+    if (pMsg2)
         wcscat_s(pParam->msErrorExplanation,
-                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pPrefix2);
-    if (pPrefix3)
+                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pMsg2);
+    if (pMsg3)
         wcscat_s(pParam->msErrorExplanation,
-                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pPrefix3);
-    if (pPrefix4)
+                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pMsg3);
+    if (pMsg4)
         wcscat_s(pParam->msErrorExplanation,
-                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pPrefix4);
+                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pMsg4);
+    if (pMsg5)
+        wcscat_s(pParam->msErrorExplanation,
+                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pMsg5);
+    if (pMsg6)
+        wcscat_s(pParam->msErrorExplanation,
+                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pMsg6);
 
-    if (GetWindowsErrorString(GetLastError(), &pMsgBuf))
+    if (bIsError && pParam->mbPassedInjectedThread
+        && GetWindowsErrorString(GetLastError(), &pMsgBuf))
     {
         wcscat_s(pParam->msErrorExplanation,
                  ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), L": ");
@@ -70,6 +96,8 @@ static void storeError(ThreadProcParam* pParam, const wchar_t* pPrefix,
                  ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pMsgBuf);
         HeapFree(GetProcessHeap(), 0, pMsgBuf);
     }
+
+    showMessage(bIsError, pParam);
 }
 
 static void printCreateInstanceResult(void* pV)
@@ -117,7 +145,7 @@ static HRESULT WINAPI myCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, D
                                          REFIID riid, LPVOID* ppv)
 {
     if (pGlobalParamPtr->mbVerbose)
-        std::cout << "myCoCreateInstance(" << rclsid << ", " << riid << ") from "
+        std::cout << "CoCreateInstance(" << rclsid << ", " << riid << ") from "
                   << prettyCodeAddress(_ReturnAddress()) << std::endl;
 
     // Is it one of the interfaces we have generated proxies for? In that case return a proxy for it
@@ -137,7 +165,7 @@ static HRESULT WINAPI myCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, D
 
     if (nResult == S_OK && pGlobalParamPtr->mbVerbose)
     {
-        std::cout << "...myCoCreateInstance(" << rclsid << ", " << riid << ")"
+        std::cout << "...CoCreateInstance(" << rclsid << ", " << riid << ")"
                   << " -> ";
         printCreateInstanceResult(*ppv);
     }
@@ -151,7 +179,7 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
 {
     if (pGlobalParamPtr->mbVerbose)
     {
-        std::cout << "myCoCreateInstanceEx(" << clsid << ", " << dwCount << ") from "
+        std::cout << "CoCreateInstanceEx(" << clsid << ", " << dwCount << ") from "
                   << prettyCodeAddress(_ReturnAddress()) << std::endl;
         for (DWORD j = 0; j < dwCount; ++j)
             std::cout << "   " << j << "(" << dwCount << "): " << *pResults[j].pIID << std::endl;
@@ -175,7 +203,7 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
             {
                 for (DWORD j = 0; j < dwCount; ++j)
                 {
-                    std::cout << "...myCoCreateInstanceEx(" << clsid << "): " << j << "(" << dwCount
+                    std::cout << "...CoCreateInstanceEx(" << clsid << "): " << j << "(" << dwCount
                               << "): "
                               << ": ";
                     if (pResults[j].hr == S_OK)
@@ -208,7 +236,7 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
     if (hModule == hOle32 && std::strcmp(lpProcName, "CoCreateInstanceEx") == 0)
     {
         if (pGlobalParamPtr->mbVerbose)
-            std::cout << "myGetProcAddress(CoCreateInstanceEx) from "
+            std::cout << "GetProcAddress(CoCreateInstanceEx) from "
                       << prettyCodeAddress(_ReturnAddress()) << std::endl;
         pFun.pVoid = myCoCreateInstanceEx;
         return pFun.pProc;
@@ -217,7 +245,7 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
     if (hModule == hOle32 && std::strcmp(lpProcName, "CoCreateInstance") == 0)
     {
         if (pGlobalParamPtr->mbVerbose)
-            std::cout << "myGetProcAddress(CoCreateInstance) from "
+            std::cout << "GetProcAddress(CoCreateInstance) from "
                       << prettyCodeAddress(_ReturnAddress()) << std::endl;
         pFun.pVoid = myCoCreateInstance;
         return pFun.pProc;
@@ -229,22 +257,34 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
 static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
 {
     if (pGlobalParamPtr->mbVerbose)
-        std::cout << "myLoadLibraryW(" << convertUTF16ToUTF8(lpFileName) << ") from "
+        std::cout << "LoadLibraryW(" << convertUTF16ToUTF8(lpFileName) << ") from "
                   << prettyCodeAddress(_ReturnAddress()) << std::endl;
 
     HMODULE hModule = LoadLibraryW(lpFileName);
+    DWORD nLastError = GetLastError();
 
-    if (hModule != NULL)
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "...LoadLibraryW(" << convertUTF16ToUTF8(lpFileName) << "): " << hModule;
+
+    if (hModule == NULL)
     {
-        hook(pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"GetProcAddress",
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << ": " << WindowsErrorString(nLastError) << std::endl;
+    }
+    else
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << std::endl;
+
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"GetProcAddress",
              myGetProcAddress);
-        hook(pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"LoadLibraryW",
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"LoadLibraryW",
              myLoadLibraryW);
-        hook(pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"LoadLibraryExW",
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"LoadLibraryExW",
              myLoadLibraryExW);
-        hook(pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", L"CoCreateInstance",
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", L"CoCreateInstance",
              myCoCreateInstance);
-        hook(pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", L"CoCreateInstanceEx",
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", L"CoCreateInstanceEx",
              myCoCreateInstanceEx);
     }
 
@@ -254,23 +294,40 @@ static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
 static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags)
 {
     if (pGlobalParamPtr->mbVerbose)
-        std::cout << "myLoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ") from "
-                  << prettyCodeAddress(_ReturnAddress()) << std::endl;
+        std::cout << "LoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ", " << to_uhex(dwFlags)
+                  << ") from " << prettyCodeAddress(_ReturnAddress()) << std::endl;
 
     HMODULE hModule = LoadLibraryExW(lpFileName, hFile, dwFlags);
+    DWORD nLastError = GetLastError();
 
-    if (hModule != NULL)
+    if (hModule == NULL)
     {
-        hook(pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"GetProcAddress",
-             myGetProcAddress);
-        hook(pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"LoadLibraryW",
-             myLoadLibraryW);
-        hook(pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"LoadLibraryExW",
-             myLoadLibraryExW);
-        hook(pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", L"CoCreateInstance",
-             myCoCreateInstance);
-        hook(pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", L"CoCreateInstanceEx",
-             myCoCreateInstanceEx);
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << "...LoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ", "
+                      << to_uhex(dwFlags) << "): " << hModule << ": "
+                      << WindowsErrorString(nLastError) << std::endl;
+    }
+    else
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << "...LoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ", "
+                      << to_uhex(dwFlags) << "): " << hModule << std::endl;
+
+        if (!(dwFlags
+              & (LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE
+                 | LOAD_LIBRARY_AS_IMAGE_RESOURCE)))
+        {
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"GetProcAddress",
+                 myGetProcAddress);
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"LoadLibraryW",
+                 myLoadLibraryW);
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", L"LoadLibraryExW",
+                 myLoadLibraryExW);
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", L"CoCreateInstance",
+                 myCoCreateInstance);
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", L"CoCreateInstanceEx",
+                 myCoCreateInstanceEx);
+        }
     }
 
     return hModule;
@@ -280,8 +337,9 @@ static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD d
 // std::cout and std::cerr. They run in a thread created before those have been set up. They can,
 // however, use Win32 API directly.
 
-static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModuleName,
-                 const wchar_t* sDll, const wchar_t* sFunction, PVOID pOwnFunction)
+static bool hook(bool bMandatory, ThreadProcParam* pParam, HMODULE hModule,
+                 const wchar_t* sModuleName, const wchar_t* sDll, const wchar_t* sFunction,
+                 PVOID pOwnFunction)
 {
     ULONG nSize;
     PIMAGE_IMPORT_DESCRIPTOR pImportDescriptor
@@ -289,7 +347,8 @@ static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModul
             hModule, TRUE, IMAGE_DIRECTORY_ENTRY_IMPORT, &nSize, NULL);
     if (pImportDescriptor == NULL)
     {
-        storeError(pParam, L"Could not find import directory in ", sModuleName);
+        if (bMandatory)
+            storeMessage(bMandatory, pParam, L"Could not find import directory in ", sModuleName);
         return false;
     }
 
@@ -307,15 +366,10 @@ static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModul
 
     if (!bFound)
     {
-        wcscpy_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION,
-                 L"Import descriptor for ");
-        wcscat_s(pParam->msErrorExplanation,
-                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), sDll);
-        wcscat_s(pParam->msErrorExplanation,
-                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation),
-                 L" not found in ");
-        wcscat_s(pParam->msErrorExplanation,
-                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), sModuleName);
+        if (bMandatory)
+            storeMessage(bMandatory, pParam, L"Import descriptor for ", sDll, L" not found in ",
+                         sModuleName);
+
         return false;
     }
 
@@ -323,7 +377,7 @@ static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModul
         = (PROC)GetProcAddress(GetModuleHandleW(sDll), convertUTF16ToUTF8(sFunction).data());
     if (pOriginalFunc == NULL)
     {
-        storeError(pParam, L"Could not find original ", sFunction, L" in ", sDll);
+        storeMessage(bMandatory, pParam, L"Could not find original ", sFunction, L" in ", sDll);
         return false;
     }
 
@@ -336,13 +390,13 @@ static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModul
             MEMORY_BASIC_INFORMATION aMBI;
             if (!VirtualQuery(pFunc, &aMBI, sizeof(MEMORY_BASIC_INFORMATION)))
             {
-                storeError(pParam, L"VirtualQuery failed");
+                storeMessage(bMandatory, pParam, L"VirtualQuery failed");
                 return false;
             }
 
             if (!VirtualProtect(aMBI.BaseAddress, aMBI.RegionSize, PAGE_READWRITE, &aMBI.Protect))
             {
-                storeError(pParam, L"VirtualProtect failed");
+                storeMessage(bMandatory, pParam, L"VirtualProtect failed");
                 return false;
             }
 
@@ -353,35 +407,30 @@ static bool hook(ThreadProcParam* pParam, HMODULE hModule, const wchar_t* sModul
             DWORD nOldProtect;
             if (!VirtualProtect(aMBI.BaseAddress, aMBI.RegionSize, aMBI.Protect, &nOldProtect))
             {
-                storeError(pParam, L"VirtualProtect failed");
+                storeMessage(bMandatory, pParam, L"VirtualProtect failed");
                 return false;
             }
 
             nHookedFunctions++;
+
+            storeMessage(false, pParam, L"Hooked ", sFunction, L" in import table for ", sDll,
+                         L" in ", sModuleName);
             return true;
         }
 
         pThunk++;
     }
 
-    wcscpy_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION, L"Did not find ");
-    wcscat_s(pParam->msErrorExplanation,
-             ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), sFunction);
-    wcscat_s(pParam->msErrorExplanation,
-             ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation),
-             L" in import table for ");
-    wcscat_s(pParam->msErrorExplanation,
-             ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), sDll);
-    wcscat_s(pParam->msErrorExplanation,
-             ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), L" in ");
-    wcscat_s(pParam->msErrorExplanation,
-             ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), sModuleName);
+    // Don't bother mentioning non-mandatory imports not found even in verbose mode.
+    if (bMandatory)
+        storeMessage(bMandatory, pParam, L"Did not find ", sFunction, L" in import table for ",
+                     sDll, L" in ", sModuleName);
 
     return false;
 }
 
-static bool hook(ThreadProcParam* pParam, const wchar_t* sModule, const wchar_t* sDll,
-                 const wchar_t* sFunction, PVOID pOwnFunction)
+static bool hook(bool bMandatory, ThreadProcParam* pParam, const wchar_t* sModule,
+                 const wchar_t* sDll, const wchar_t* sFunction, PVOID pOwnFunction)
 {
     const wchar_t* sModuleName;
 
@@ -402,11 +451,11 @@ static bool hook(ThreadProcParam* pParam, const wchar_t* sModule, const wchar_t*
     HMODULE hModule = GetModuleHandleW(sModule);
     if (hModule == NULL)
     {
-        storeError(pParam, sModuleName, L" is not loaded");
+        storeMessage(bMandatory, pParam, sModuleName, L" is not loaded");
         return false;
     }
 
-    return hook(pParam, hModule, sModuleName, sDll, sFunction, pOwnFunction);
+    return hook(bMandatory, pParam, hModule, sModuleName, sDll, sFunction, pOwnFunction);
 }
 
 extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
@@ -448,12 +497,15 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         // CoCreateInstanceEx() with GetProcAddress(). (But try to hook CoCreateInstanceEx() anyway,
         // just in case.) Thus we need to hook GetProcAddress() too.
 
-        if (!hook(pParam, L"msvbvm60.dll", L"ole32.dll", L"CoCreateInstance", myCoCreateInstance))
+        if (!hook(true, pParam, L"msvbvm60.dll", L"ole32.dll", L"CoCreateInstance",
+                  myCoCreateInstance))
             return FALSE;
 
-        hook(pParam, L"msvbvm60.dll", L"ole32.dll", L"CoCreateInstanceEx", myCoCreateInstanceEx);
+        hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", L"CoCreateInstanceEx",
+             myCoCreateInstanceEx);
 
-        if (!hook(pParam, L"msvbvm60.dll", L"kernel32.dll", L"GetProcAddress", myGetProcAddress))
+        if (!hook(true, pParam, L"msvbvm60.dll", L"kernel32.dll", L"GetProcAddress",
+                  myGetProcAddress))
             return FALSE;
     }
     else
@@ -461,20 +513,20 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         // It is some other executable. We must hook LoadLibraryW().
 
         nHookedFunctions = 0;
-        hook(pParam, nullptr, L"kernel32.dll", L"GetProcAddress", myGetProcAddress);
-        hook(pParam, nullptr, L"kernel32.dll", L"LoadLibraryW", myLoadLibraryW);
-        hook(pParam, nullptr, L"kernel32.dll", L"LoadLibraryExW", myLoadLibraryExW);
-        hook(pParam, nullptr, L"ole32.dll", L"CoCreateInstance", myCoCreateInstance);
-        hook(pParam, nullptr, L"ole32.dll", L"CoCreateInstanceEx", myCoCreateInstanceEx);
+        hook(false, pParam, nullptr, L"kernel32.dll", L"GetProcAddress", myGetProcAddress);
+        hook(false, pParam, nullptr, L"kernel32.dll", L"LoadLibraryW", myLoadLibraryW);
+        hook(false, pParam, nullptr, L"kernel32.dll", L"LoadLibraryExW", myLoadLibraryExW);
+        hook(false, pParam, nullptr, L"ole32.dll", L"CoCreateInstance", myCoCreateInstance);
+        hook(false, pParam, nullptr, L"ole32.dll", L"CoCreateInstanceEx", myCoCreateInstanceEx);
 
         if (nHookedFunctions == 0)
         {
-            wcscpy_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION,
-                     L"Could not hook a single interesting function");
+            storeMessage(true, pParam, L"Could not hook a single interesting function to hook");
             return FALSE;
         }
     }
 
+    pParam->mbPassedInjectedThread = true;
     return TRUE;
 }
 

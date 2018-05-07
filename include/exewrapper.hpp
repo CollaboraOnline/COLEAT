@@ -24,6 +24,7 @@ union FunPtr {
     HMODULE(WINAPI* pLoadLibraryW)(wchar_t*);
     DWORD(WINAPI* pGetLastError)();
     PVOID(WINAPI* pGetProcAddress)(HMODULE, char*);
+    BOOL(WINAPI* pSetEvent)(HANDLE);
 };
 
 struct ThreadProcParam
@@ -33,11 +34,16 @@ struct ThreadProcParam
     FunPtr mpLoadLibraryW;
     FunPtr mpGetLastError;
     FunPtr mpGetProcAddress;
+    FunPtr mpSetEvent;
 
     bool mbPassedSizeCheck;
+    bool mbPassedInjectedThread;
     bool mbNoReplacement;
     bool mbTrace;
     bool mbVerbose;
+
+    HANDLE mhMessageEvent;
+    bool mbMessageIsError;
 
     static const int NFUNCTION = 100;
     char msInjectedDllMainFunction[NFUNCTION];

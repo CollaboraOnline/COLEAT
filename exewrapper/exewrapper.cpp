@@ -245,9 +245,29 @@ int wmain(int argc, wchar_t** argv)
     aParam.mpLoadLibraryW.pVoid = GetProcAddress(hKernel32, "LoadLibraryW");
     aParam.mpGetLastError.pVoid = GetProcAddress(hKernel32, "GetLastError");
     aParam.mpGetProcAddress.pVoid = GetProcAddress(hKernel32, "GetProcAddress");
+    aParam.mpSetEvent.pVoid = GetProcAddress(hKernel32, "SetEvent");
     aParam.mbNoReplacement = bNoReplacement;
     aParam.mbTrace = bTrace;
     aParam.mbVerbose = bVerbose;
+
+    // Create an event so that the injected function can tell us to display error messages.
+    HANDLE hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+    if (hEvent == NULL)
+    {
+        std::cerr << "CreateEvent failed: " << WindowsErrorString(GetLastError()) << "\n";
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
+        std::exit(1);
+    }
+    if (!DuplicateHandle(GetCurrentProcess(), hEvent, hWrappedProcess, &aParam.mhMessageEvent, 0,
+                         TRUE, DUPLICATE_SAME_ACCESS))
+    {
+        std::cerr << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
+        TerminateProcess(hWrappedProcess, 1);
+        WaitForSingleObject(hWrappedProcess, INFINITE);
+        std::exit(1);
+    }
+
     strcpy_s(aParam.msInjectedDllMainFunction, ThreadProcParam::NFUNCTION,
              "InjectedDllMainFunction");
     wcscpy_s(aParam.msFileName, ThreadProcParam::NFILENAME, sDllFileName);
@@ -325,12 +345,46 @@ int wmain(int argc, wchar_t** argv)
         std::exit(1);
     }
 
-    WaitForSingleObject(hThread, INFINITE);
-
-    SIZE_T nBytesRead;
-    if (!ReadProcessMemory(hWrappedProcess, pParamRemote, &aParam, sizeof(aParam), &nBytesRead))
+    HANDLE aHandles[] = { hEvent, hThread };
+    DWORD nWaitResult;
+    while ((nWaitResult = WaitForMultipleObjects(2, aHandles, FALSE, INFINITE)) != WAIT_FAILED)
     {
-        std::cerr << "ReadProcessMemory failed: " << WindowsErrorString(GetLastError()) << "\n";
+        SIZE_T nBytesRead;
+        if (!ReadProcessMemory(hWrappedProcess, pParamRemote, &aParam, sizeof(aParam), &nBytesRead))
+        {
+            std::cerr << "ReadProcessMemory failed: " << WindowsErrorString(GetLastError()) << "\n";
+            TerminateProcess(hWrappedProcess, 1);
+            WaitForSingleObject(hWrappedProcess, INFINITE);
+            std::exit(1);
+        }
+
+        if (nWaitResult == WAIT_OBJECT_0)
+        {
+            // Injected thread signalled us something to output, either an error message of verbose
+            // logging.
+            if (aParam.mbMessageIsError)
+                std::cerr << convertUTF16ToUTF8(aParam.msErrorExplanation) << std::endl;
+            else if (aParam.mbVerbose)
+                std::cout << convertUTF16ToUTF8(aParam.msErrorExplanation) << std::endl;
+
+            if (!SetEvent(hEvent))
+            {
+                std::cerr << "SetEvent failed: " << WindowsErrorString(GetLastError()) << "\n";
+                TerminateProcess(hWrappedProcess, 1);
+                WaitForSingleObject(hWrappedProcess, INFINITE);
+                std::exit(1);
+            }
+        }
+        else if (nWaitResult == WAIT_OBJECT_0 + 1)
+        {
+            // Inhected thread has finished.
+            break;
+        }
+    }
+    if (nWaitResult == WAIT_FAILED)
+    {
+        std::cerr << "WaitForMultipleObjects failed: " << WindowsErrorString(GetLastError())
+                  << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
@@ -355,13 +409,6 @@ int wmain(int argc, wchar_t** argv)
             else
                 std::cerr << "Mismatched parameter structure sizes, COLEAT build or installation "
                              "problem.\n";
-        }
-        else
-        {
-            if (aParam.msErrorExplanation[0])
-                std::cerr << convertUTF16ToUTF8(aParam.msErrorExplanation) << "\n";
-            else
-                std::cerr << WindowsErrorString(aParam.mnLastError) << "\n";
         }
 
         TerminateProcess(hWrappedProcess, 1);
