@@ -76,7 +76,7 @@ static HRESULT WINAPI myCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, D
                                          REFIID riid, LPVOID* ppv)
 {
     if (pGlobalParamPtr->mbVerbose)
-        std::cout << "myCoCreateInstance(" << rclsid << ") from "
+        std::cout << "myCoCreateInstance(" << rclsid << ", " << riid << ") from "
                   << prettyCodeAddress(_ReturnAddress()) << std::endl;
 
     for (int i = 0; i < sizeof(aInterfaceMap) / sizeof(aInterfaceMap[0]); ++i)
@@ -98,8 +98,13 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
                                            MULTI_QI* pResults)
 {
     if (pGlobalParamPtr->mbVerbose)
-        std::cout << "myCoCreateInstanceEx(" << clsid << ") from "
+    {
+        std::cout << "myCoCreateInstanceEx(" << clsid << ", " << dwCount << ") from "
                   << prettyCodeAddress(_ReturnAddress()) << std::endl;
+        for (DWORD j = 0; j < dwCount; ++j)
+            std::cout << "   " << *pResults[j].pIID << "\n";
+        std::cout << std::flush;
+    }
 
     for (int i = 0; i < sizeof(aInterfaceMap) / sizeof(aInterfaceMap[0]); ++i)
     {
