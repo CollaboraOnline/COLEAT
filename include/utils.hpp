@@ -697,6 +697,31 @@ inline std::string prettyCodeAddress(void* pCode)
     return convertUTF16ToUTF8(baseName(sFileName)) + "!" + to_ullhex((uintptr_t)pCode);
 }
 
+class WaitForDebugger
+{
+    bool mbFlag = true;
+
+public:
+    WaitForDebugger(const std::string& sFromWhere)
+    {
+        std::cerr << "Note from " << sFromWhere << ": Attach process " << GetCurrentProcessId()
+                  << " in a debugger NOW!\n"
+                  << "Break the process, and set mbFlag to false, and continue (or look around)."
+                  << std::endl;
+        while (mbFlag)
+            ;
+    }
+};
+
+#define WIDE2(literal) L##literal
+#define WIDE1(literal) WIDE2(literal)
+#define WIDEFILE WIDE1(__FILE__)
+
+#define WAIT_FOR_DEBUGGER_EACH_TIME                                                                \
+    WaitForDebugger aWait(convertUTF16ToUTF8(baseName(WIDEFILE)) + std::string(":")                \
+                          + std::to_string(__LINE__))
+#define WAIT_FOR_DEBUGGER_ONCE static WAIT_FOR_DEBUGGER_EACH_TIME
+
 #endif // INCLUDED_UTILS_HPP
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab cinoptions=b1,g0,N-s cinkeys+=0=break: */
