@@ -354,7 +354,7 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
     // copy back the parameter block, but we keep a pointer to it for use by the hook functions.
     pGlobalParamPtr = pParam;
 
-    CProxiedDispatch::setParam(pGlobalParamPtr);
+    CProxiedUnknown::setParam(pGlobalParamPtr);
 
     tryToEnsureStdHandlesOpen();
 
