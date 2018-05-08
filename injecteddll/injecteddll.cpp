@@ -134,12 +134,314 @@ static void printCreateInstanceResult(void* pV)
     pGlobalParamPtr->mbVerbose = bWasVerbose;
 }
 
+static void* generateTrampoline(void* pFunction, uintptr_t nId, short nArguments)
+{
+    // We must allocate a fresh page for each trampoline because of multi-thread concerns: Otherwise
+    // we would need to change the protection of the page back to RW for a moment when creating
+    // another trampoline on it, and if another thread was just executing an existing trampoline,
+    // that would be a problem.
+    unsigned char* pPage = (unsigned char*)VirtualAlloc(NULL, 100, MEM_COMMIT, PAGE_READWRITE);
+    if (pPage == NULL)
+    {
+        std::cerr << "VirtualAlloc failed\n";
+        std::exit(1);
+    }
+    unsigned char* pCode = pPage;
+
+#ifndef _WIN64
+    // Normal __stdcall prologue
+
+    // push ebp
+    *pCode++ = 0x55;
+
+    // mov evp, esp
+    *pCode++ = 0x8B;
+    *pCode++ = 0xEC;
+
+    // sub esp, 64
+    *pCode++ = 0x83;
+    *pCode++ = 0xEC;
+    *pCode++ = 0x40;
+
+    // push ebx
+    *pCode++ = 0x53;
+
+    // push esi
+    *pCode++ = 0x56;
+
+    // push edi
+    *pCode++ = 0x57;
+
+    // Push our parameters
+    for (short i = 0; i < nArguments; ++i)
+    {
+        if ((i % 3) == 0)
+        {
+            // mov eax, dword ptr arg[ebp]
+            *pCode++ = 0x8B;
+            *pCode++ = 0x45;
+            *pCode++ = (unsigned char)(8 + (nArguments - i - 1) * 4);
+
+            // push eax
+            *pCode++ = 0x50;
+        }
+        else if ((i % 3) == 1)
+        {
+            // mov ecx, dword ptr arg[ebp]
+            *pCode++ = 0x8B;
+            *pCode++ = 0x4D;
+            *pCode++ = (unsigned char)(8 + (nArguments - i - 1) * 4);
+
+            // push ecx
+            *pCode++ = 0x51;
+        }
+        else if ((i % 3) == 2)
+        {
+            // mov edx, dword ptr arg[ebp]
+            *pCode++ = 0x8B;
+            *pCode++ = 0x55;
+            *pCode++ = (unsigned char)(8 + (nArguments - i - 1) * 4);
+
+            // push edx
+            *pCode++ = 0x52;
+        }
+        else
+            abort();
+    }
+
+    // call <relative 32-bit offset>
+    *pCode++ = 0xE8;
+    intptr_t nDiff = ((unsigned char*)pFunction - pCode - 4);
+    *pCode++ = ((unsigned char*)&nDiff)[0];
+    *pCode++ = ((unsigned char*)&nDiff)[1];
+    *pCode++ = ((unsigned char*)&nDiff)[2];
+    *pCode++ = ((unsigned char*)&nDiff)[3];
+
+    // Normal __stdcall epilogue
+
+    // pop edi
+    *pCode++ = 0x5F;
+
+    // pop esi
+    *pCode++ = 0x5E;
+
+    // pop ebx
+    *pCode++ = 0x5B;
+
+    // mov esp, ebp
+    *pCode++ = 0x8B;
+    *pCode++ = 0xE5;
+
+    // pop ebp
+    *pCode++ = 0x5D;
+
+    // ret <nArguments*4>
+    *pCode++ = 0xC2;
+    short n = nArguments * 4;
+    *pCode++ = ((unsigned char*)&n)[0];
+    *pCode++ = ((unsigned char*)&n)[1];
+
+    // the unique id is stored after the ret <n>
+    *pCode++ = ((unsigned char*)&nId)[0];
+    *pCode++ = ((unsigned char*)&nId)[1];
+    *pCode++ = ((unsigned char*)&nId)[2];
+    *pCode++ = ((unsigned char*)&nId)[3];
+#else
+    // Normal prologue
+
+    if (nArguments > 3)
+    {
+        // mov qword ptr [rsp+32], r9
+        *pCode++ = 0x4C;
+        *pCode++ = 0x89;
+        *pCode++ = 0x4C;
+        *pCode++ = 0x24;
+        *pCode++ = 0x20;
+    }
+
+    if (nArguments > 2)
+    {
+        // mov qword ptr [rsp+24], r8
+        *pCode++ = 0x4C;
+        *pCode++ = 0x89;
+        *pCode++ = 0x44;
+        *pCode++ = 0x24;
+        *pCode++ = 0x18;
+    }
+
+    if (nArguments > 1)
+    {
+        // mov qword ptr [rsp+16], rdx
+        *pCode++ = 0x48;
+        *pCode++ = 0x89;
+        *pCode++ = 0x54;
+        *pCode++ = 0x24;
+        *pCode++ = 0x10;
+    }
+
+    if (nArguments > 0)
+    {
+        // mov qword ptr [rsp+8], rcx
+        *pCode++ = 0x48;
+        *pCode++ = 0x89;
+        *pCode++ = 0x4C;
+        *pCode++ = 0x24;
+        *pCode++ = 0x08;
+    }
+
+    // push rbp
+    *pCode++ = 0x40;
+    *pCode++ = 0x55;
+
+    // sub rsp, <x>
+    *pCode++ = 0x48;
+    *pCode++ = 0x83;
+    *pCode++ = 0xEC;
+    if (nArguments <= 4)
+        *pCode++ = 0x60;
+    else
+    {
+        assert(0x70 + (nArguments - 5) / 2 * 0x10 <= 0xFF);
+        *pCode++ = (unsigned char)(0x70 + (nArguments - 5) / 2 * 0x10);
+    }
+
+    // lea rbp, qword ptr [rsp+<x>]
+    *pCode++ = 0x48;
+    *pCode++ = 0x8D;
+    *pCode++ = 0x6C;
+    *pCode++ = 0x24;
+    if (nArguments <= 4)
+        *pCode++ = 0x20;
+    else
+    {
+        assert(0x30 + (nArguments - 5) / 2 * 0x10 <= 0xFF);
+        *pCode++ = (unsigned char)(0x30 + (nArguments - 5) / 2 * 0x10);
+    }
+
+    // Parameters
+    for (short i = 0; i < nArguments; ++i)
+    {
+        if (i == 0)
+        {
+            // mov rcx, qword ptr arg0[rbp]
+            *pCode++ = 0x48;
+            *pCode++ = 0x8B;
+            *pCode++ = 0x4D;
+            *pCode++ = 0x50;
+        }
+        else if (i == 1)
+        {
+            // mov rdx, qword ptr arg1[rbp]
+            *pCode++ = 0x48;
+            *pCode++ = 0x8B;
+            *pCode++ = 0x55;
+            *pCode++ = 0x58;
+        }
+        else if (i == 2)
+        {
+            // mov r8, qword ptr arg2[rbp]
+            *pCode++ = 0x4C;
+            *pCode++ = 0x8B;
+            *pCode++ = 0x45;
+            *pCode++ = 0x60;
+        }
+        else if (i == 3)
+        {
+            // mov r9, qword ptr arg2[rbp]
+            *pCode++ = 0x4C;
+            *pCode++ = 0x8B;
+            *pCode++ = 0x4D;
+            *pCode++ = 0x68;
+        }
+        else
+        {
+            if (i <= 5)
+            {
+                // mov rax, qword ptr (112+(i-4)*8)[rbp]
+                *pCode++ = 0x48;
+                *pCode++ = 0x8B;
+                *pCode++ = 0x45;
+                *pCode++ = (unsigned char)(112 + (i - 4) * 8);
+            }
+            else
+            {
+                // mov rax, qword ptr (112+(i-4)*8)[rbp]
+                *pCode++ = 0x48;
+                *pCode++ = 0x8B;
+                *pCode++ = 0x85;
+                int n = 112 + (i - 4) * 8;
+                *pCode++ = ((unsigned char*)&n)[0];
+                *pCode++ = ((unsigned char*)&n)[1];
+                *pCode++ = ((unsigned char*)&n)[2];
+                *pCode++ = ((unsigned char*)&n)[3];
+            }
+
+            // mov qword ptr [rsp+32+(i-4)*8], rax
+            *pCode++ = 0x48;
+            *pCode++ = 0x89;
+            *pCode++ = 0x44;
+            *pCode++ = 0x24;
+            *pCode++ = (unsigned char)(32 + (i - 4) * 8);
+        }
+    }
+
+    // mov rax, qword ptr pFunction (or something like that)
+    *pCode++ = 0x48;
+    *pCode++ = 0xB8;
+    *pCode++ = ((unsigned char*)&pFunction)[0];
+    *pCode++ = ((unsigned char*)&pFunction)[1];
+    *pCode++ = ((unsigned char*)&pFunction)[2];
+    *pCode++ = ((unsigned char*)&pFunction)[3];
+    *pCode++ = ((unsigned char*)&pFunction)[4];
+    *pCode++ = ((unsigned char*)&pFunction)[5];
+    *pCode++ = ((unsigned char*)&pFunction)[6];
+    *pCode++ = ((unsigned char*)&pFunction)[7];
+
+    // call rax
+    *pCode++ = 0xFF;
+    *pCode++ = 0xD0;
+
+    // Normal epilogue
+
+    // lea rsp, qword ptr [rbp+64]
+    *pCode++ = 0x48;
+    *pCode++ = 0x8D;
+    *pCode++ = 0x65;
+    *pCode++ = 0x40;
+
+    // pop rbp
+    *pCode++ = 0x5D;
+
+    // ret
+    *pCode++ = 0xC3;
+
+    // the unique number is stored after the ret
+    *pCode++ = ((unsigned char*)&nId)[0];
+    *pCode++ = ((unsigned char*)&nId)[1];
+    *pCode++ = ((unsigned char*)&nId)[2];
+    *pCode++ = ((unsigned char*)&nId)[3];
+    *pCode++ = ((unsigned char*)&nId)[4];
+    *pCode++ = ((unsigned char*)&nId)[5];
+    *pCode++ = ((unsigned char*)&nId)[6];
+    *pCode++ = ((unsigned char*)&nId)[7];
+#endif
+
+    DWORD nOldProtection;
+    if (!VirtualProtect(pPage, 100, PAGE_EXECUTE, &nOldProtection))
+    {
+        std::cerr << "VirtualProtect failed\n";
+        std::exit(1);
+    }
+
+    return pPage;
+}
+
 static HRESULT WINAPI myCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext,
                                          REFIID riid, LPVOID* ppv)
 {
     if (pGlobalParamPtr->mbVerbose)
         std::cout << "CoCreateInstance(" << rclsid << ", " << riid << ") from "
-                  << prettyCodeAddress(_ReturnAddress()) << std::endl;
+                  << prettyCodeAddress(_ReturnAddress()) << "..." << std::endl;
 
     // Is it one of the interfaces we have generated proxies for? In that case return a proxy for it
     // to the client.
@@ -173,7 +475,7 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
     if (pGlobalParamPtr->mbVerbose)
     {
         std::cout << "CoCreateInstanceEx(" << clsid << ", " << dwCount << ") from "
-                  << prettyCodeAddress(_ReturnAddress()) << std::endl;
+                  << prettyCodeAddress(_ReturnAddress()) << "..." << std::endl;
         for (DWORD j = 0; j < dwCount; ++j)
             std::cout << "   " << j << "(" << dwCount << "): " << *pResults[j].pIID << std::endl;
     }
@@ -221,6 +523,38 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
     return CoCreateInstanceEx(clsid, pUnkOuter, dwClsCtx, pServerInfo, dwCount, pResults);
 }
 
+static HRESULT __stdcall myDllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
+{
+#ifndef _WIN64
+    // 9 = the length of the __stdcall epilogue
+    unsigned char* pHModule = (unsigned char*)_ReturnAddress() + 9;
+#else
+    // 6 = the length of the epilogue
+    unsigned char* pHModule = (unsigned char*)_ReturnAddress() + 6;
+#endif
+    HMODULE hModule;
+    std::memmove(&hModule, pHModule, sizeof(HMODULE));
+
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "DllGetClassObject(" << rclsid << ", " << riid << ") in "
+                  << moduleName(hModule) << "..." << std::endl;
+
+    FunPtr aProc;
+    aProc.pProc = GetProcAddress(hModule, "DllGetClassObject");
+    assert(aProc.pProc != NULL);
+    HRESULT nResult = aProc.pDllGetClassObject(rclsid, riid, ppv);
+
+    if (pGlobalParamPtr->mbVerbose)
+    {
+        std::cout << "...DllGetClassObject(" << rclsid << ", " << riid << "): ";
+        if (nResult == S_OK)
+            std::cout << *ppv << ": ";
+        std::cout << HRESULT_to_string(nResult) << std::endl;
+    }
+
+    return nResult;
+}
+
 static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
 {
     HMODULE hOle32 = GetModuleHandleW(L"ole32.dll");
@@ -229,7 +563,7 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
     if (hModule == hOle32 && std::strcmp(lpProcName, "CoCreateInstanceEx") == 0)
     {
         if (pGlobalParamPtr->mbVerbose)
-            std::cout << "GetProcAddress(CoCreateInstanceEx) from "
+            std::cout << "GetProcAddress(ole32.dll, CoCreateInstanceEx) from "
                       << prettyCodeAddress(_ReturnAddress()) << std::endl;
         pFun.pVoid = myCoCreateInstanceEx;
         return pFun.pProc;
@@ -238,10 +572,45 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
     if (hModule == hOle32 && std::strcmp(lpProcName, "CoCreateInstance") == 0)
     {
         if (pGlobalParamPtr->mbVerbose)
-            std::cout << "GetProcAddress(CoCreateInstance) from "
+            std::cout << "GetProcAddress(ole32.dll, CoCreateInstance) from "
                       << prettyCodeAddress(_ReturnAddress()) << std::endl;
         pFun.pVoid = myCoCreateInstance;
         return pFun.pProc;
+    }
+
+    if ((uintptr_t)lpProcName < 10000)
+    {
+        // It is most likely an ordinal, sigh
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << "GetProcAddress(" << moduleName(hModule) << ", " << (uintptr_t)lpProcName
+                      << ") from " << prettyCodeAddress(_ReturnAddress()) << std::endl;
+
+        return GetProcAddress(hModule, lpProcName);
+    }
+
+    if (std::strcmp(lpProcName, "DllGetClassObject") == 0)
+    {
+        PROC pProc = GetProcAddress(hModule, lpProcName);
+        if (pProc = NULL)
+        {
+            if (pGlobalParamPtr->mbVerbose)
+                std::cout << "GetProcAddress(" << moduleName(hModule) << ", "
+                          << "DllGetClassObject) from " << prettyCodeAddress(_ReturnAddress())
+                          << ": NULL" << std::endl;
+
+            return NULL;
+        }
+
+        // Interesting case. We must generate a unique trampoline for it.
+        FunPtr aTrampoline;
+        aTrampoline.pVoid = generateTrampoline(myDllGetClassObject, (uintptr_t)hModule, 3);
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << "GetProcAddress(" << moduleName(hModule) << ", "
+                      << "DllGetClassObject) from " << prettyCodeAddress(_ReturnAddress())
+                      << ": Generated trampoline" << std::endl;
+
+        return aTrampoline.pProc;
     }
 
     return GetProcAddress(hModule, lpProcName);
@@ -251,7 +620,7 @@ static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
 {
     if (pGlobalParamPtr->mbVerbose)
         std::cout << "LoadLibraryW(" << convertUTF16ToUTF8(lpFileName) << ") from "
-                  << prettyCodeAddress(_ReturnAddress()) << std::endl;
+                  << prettyCodeAddress(_ReturnAddress()) << "..." << std::endl;
 
     HMODULE hModule = LoadLibraryW(lpFileName);
     DWORD nLastError = GetLastError();
@@ -288,7 +657,7 @@ static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD d
 {
     if (pGlobalParamPtr->mbVerbose)
         std::cout << "LoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ", " << to_uhex(dwFlags)
-                  << ") from " << prettyCodeAddress(_ReturnAddress()) << std::endl;
+                  << ") from " << prettyCodeAddress(_ReturnAddress()) << "..." << std::endl;
 
     HMODULE hModule = LoadLibraryExW(lpFileName, hFile, dwFlags);
     DWORD nLastError = GetLastError();
