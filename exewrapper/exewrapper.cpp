@@ -163,16 +163,17 @@ int wmain(int argc, wchar_t** argv)
     }
 
     wchar_t sWrappedFileName[NFILENAME];
-    if (!GetModuleFileNameExW(hWrappedProcess, NULL, sWrappedFileName, NFILENAME))
-    {
-        std::cerr << "GetModuleFileNameExW failed: " << WindowsErrorString(GetLastError()) << "\n";
-        TerminateProcess(hWrappedProcess, 1);
-        WaitForSingleObject(hWrappedProcess, INFINITE);
-        std::exit(1);
-    }
-
     if (bDebug)
     {
+        if (!GetProcessImageFileNameW(hWrappedProcess, sWrappedFileName, NFILENAME))
+        {
+            std::cerr << "GetProcessImageFileNameW failed: " << WindowsErrorString(GetLastError())
+                      << "\n";
+            TerminateProcess(hWrappedProcess, 1);
+            WaitForSingleObject(hWrappedProcess, INFINITE);
+            std::exit(1);
+        }
+
         // Give the developer a chance to attach us in a debugger
         std::cout << "Waiting for you to attach a debugger to the '"
                   << convertUTF16ToUTF8(baseName(sMyFileName)) << "' process "
