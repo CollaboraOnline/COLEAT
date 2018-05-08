@@ -681,20 +681,24 @@ inline bool isDirectlyPrintableType(VARTYPE nVt)
     }
 }
 
+inline std::string moduleName(HMODULE hModule)
+{
+    const DWORD NFILENAME = 1000;
+    static wchar_t sFileName[NFILENAME];
+
+    DWORD nSizeOut = GetModuleFileNameW(hModule, sFileName, NFILENAME);
+    if (nSizeOut == 0 || nSizeOut == NFILENAME)
+        return to_ullhex((uintptr_t)hModule, sizeof(void*) * 2);
+    return convertUTF16ToUTF8(baseName(sFileName));
+}
+
 inline std::string prettyCodeAddress(void* pCode)
 {
     HMODULE hModule;
     if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, (wchar_t*)pCode, &hModule))
         return to_ullhex((uintptr_t)pCode);
 
-    const DWORD NFILENAME = 1000;
-    static wchar_t sFileName[NFILENAME];
-
-    DWORD nSizeOut = GetModuleFileNameW(hModule, sFileName, NFILENAME);
-    if (nSizeOut == 0 || nSizeOut == NFILENAME)
-        return to_ullhex((uintptr_t)pCode);
-
-    return convertUTF16ToUTF8(baseName(sFileName)) + "!" + to_ullhex((uintptr_t)pCode);
+    return moduleName(hModule) + "!" + to_ullhex((uintptr_t)pCode);
 }
 
 class WaitForDebugger
