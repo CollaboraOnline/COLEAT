@@ -66,14 +66,14 @@ inline wchar_t* programName(const wchar_t* sPathname)
 inline std::string to_ullhex(uint64_t n, int w = 0)
 {
     std::stringstream aStringStream;
-    aStringStream << std::setfill('0') << std::setw(w) << std::hex << n;
+    aStringStream << std::setfill('0') << std::setw(w) << std::uppercase << std::hex << n;
     return aStringStream.str();
 }
 
 inline std::string to_uhex(uint32_t n, int w = 0)
 {
     std::stringstream aStringStream;
-    aStringStream << std::setfill('0') << std::setw(w) << std::hex << n;
+    aStringStream << std::setfill('0') << std::setw(w) << std::uppercase << std::hex << n;
     return aStringStream.str();
 }
 
@@ -492,7 +492,7 @@ inline std::basic_ostream<char, traits>& outputCharString(const char* pChar, UIN
         else if (pChar[i] >= ' ' && pChar[i] <= '~')
             rStream << pChar[i];
         else
-            rStream << "\\x" << std::hex << (UINT)pChar[i] << std::dec;
+            rStream << "\\x" << to_uhex((UINT)pChar[i], 2);
     }
 
     rStream << "\"";
@@ -522,7 +522,7 @@ outputWcharString(const wchar_t* pWchar, UINT nLength, std::basic_ostream<char, 
     {
         if (isHighSurrogate(pWchar[i]) && i < nLength - 1 && isLowSurrogate(pWchar[i + 1]))
         {
-            rStream << "\\u{" << std::hex << surrogatePair(pWchar + i) << std::dec << "}";
+            rStream << "\\u{" << to_uhex(surrogatePair(pWchar + i)) << "}";
             i++;
         }
         else if (pWchar[i] == '"' || pWchar[i] == '\\')
@@ -534,7 +534,7 @@ outputWcharString(const wchar_t* pWchar, UINT nLength, std::basic_ostream<char, 
         else if (pWchar[i] >= ' ' && pWchar[i] <= '~')
             rStream << (char)pWchar[i];
         else
-            rStream << "\\u{" << std::hex << (UINT)pWchar[i] << std::dec << "}";
+            rStream << "\\u{" << to_uhex((UINT)pWchar[i]) << "}";
     }
 
     rStream << "\"";
@@ -698,7 +698,7 @@ inline std::string prettyCodeAddress(void* pCode)
     if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, (wchar_t*)pCode, &hModule))
         return to_ullhex((uintptr_t)pCode);
 
-    return moduleName(hModule) + "!" + to_ullhex((uintptr_t)pCode);
+    return moduleName(hModule) + "!" + to_ullhex((uintptr_t)pCode, sizeof(void*) * 2);
 }
 
 class WaitForDebugger
