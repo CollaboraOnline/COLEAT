@@ -72,28 +72,21 @@ static void storeMessage(bool bIsError, ThreadProcParam* pParam, const wchar_t* 
     LPWSTR pMsgBuf;
     wcscpy_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION, pMsg);
     if (pMsg2)
-        wcscat_s(pParam->msErrorExplanation,
-                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pMsg2);
+        wcscat_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION, pMsg2);
     if (pMsg3)
-        wcscat_s(pParam->msErrorExplanation,
-                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pMsg3);
+        wcscat_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION, pMsg3);
     if (pMsg4)
-        wcscat_s(pParam->msErrorExplanation,
-                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pMsg4);
+        wcscat_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION, pMsg4);
     if (pMsg5)
-        wcscat_s(pParam->msErrorExplanation,
-                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pMsg5);
+        wcscat_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION, pMsg5);
     if (pMsg6)
-        wcscat_s(pParam->msErrorExplanation,
-                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pMsg6);
+        wcscat_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION, pMsg6);
 
     if (bIsError && pParam->mbPassedInjectedThread
         && GetWindowsErrorString(GetLastError(), &pMsgBuf))
     {
-        wcscat_s(pParam->msErrorExplanation,
-                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), L": ");
-        wcscat_s(pParam->msErrorExplanation,
-                 ThreadProcParam::NEXPLANATION - wcslen(pParam->msErrorExplanation), pMsgBuf);
+        wcscat_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION, L": ");
+        wcscat_s(pParam->msErrorExplanation, ThreadProcParam::NEXPLANATION, pMsgBuf);
         HeapFree(GetProcessHeap(), 0, pMsgBuf);
     }
 
