@@ -64,6 +64,8 @@
   run-time. (Vtables are trivial.) So should we start thinking about
   this?
 
-  (Obviously it would be meaningless to do redirection of unknown
-  interfaces; how would the replacement app know what they do?)
-
+  (Obviously it would be meaningless to do redirection of initially
+  unknown interfaces; how would the replacement app know what they do?
+  The point with tracing is to learn from the output what APIs
+  real-world clients use and then know what needs to be implemented in
+  a replacement app.)
