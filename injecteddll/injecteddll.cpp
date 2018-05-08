@@ -604,7 +604,7 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
     if (std::strcmp(lpProcName, "DllGetClassObject") == 0)
     {
         PROC pProc = GetProcAddress(hModule, lpProcName);
-        if (pProc = NULL)
+        if (pProc == NULL)
         {
             if (pGlobalParamPtr->mbVerbose)
                 std::cout << "GetProcAddress(" << moduleName(hModule) << ", "
