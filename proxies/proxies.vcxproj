@@ -181,6 +181,7 @@
     <ClCompile Include="..\generated\Excel_AppEvents.cxx" />
     <ClCompile Include="..\generated\Word_ApplicationEvents4.cxx" />
     <ClCompile Include="..\generated\Word_DocumentEvents2.cxx" />
+    <ClCompile Include="CProxiedClassFactory.cpp" />
     <ClCompile Include="CProxiedCoclass.cpp" />
     <ClCompile Include="CProxiedConnectionPoint.cpp" />
     <ClCompile Include="CProxiedConnectionPointContainer.cpp" />

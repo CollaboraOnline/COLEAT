@@ -32,6 +32,7 @@
 #include "exewrapper.hpp"
 #include "utils.hpp"
 
+#include "CProxiedClassFactory.hpp"
 #include "CProxiedCoclass.hpp"
 #include "CProxiedDispatch.hpp"
 
@@ -548,8 +549,20 @@ static HRESULT __stdcall myDllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOI
     {
         std::cout << "...DllGetClassObject(" << rclsid << ", " << riid << "): ";
         if (nResult == S_OK)
-            std::cout << *ppv << ": ";
-        std::cout << HRESULT_to_string(nResult) << std::endl;
+            printCreateInstanceResult(*ppv);
+        else
+            std::cout << HRESULT_to_string(nResult) << std::endl;
+    }
+
+    if (nResult == S_OK && IsEqualIID(riid, IID_IClassFactory))
+    {
+        IClassFactory* pCF;
+        if (!FAILED(
+                reinterpret_cast<IUnknown*>(*ppv)->QueryInterface(IID_IClassFactory, (void**)&pCF)))
+        {
+            *ppv = new CProxiedClassFactory(pCF,
+                                            _strdup(withoutExtension(moduleName(hModule)).c_str()));
+        }
     }
 
     return nResult;

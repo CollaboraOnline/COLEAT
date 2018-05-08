@@ -681,6 +681,14 @@ inline bool isDirectlyPrintableType(VARTYPE nVt)
     }
 }
 
+inline std::string withoutExtension(const std::string& rPathname)
+{
+    std::string::size_type nLastDot = rPathname.rfind('.');
+    if (nLastDot == std::string::npos)
+        return rPathname;
+    return rPathname.substr(0, nLastDot);
+}
+
 inline std::string moduleName(HMODULE hModule)
 {
     const DWORD NFILENAME = 1000;
