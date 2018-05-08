@@ -413,7 +413,12 @@ static void* generateTrampoline(void* pFunction, uintptr_t nId, short nArguments
     *pCode++ = ((unsigned char*)&nId)[1];
     *pCode++ = ((unsigned char*)&nId)[2];
     *pCode++ = ((unsigned char*)&nId)[3];
+    *pCode++ = ((unsigned char*)&nId)[4];
+    *pCode++ = ((unsigned char*)&nId)[5];
+    *pCode++ = ((unsigned char*)&nId)[6];
+    *pCode++ = ((unsigned char*)&nId)[7];
 #endif
+
     DWORD nOldProtection;
     if (!VirtualProtect(pPage, 100, PAGE_EXECUTE, &nOldProtection))
     {
