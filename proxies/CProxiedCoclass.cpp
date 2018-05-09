@@ -63,7 +63,7 @@ IDispatch* CProxiedCoclass::createDispatchToProxy(const InterfaceMapping& rMappi
     if (FAILED(CoCreateInstance(aProxiedOrReplacementIID, NULL, CLSCTX_LOCAL_SERVER, IID_IDispatch,
                                 (void**)&mpReplacementAppDispatch)))
     {
-        std::cout << "Cound not create instance of " << aProxiedOrReplacementIID << std::endl;
+        std::cout << "Could not create instance of " << aProxiedOrReplacementIID << std::endl;
         std::exit(1);
     }
 
