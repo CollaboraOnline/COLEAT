@@ -74,3 +74,13 @@
   to have stuff that the generated proxy classes don't need in
   separate header(s), to avoid recompilations of those when those bits
   change.
+
+- Is the separate handling of VB6-created executables and others in
+  injecteddll.cpp:InjectedDllMainFunction() really necessary? Probably
+  could just use the generic code path for also VB6-generated
+  executables.
+
+  And if we do want to special-case VB6-generated executables, maybe
+  we need to do that elsewhere, too, so probably should set some
+  global flag in the parameter block when we have detected that the
+  wrapped program is a such.
