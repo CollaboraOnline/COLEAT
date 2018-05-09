@@ -91,7 +91,7 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumConnectionPoints::Next(ULONG cConnections,
         }
         if (!bFound)
         {
-            std::cerr << "Unhandled outgoing interface returned in connection point: " << aIID
+            std::cout << "Unhandled outgoing interface returned in connection point: " << aIID
                       << std::endl;
             std::abort();
         }

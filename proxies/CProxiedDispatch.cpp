@@ -90,7 +90,7 @@ HRESULT CProxiedDispatch::genericInvoke(std::string sFuncName, int nInvKind,
     if (nResult == DISP_E_UNKNOWNNAME)
     {
         if (getParam()->mbVerbose)
-            std::cerr << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
+            std::cout << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
                       << "): Not implemented in the replacement app" << std::endl;
         return E_NOTIMPL;
     }
@@ -98,7 +98,7 @@ HRESULT CProxiedDispatch::genericInvoke(std::string sFuncName, int nInvKind,
     if (FAILED(nResult))
     {
         if (getParam()->mbVerbose)
-            std::cerr << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
+            std::cout << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
                       << "): GetIDsOfNames failed: " << WindowsErrorStringFromHRESULT(nResult)
                       << std::endl;
         return nResult;
@@ -120,7 +120,7 @@ HRESULT CProxiedDispatch::genericInvoke(std::string sFuncName, int nInvKind,
             nFlags = DISPATCH_PROPERTYPUTREF;
             break;
         default:
-            std::cerr << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
+            std::cout << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
                       << "): Unhandled nInvKind: " << nInvKind << std::endl;
             std::abort();
     }
@@ -165,7 +165,7 @@ HRESULT CProxiedDispatch::genericInvoke(std::string sFuncName, int nInvKind,
                 *(IDispatch**)pRetval = aResult.pdispVal;
                 break;
             default:
-                std::cerr << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
+                std::cout << this << "@CProxiedDispatch::genericInvoke(" << sFuncName
                           << "): Unhandled vt: " << aResult.vt << std::endl;
                 std::abort();
         }

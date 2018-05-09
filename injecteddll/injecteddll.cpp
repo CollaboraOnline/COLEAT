@@ -53,7 +53,7 @@ static void showMessage(bool bIsError, ThreadProcParam* pParam)
     if (pParam->mbPassedInjectedThread)
     {
         if (bIsError)
-            std::cerr << convertUTF16ToUTF8(pParam->msErrorExplanation) << std::endl;
+            std::cout << convertUTF16ToUTF8(pParam->msErrorExplanation) << std::endl;
         else if (pParam->mbVerbose)
             std::cout << convertUTF16ToUTF8(pParam->msErrorExplanation) << std::endl;
     }
@@ -144,7 +144,7 @@ static void* generateTrampoline(void* pFunction, uintptr_t nId, short nArguments
     unsigned char* pPage = (unsigned char*)VirtualAlloc(NULL, 100, MEM_COMMIT, PAGE_READWRITE);
     if (pPage == NULL)
     {
-        std::cerr << "VirtualAlloc failed\n";
+        std::cout << "VirtualAlloc failed\n";
         std::exit(1);
     }
     unsigned char* pCode = pPage;
@@ -430,7 +430,7 @@ static void* generateTrampoline(void* pFunction, uintptr_t nId, short nArguments
     DWORD nOldProtection;
     if (!VirtualProtect(pPage, 100, PAGE_EXECUTE, &nOldProtection))
     {
-        std::cerr << "VirtualProtect failed\n";
+        std::cout << "VirtualProtect failed\n";
         std::exit(1);
     }
 
@@ -735,8 +735,8 @@ static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD d
 }
 
 // The functions below, InjectedDllMainFunction() and the functions it calls, can not write to
-// std::cout and std::cerr. They run in a thread created before those have been set up. They can,
-// however, use Win32 API directly.
+// std::cout. They run in a thread created before those have been set up. They can, however, use
+// Win32 API directly.
 
 static bool hook(bool bMandatory, ThreadProcParam* pParam, HMODULE hModule,
                  const wchar_t* sModuleName, const wchar_t* sDll, const wchar_t* sFunction,

@@ -31,7 +31,7 @@
 
 static void Usage(wchar_t** argv)
 {
-    std::cerr << convertUTF16ToUTF8(programName(argv[0]))
+    std::cout << convertUTF16ToUTF8(programName(argv[0]))
               << ": Usage error. This is not a program that users should run directly.\n";
     std::exit(1);
 }
@@ -111,7 +111,7 @@ int wmain(int argc, wchar_t** argv)
     if (!GetHandleInformation(hWrappedProcess, &nHandleFlags)
         || !GetHandleInformation(hWrappedThread, &nHandleFlags))
     {
-        std::cerr << "Inherited handle to wrapped process or its start thread is invalid?\n";
+        std::cout << "Inherited handle to wrapped process or its start thread is invalid?\n";
         std::exit(1);
     }
 
@@ -158,7 +158,7 @@ int wmain(int argc, wchar_t** argv)
     DWORD nSize = GetModuleFileNameW(NULL, sMyFileName, NFILENAME - 20);
     if (nSize == NFILENAME - 20)
     {
-        std::cerr << "Pathname of this exe ridiculously long\n";
+        std::cout << "Pathname of this exe ridiculously long\n";
         std::exit(1);
     }
 
@@ -167,7 +167,7 @@ int wmain(int argc, wchar_t** argv)
     {
         if (!GetProcessImageFileNameW(hWrappedProcess, sWrappedFileName, NFILENAME))
         {
-            std::cerr << "GetProcessImageFileNameW failed: " << WindowsErrorString(GetLastError())
+            std::cout << "GetProcessImageFileNameW failed: " << WindowsErrorString(GetLastError())
                       << "\n";
             TerminateProcess(hWrappedProcess, 1);
             WaitForSingleObject(hWrappedProcess, INFINITE);
@@ -198,7 +198,7 @@ int wmain(int argc, wchar_t** argv)
         pRover++;
     if (pRover - pEndOfNops >= 100)
     {
-        std::cerr << "Can't find end of threadProc\n";
+        std::cout << "Can't find end of threadProc\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
@@ -210,7 +210,7 @@ int wmain(int argc, wchar_t** argv)
         pRover++;
     if (pRover - pThreadProc >= 1000)
     {
-        std::cerr << "Can't find end of threadProc\n";
+        std::cout << "Can't find end of threadProc\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
@@ -226,7 +226,7 @@ int wmain(int argc, wchar_t** argv)
     wchar_t* pLastDot = wcsrchr(sDllFileName, L'.');
     if (pLastDot == NULL)
     {
-        std::cerr << "No period in '" << convertUTF16ToUTF8(sDllFileName) << "'?\n";
+        std::cout << "No period in '" << convertUTF16ToUTF8(sDllFileName) << "'?\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
@@ -255,7 +255,7 @@ int wmain(int argc, wchar_t** argv)
     HANDLE hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
     if (hEvent == NULL)
     {
-        std::cerr << "CreateEvent failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "CreateEvent failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
@@ -263,7 +263,7 @@ int wmain(int argc, wchar_t** argv)
     if (!DuplicateHandle(GetCurrentProcess(), hEvent, hWrappedProcess, &aParam.mhMessageEvent, 0,
                          TRUE, DUPLICATE_SAME_ACCESS))
     {
-        std::cerr << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
@@ -277,7 +277,7 @@ int wmain(int argc, wchar_t** argv)
         = VirtualAllocEx(hWrappedProcess, NULL, sizeof(aParam), MEM_COMMIT, PAGE_READWRITE);
     if (pParamRemote == NULL)
     {
-        std::cerr << "VirtualAllocEx failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "VirtualAllocEx failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
@@ -286,7 +286,7 @@ int wmain(int argc, wchar_t** argv)
     SIZE_T nBytesWritten;
     if (!WriteProcessMemory(hWrappedProcess, pParamRemote, &aParam, sizeof(aParam), &nBytesWritten))
     {
-        std::cerr << "WriteProcessMemory failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "WriteProcessMemory failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
@@ -296,7 +296,7 @@ int wmain(int argc, wchar_t** argv)
         = VirtualAllocEx(hWrappedProcess, NULL, nSizeOfThreadProc, MEM_COMMIT, PAGE_READWRITE);
     if (pThreadProcRemote == NULL)
     {
-        std::cerr << "VirtualAllocEx failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "VirtualAllocEx failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
@@ -305,7 +305,7 @@ int wmain(int argc, wchar_t** argv)
     if (!WriteProcessMemory(hWrappedProcess, pThreadProcRemote, pThreadProc, nSizeOfThreadProc,
                             &nBytesWritten))
     {
-        std::cerr << "WriteProcessMemory failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "WriteProcessMemory failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
@@ -315,7 +315,7 @@ int wmain(int argc, wchar_t** argv)
     if (!VirtualProtectEx(hWrappedProcess, pThreadProcRemote, nSizeOfThreadProc, PAGE_EXECUTE,
                           &nOldProtection))
     {
-        std::cerr << "VirtualProtectEx failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "VirtualProtectEx failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
@@ -340,7 +340,7 @@ int wmain(int argc, wchar_t** argv)
         = CreateRemoteThread(hWrappedProcess, NULL, 0, pProc.pStartRoutine, pParamRemote, 0, NULL);
     if (!hThread)
     {
-        std::cerr << "CreateRemoteThread failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "CreateRemoteThread failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
@@ -353,7 +353,7 @@ int wmain(int argc, wchar_t** argv)
         SIZE_T nBytesRead;
         if (!ReadProcessMemory(hWrappedProcess, pParamRemote, &aParam, sizeof(aParam), &nBytesRead))
         {
-            std::cerr << "ReadProcessMemory failed: " << WindowsErrorString(GetLastError()) << "\n";
+            std::cout << "ReadProcessMemory failed: " << WindowsErrorString(GetLastError()) << "\n";
             TerminateProcess(hWrappedProcess, 1);
             WaitForSingleObject(hWrappedProcess, INFINITE);
             std::exit(1);
@@ -364,13 +364,13 @@ int wmain(int argc, wchar_t** argv)
             // Injected thread signalled us something to output, either an error message of verbose
             // logging.
             if (aParam.mbMessageIsError)
-                std::cerr << convertUTF16ToUTF8(aParam.msErrorExplanation) << std::endl;
+                std::cout << convertUTF16ToUTF8(aParam.msErrorExplanation) << std::endl;
             else if (aParam.mbVerbose)
                 std::cout << convertUTF16ToUTF8(aParam.msErrorExplanation) << std::endl;
 
             if (!SetEvent(hEvent))
             {
-                std::cerr << "SetEvent failed: " << WindowsErrorString(GetLastError()) << "\n";
+                std::cout << "SetEvent failed: " << WindowsErrorString(GetLastError()) << "\n";
                 TerminateProcess(hWrappedProcess, 1);
                 WaitForSingleObject(hWrappedProcess, INFINITE);
                 std::exit(1);
@@ -384,7 +384,7 @@ int wmain(int argc, wchar_t** argv)
     }
     if (nWaitResult == WAIT_FAILED)
     {
-        std::cerr << "WaitForMultipleObjects failed: " << WindowsErrorString(GetLastError())
+        std::cout << "WaitForMultipleObjects failed: " << WindowsErrorString(GetLastError())
                   << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
@@ -394,21 +394,21 @@ int wmain(int argc, wchar_t** argv)
     DWORD nExitCode;
     if (!GetExitCodeThread(hThread, &nExitCode))
     {
-        std::cerr << "GetExitCodeThread failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "GetExitCodeThread failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
     if (!nExitCode)
     {
-        std::cerr << "Injected thread failed: ";
+        std::cout << "Injected thread failed: ";
 
         if (!aParam.mbPassedSizeCheck)
         {
             if (aParam.mnLastError != 0)
-                std::cerr << WindowsErrorString(aParam.mnLastError) << "\n";
+                std::cout << WindowsErrorString(aParam.mnLastError) << "\n";
             else
-                std::cerr << "Mismatched parameter structure sizes, COLEAT build or installation "
+                std::cout << "Mismatched parameter structure sizes, COLEAT build or installation "
                              "problem.\n";
         }
 
@@ -422,18 +422,18 @@ int wmain(int argc, wchar_t** argv)
     DWORD nPreviousSuspendCount = ResumeThread(hWrappedThread);
     if (nPreviousSuspendCount == (DWORD)-1)
     {
-        std::cerr << "ResumeThread failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "ResumeThread failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
     }
     else if (nPreviousSuspendCount == 0)
     {
-        std::cerr << "Huh, thread was not suspended?\n";
+        std::cout << "Huh, thread was not suspended?\n";
     }
     else if (nPreviousSuspendCount > 1)
     {
-        std::cerr << "Thread still suspended after ResumeThread\n";
+        std::cout << "Thread still suspended after ResumeThread\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);

@@ -382,9 +382,7 @@ inline void tryToEnsureStdHandlesOpen()
 
         // Ignore errors from freopen_s()
         FILE* pStream;
-        freopen_s(&pStream, "CON", "r", stdin);
         freopen_s(&pStream, "CON", "w", stdout);
-        freopen_s(&pStream, "CON", "w", stderr);
         std::ios::sync_with_stdio(true);
     }
 }
@@ -716,7 +714,7 @@ class WaitForDebugger
 public:
     WaitForDebugger(const std::string& sFromWhere)
     {
-        std::cerr << "Note from " << sFromWhere << ": Attach process " << GetCurrentProcessId()
+        std::cout << "Note from " << sFromWhere << ": Attach process " << GetCurrentProcessId()
                   << " in a debugger NOW!\n"
                   << "Break the process, and set mbFlag to false, and continue (or look around)."
                   << std::endl;

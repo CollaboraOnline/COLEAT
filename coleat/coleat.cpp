@@ -31,7 +31,7 @@ static bool bDebug = false;
 
 static void Usage(wchar_t** argv)
 {
-    std::cerr << "Usage: " << convertUTF16ToUTF8(programName(argv[0]))
+    std::cout << "Usage: " << convertUTF16ToUTF8(programName(argv[0]))
               << " [options] program [arguments...]\n"
                  "\n"
                  "  Options:\n"
@@ -83,7 +83,7 @@ int wmain(int argc, wchar_t** argv)
     DWORD nSize = GetModuleFileNameW(NULL, sFileName, NFILENAME - 20);
     if (nSize == NFILENAME - 20)
     {
-        std::cerr << "Pathname of this exe ridiculously long\n";
+        std::cout << "Pathname of this exe ridiculously long\n";
         std::exit(1);
     }
 
@@ -92,7 +92,7 @@ int wmain(int argc, wchar_t** argv)
     wchar_t* pLastSlash = wcsrchr(sFileName, L'/');
     if (pLastBackslash == NULL && pLastSlash == NULL)
     {
-        std::cerr << "Not a full path: '" << convertUTF16ToUTF8(sFileName) << "'?\n";
+        std::cout << "Not a full path: '" << convertUTF16ToUTF8(sFileName) << "'?\n";
         std::exit(1);
     }
     wchar_t* pAfterSlash
@@ -128,7 +128,7 @@ int wmain(int argc, wchar_t** argv)
                             GetCurrentProcess(), &aWrappedProcessStartupInfo.hStdError, 0, TRUE,
                             DUPLICATE_SAME_ACCESS))
     {
-        std::cerr << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
         std::exit(1);
     }
 
@@ -137,7 +137,7 @@ int wmain(int argc, wchar_t** argv)
     if (!CreateProcessW(NULL, pCommandLine, NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL,
                         &aWrappedProcessStartupInfo, &aWrappedProcessInfo))
     {
-        std::cerr << "CreateProcess(" << convertUTF16ToUTF8(pCommandLine)
+        std::cout << "CreateProcess(" << convertUTF16ToUTF8(pCommandLine)
                   << ") failed: " << WindowsErrorString(GetLastError()) << "\n";
         std::exit(1);
     }
@@ -147,7 +147,7 @@ int wmain(int argc, wchar_t** argv)
     BOOL bIsWow64;
     if (!IsWow64Process(aWrappedProcessInfo.hProcess, &bIsWow64))
     {
-        std::cerr << "IsWow64Process failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "IsWow64Process failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(aWrappedProcessInfo.hProcess, 1);
         WaitForSingleObject(aWrappedProcessInfo.hProcess, INFINITE);
         std::exit(1);
@@ -177,7 +177,7 @@ int wmain(int argc, wchar_t** argv)
         || !DuplicateHandle(GetCurrentProcess(), aWrappedProcessInfo.hThread, GetCurrentProcess(),
                             &hInheritableWrappedThread, 0, TRUE, DUPLICATE_SAME_ACCESS))
     {
-        std::cerr << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(aWrappedProcessInfo.hProcess, 1);
         WaitForSingleObject(aWrappedProcessInfo.hProcess, INFINITE);
         std::exit(1);
@@ -221,14 +221,14 @@ int wmain(int argc, wchar_t** argv)
                             GetCurrentProcess(), &aExeWrapperStartupInfo.hStdError, 0, TRUE,
                             DUPLICATE_SAME_ACCESS))
     {
-        std::cerr << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
         std::exit(1);
     }
 
     if (!CreateProcessW(NULL, pCommandLine, NULL, NULL, TRUE, 0, NULL, NULL,
                         &aExeWrapperStartupInfo, &aExeWrapperProcessInfo))
     {
-        std::cerr << "CreateProcess(" << convertUTF16ToUTF8(sFileName)
+        std::cout << "CreateProcess(" << convertUTF16ToUTF8(sFileName)
                   << ") failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(aWrappedProcessInfo.hProcess, 1);
         WaitForSingleObject(aWrappedProcessInfo.hProcess, INFINITE);

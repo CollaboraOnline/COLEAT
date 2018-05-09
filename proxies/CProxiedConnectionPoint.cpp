@@ -73,7 +73,7 @@ HRESULT STDMETHODCALLTYPE CProxiedConnectionPoint::Advise(IUnknown* pUnkSink, DW
     if (FAILED(nResult))
     {
         if (getParam()->mbVerbose)
-            std::cerr << "..." << this
+            std::cout << "..." << this
                       << "@CProxiedConnectionPoint::Advise: Sink is not an IDispatch" << std::endl;
         return E_NOTIMPL;
     }

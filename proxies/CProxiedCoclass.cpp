@@ -63,7 +63,7 @@ IDispatch* CProxiedCoclass::createDispatchToProxy(const InterfaceMapping& rMappi
     if (FAILED(CoCreateInstance(aProxiedOrReplacementIID, NULL, CLSCTX_LOCAL_SERVER, IID_IDispatch,
                                 (void**)&mpReplacementAppDispatch)))
     {
-        std::cerr << "Cound not create instance of " << aProxiedOrReplacementIID << std::endl;
+        std::cout << "Cound not create instance of " << aProxiedOrReplacementIID << std::endl;
         std::exit(1);
     }
 
@@ -74,7 +74,7 @@ IDispatch* CProxiedCoclass::createDispatchToProxy(const InterfaceMapping& rMappi
         std::cout << "Calling " << mpReplacementAppDispatch << "->GetTypeInfo(0)\n";
     if (FAILED((hr = mpReplacementAppDispatch->GetTypeInfo(0, LOCALE_USER_DEFAULT, &pAppTI))))
     {
-        std::cerr << "GetTypeInfo failed" << std::endl;
+        std::cout << "GetTypeInfo failed" << std::endl;
         exit(1);
     }
 
@@ -83,7 +83,7 @@ IDispatch* CProxiedCoclass::createDispatchToProxy(const InterfaceMapping& rMappi
     TYPEATTR* pTypeAttr;
     if (FAILED((hr = pAppTI->GetTypeAttr(&pTypeAttr))))
     {
-        std::cerr << "GetTypeAttr failed" << std::endl;
+        std::cout << "GetTypeAttr failed" << std::endl;
         exit(1);
     }
     if (getParam()->mbVerbose)
