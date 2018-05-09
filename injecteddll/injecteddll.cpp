@@ -626,7 +626,13 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
         return aTrampoline.pProc;
     }
 
-    return GetProcAddress(hModule, lpProcName);
+    PROC pRetval = GetProcAddress(hModule, lpProcName);
+
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "GetProcAddress(" << moduleName(hModule) << ", " << lpProcName << ") from "
+                  << prettyCodeAddress(_ReturnAddress()) << ": unhandled: " << pRetval << std::endl;
+
+    return pRetval;
 }
 
 static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
