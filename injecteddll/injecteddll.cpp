@@ -524,6 +524,26 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
     return CoCreateInstanceEx(clsid, pUnkOuter, dwClsCtx, pServerInfo, dwCount, pResults);
 }
 
+static HRESULT __stdcall myCoGetClassObject(REFCLSID rclsid, DWORD dwClsContext,
+                                            COSERVERINFO* pServerInfo, REFIID riid, LPVOID* ppv)
+{
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "CoGetClassObject(" << rclsid << ", " << riid << ")..." << std::endl;
+
+    HRESULT nRetval = CoGetClassObject(rclsid, dwClsContext, pServerInfo, riid, ppv);
+
+    if (pGlobalParamPtr->mbVerbose)
+    {
+        std::cout << "...CoGetClassObject(" << rclsid << ", " << riid << "): unhandled: ";
+        if (nRetval == S_OK)
+            std::cout << *ppv << std::endl;
+        else
+            std::cout << HRESULT_to_string(nRetval) << std::endl;
+    }
+
+    return nRetval;
+}
+
 static HRESULT __stdcall myDllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
 {
 #ifndef _WIN64
@@ -885,6 +905,8 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", L"CoCreateInstanceEx",
              myCoCreateInstanceEx);
 
+        hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", L"CoGetClassObject", myCoGetClassObject);
+
         if (!hook(true, pParam, L"msvbvm60.dll", L"kernel32.dll", L"GetProcAddress",
                   myGetProcAddress))
             return FALSE;
@@ -899,6 +921,7 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         hook(false, pParam, nullptr, L"kernel32.dll", L"LoadLibraryExW", myLoadLibraryExW);
         hook(false, pParam, nullptr, L"ole32.dll", L"CoCreateInstance", myCoCreateInstance);
         hook(false, pParam, nullptr, L"ole32.dll", L"CoCreateInstanceEx", myCoCreateInstanceEx);
+        hook(false, pParam, nullptr, L"ole32.dll", L"CoGetClassObject", myCoGetClassObject);
 
         if (nHookedFunctions == 0)
         {
