@@ -35,23 +35,18 @@ struct ThreadProcParam
     FunPtr mpLoadLibraryW;
     FunPtr mpGetLastError;
     FunPtr mpGetProcAddress;
-    FunPtr mpSetEvent;
 
     bool mbPassedSizeCheck;
-    bool mbPassedInjectedThread;
     bool mbNoReplacement;
     bool mbTrace;
     bool mbVerbose;
 
-    HANDLE mhMessageEvent;
     bool mbMessageIsError;
 
     static const int NFUNCTION = 100;
     char msInjectedDllMainFunction[NFUNCTION];
     static const int NFILENAME = 1000;
     wchar_t msFileName[NFILENAME];
-    static const int NEXPLANATION = 1000;
-    wchar_t msErrorExplanation[NEXPLANATION];
     DWORD mnLastError;
 };
 

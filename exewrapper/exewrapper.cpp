@@ -246,28 +246,9 @@ int wmain(int argc, wchar_t** argv)
     aParam.mpLoadLibraryW.pVoid = GetProcAddress(hKernel32, "LoadLibraryW");
     aParam.mpGetLastError.pVoid = GetProcAddress(hKernel32, "GetLastError");
     aParam.mpGetProcAddress.pVoid = GetProcAddress(hKernel32, "GetProcAddress");
-    aParam.mpSetEvent.pVoid = GetProcAddress(hKernel32, "SetEvent");
     aParam.mbNoReplacement = bNoReplacement;
     aParam.mbTrace = bTrace;
     aParam.mbVerbose = bVerbose;
-
-    // Create an event so that the injected function can tell us to display error messages.
-    HANDLE hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-    if (hEvent == NULL)
-    {
-        std::cout << "CreateEvent failed: " << WindowsErrorString(GetLastError()) << "\n";
-        TerminateProcess(hWrappedProcess, 1);
-        WaitForSingleObject(hWrappedProcess, INFINITE);
-        std::exit(1);
-    }
-    if (!DuplicateHandle(GetCurrentProcess(), hEvent, hWrappedProcess, &aParam.mhMessageEvent, 0,
-                         TRUE, DUPLICATE_SAME_ACCESS))
-    {
-        std::cout << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
-        TerminateProcess(hWrappedProcess, 1);
-        WaitForSingleObject(hWrappedProcess, INFINITE);
-        std::exit(1);
-    }
 
     strcpy_s(aParam.msInjectedDllMainFunction, ThreadProcParam::NFUNCTION,
              "InjectedDllMainFunction");
@@ -346,46 +327,12 @@ int wmain(int argc, wchar_t** argv)
         std::exit(1);
     }
 
-    HANDLE aHandles[] = { hEvent, hThread };
-    DWORD nWaitResult;
-    while ((nWaitResult = WaitForMultipleObjects(2, aHandles, FALSE, INFINITE)) != WAIT_FAILED)
-    {
-        SIZE_T nBytesRead;
-        if (!ReadProcessMemory(hWrappedProcess, pParamRemote, &aParam, sizeof(aParam), &nBytesRead))
-        {
-            std::cout << "ReadProcessMemory failed: " << WindowsErrorString(GetLastError()) << "\n";
-            TerminateProcess(hWrappedProcess, 1);
-            WaitForSingleObject(hWrappedProcess, INFINITE);
-            std::exit(1);
-        }
+    WaitForSingleObject(hThread, INFINITE);
 
-        if (nWaitResult == WAIT_OBJECT_0)
-        {
-            // Injected thread signalled us something to output, either an error message of verbose
-            // logging.
-            if (aParam.mbMessageIsError)
-                std::cout << convertUTF16ToUTF8(aParam.msErrorExplanation) << std::endl;
-            else if (aParam.mbVerbose)
-                std::cout << convertUTF16ToUTF8(aParam.msErrorExplanation) << std::endl;
-
-            if (!SetEvent(hEvent))
-            {
-                std::cout << "SetEvent failed: " << WindowsErrorString(GetLastError()) << "\n";
-                TerminateProcess(hWrappedProcess, 1);
-                WaitForSingleObject(hWrappedProcess, INFINITE);
-                std::exit(1);
-            }
-        }
-        else if (nWaitResult == WAIT_OBJECT_0 + 1)
-        {
-            // Inhected thread has finished.
-            break;
-        }
-    }
-    if (nWaitResult == WAIT_FAILED)
+    SIZE_T nBytesRead;
+    if (!ReadProcessMemory(hWrappedProcess, pParamRemote, &aParam, sizeof(aParam), &nBytesRead))
     {
-        std::cout << "WaitForMultipleObjects failed: " << WindowsErrorString(GetLastError())
-                  << "\n";
+        std::cout << "ReadProcessMemory failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
         std::exit(1);
@@ -401,16 +348,18 @@ int wmain(int argc, wchar_t** argv)
     }
     if (!nExitCode)
     {
-        std::cout << "Injected thread failed: ";
+        std::cout << "Injected thread failed";
 
         if (!aParam.mbPassedSizeCheck)
         {
             if (aParam.mnLastError != 0)
-                std::cout << WindowsErrorString(aParam.mnLastError) << "\n";
+                std::cout << ": " << WindowsErrorString(aParam.mnLastError);
             else
-                std::cout << "Mismatched parameter structure sizes, COLEAT build or installation "
-                             "problem.\n";
+                std::cout << ": "
+                          << "Mismatched parameter structure sizes, COLEAT build or installation "
+                             "problem.";
         }
+        std::cout << std::endl;
 
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
