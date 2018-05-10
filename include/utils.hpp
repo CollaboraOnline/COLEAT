@@ -356,34 +356,58 @@ inline std::string WindowsErrorStringFromHRESULT(HRESULT nResult)
 
 inline void tryToEnsureStdHandlesOpen()
 {
-    // Make sure we have a stdout for debugging output, for now
-    if (GetStdHandle(STD_OUTPUT_HANDLE) == NULL)
+    // Try to make sure we have std::cout writable.
+
+    HANDLE hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    DWORD nStdOutputHandleFlags;
+    BOOL bGotStdOutputInformation = FALSE;
+    if (hStdOutput != NULL && hStdOutput != INVALID_HANDLE_VALUE)
+        bGotStdOutputInformation = GetHandleInformation(hStdOutput, &nStdOutputHandleFlags);
+
+    bool bNeedConsole = false;
+    if (hStdOutput == NULL || hStdOutput == INVALID_HANDLE_VALUE || !bGotStdOutputInformation)
     {
         STARTUPINFOW aStartupInfo;
         aStartupInfo.cb = sizeof(aStartupInfo);
         GetStartupInfoW(&aStartupInfo);
-        if ((aStartupInfo.dwFlags & STARTF_USESTDHANDLES) == STARTF_USESTDHANDLES
-            && aStartupInfo.hStdInput != INVALID_HANDLE_VALUE && aStartupInfo.hStdInput != NULL
-            && aStartupInfo.hStdOutput != INVALID_HANDLE_VALUE && aStartupInfo.hStdOutput != NULL
-            && aStartupInfo.hStdError != INVALID_HANDLE_VALUE && aStartupInfo.hStdError != NULL)
+
+        if ((aStartupInfo.dwFlags & STARTF_USESTDHANDLES) == STARTF_USESTDHANDLES)
         {
-            // If standard handles had been passed to this process, use them
-            SetStdHandle(STD_INPUT_HANDLE, aStartupInfo.hStdInput);
-            SetStdHandle(STD_OUTPUT_HANDLE, aStartupInfo.hStdOutput);
-            SetStdHandle(STD_ERROR_HANDLE, aStartupInfo.hStdError);
+            // If standard handles had been passed to this process, try to use them
+            if (!bGotStdOutputInformation && aStartupInfo.hStdOutput != NULL
+                && aStartupInfo.hStdOutput != INVALID_HANDLE_VALUE)
+            {
+                bool bDidSetStdOutput = false;
+                bGotStdOutputInformation
+                    = GetHandleInformation(aStartupInfo.hStdOutput, &nStdOutputHandleFlags);
+                if (bGotStdOutputInformation)
+                    bDidSetStdOutput
+                        = (SetStdHandle(STD_OUTPUT_HANDLE, aStartupInfo.hStdOutput) != 0);
+                if (bDidSetStdOutput)
+                    bGotStdOutputInformation = GetHandleInformation(GetStdHandle(STD_OUTPUT_HANDLE),
+                                                                    &nStdOutputHandleFlags);
+                if (!bGotStdOutputInformation || !bDidSetStdOutput)
+                    bNeedConsole = true;
+            }
         }
         else
+            bNeedConsole = true;
+
+        if (bNeedConsole)
         {
-            // Try to attach parent console; on error try to create new.
-            // If this process already has its console, these will simply fail.
+            // Try to attach parent console; on error try to create new if necessary.
             if (!AttachConsole(ATTACH_PARENT_PROCESS))
                 AllocConsole();
         }
 
-        // Ignore errors from freopen_s()
-        FILE* pStream;
-        freopen_s(&pStream, "CON", "w", stdout);
-        std::ios::sync_with_stdio(true);
+#pragma warning(push)
+#pragma warning(disable : 4996)
+        // Re-open stdout to CONOUT$. (Using the "secure" freopen_s() to open CONOUT$ seems to fail
+        // on Windows 7 because it uses _SH_SECURE, but freopen() uses _SH_DENYNO. Disable C4996 so
+        // the compiler doesn't warn us about the "insecure" freopen().)
+        freopen("CONOUT$", "w", stdout);
+#pragma warning(pop)
     }
 }
 
