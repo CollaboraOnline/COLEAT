@@ -390,6 +390,8 @@ inline void tryToEnsureStdHandlesOpen()
                 if (!bGotStdOutputInformation || !bDidSetStdOutput)
                     bNeedConsole = true;
             }
+            else
+                bNeedConsole = true;
         }
         else
             bNeedConsole = true;
