@@ -1,2 +1,7 @@
-!*.sln
-!*.vcxproj
+# Where we put our binaries
+/bin
+
+# Backup and temporary editor files
+*~
+\#*
+.\#*
