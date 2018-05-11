@@ -134,6 +134,10 @@ int wmain(int argc, wchar_t** argv)
             case L'n':
                 bNoReplacement = true;
                 break;
+            case L'o':
+                // Handled by coleat.exe
+                argi++;
+                break;
             case L't':
                 bTrace = true;
                 break;

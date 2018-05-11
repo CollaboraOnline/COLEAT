@@ -11,6 +11,7 @@
 #pragma warning(disable : 4668 4820 4917)
 
 #include <cassert>
+#include <cstdio>
 #include <cstdlib>
 #include <cwchar>
 #include <fstream>
@@ -19,6 +20,8 @@
 #include <map>
 #include <sstream>
 #include <string>
+
+#include <io.h>
 
 #include <Windows.h>
 
@@ -36,6 +39,8 @@ static void Usage(wchar_t** argv)
                  "\n"
                  "  Options:\n"
                  "    -n                           no redirection to replacement app\n"
+                 "    -o file                      output file (default: stdout, in new console if "
+                 "necessary)\n"
                  "    -t                           terse trace output\n"
                  "    -v                           verbose logging of internal operation\n";
     std::exit(1);
@@ -44,6 +49,8 @@ static void Usage(wchar_t** argv)
 int wmain(int argc, wchar_t** argv)
 {
     tryToEnsureStdHandlesOpen();
+
+    wchar_t* sOutputFile = nullptr;
 
     int argi = 1;
 
@@ -61,6 +68,14 @@ int wmain(int argc, wchar_t** argv)
             }
             case L'n':
                 break;
+            case L'o':
+            {
+                if (argi + 1 >= argc)
+                    Usage(argv);
+                sOutputFile = argv[argi + 1];
+                argi++;
+                break;
+            }
             case L't':
                 break;
             case L'v':
@@ -73,6 +88,20 @@ int wmain(int argc, wchar_t** argv)
 
     if (argc - argi < 1)
         Usage(argv);
+
+    if (sOutputFile != nullptr)
+    {
+        FILE* aStream;
+        if (_wfreopen_s(&aStream, sOutputFile, L"a", stdout) != 0)
+        {
+            std::cout << "Could not open given output file " << convertUTF16ToUTF8(sOutputFile)
+                      << " for writing\n";
+            std::exit(1);
+        }
+
+        // Set the STD_OUTPUT_HANDLE to that of std::cout/stdout. The child processes will inherit it.
+        SetStdHandle(STD_OUTPUT_HANDLE, (HANDLE)_get_osfhandle(_fileno(stdout)));
+    }
 
     // Get our exe pathname.
 
