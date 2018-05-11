@@ -22,6 +22,7 @@
 #include <string>
 
 #include <io.h>
+#include <time.h>
 
 #include <Windows.h>
 
@@ -31,9 +32,12 @@
 #include "utils.hpp"
 
 static bool bDebug = false;
+static bool bDidAllocConsole;
 
 static void Usage(wchar_t** argv)
 {
+    tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
     std::cout << "Usage: " << convertUTF16ToUTF8(programName(argv[0]))
               << " [options] program [arguments...]\n"
                  "\n"
@@ -43,14 +47,14 @@ static void Usage(wchar_t** argv)
                  "necessary)\n"
                  "    -t                           terse trace output\n"
                  "    -v                           verbose logging of internal operation\n";
+    if (bDidAllocConsole)
+        waitForAnyKey();
     std::exit(1);
 }
 
 int wmain(int argc, wchar_t** argv)
 {
-    tryToEnsureStdHandlesOpen();
-
-    wchar_t* sOutputFile = nullptr;
+    wchar_t* pOutputFile = nullptr;
 
     int argi = 1;
 
@@ -72,7 +76,7 @@ int wmain(int argc, wchar_t** argv)
             {
                 if (argi + 1 >= argc)
                     Usage(argv);
-                sOutputFile = argv[argi + 1];
+                pOutputFile = argv[argi + 1];
                 argi++;
                 break;
             }
@@ -89,18 +93,56 @@ int wmain(int argc, wchar_t** argv)
     if (argc - argi < 1)
         Usage(argv);
 
-    if (sOutputFile != nullptr)
+    HANDLE hOutputHandle;
+
+    if (pOutputFile != nullptr)
     {
-        FILE* aStream;
-        if (_wfreopen_s(&aStream, sOutputFile, L"a", stdout) != 0)
+        const int NTIMEBUF = 100;
+        wchar_t sTimeBuf[NTIMEBUF];
+        time_t nNow = time(nullptr);
+        struct tm aNow;
+        localtime_s(&aNow, &nNow);
+
+        // Expand "variables" in the output file name.
+
+        std::wstring sOutputFile(pOutputFile);
+        while (true)
         {
-            std::cout << "Could not open given output file " << convertUTF16ToUTF8(sOutputFile)
-                      << " for writing\n";
+            std::size_t i;
+            i = sOutputFile.find(L"%t");
+            if (i != std::wstring::npos)
+            {
+                wcsftime(sTimeBuf, NTIMEBUF, L"%Y%m%d.%H%M%S", &aNow);
+                sOutputFile = sOutputFile.substr(0, i) + sTimeBuf + sOutputFile.substr(i + 2);
+                continue;
+            }
+            break;
+        }
+
+        FILE* aStream;
+        if (_wfreopen_s(&aStream, sOutputFile.c_str(), L"a", stdout) != 0)
+        {
+            tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
+            std::cout << "Could not open given output file "
+                      << convertUTF16ToUTF8(sOutputFile.c_str()) << " for writing\n";
+            if (bDidAllocConsole)
+                waitForAnyKey();
             std::exit(1);
         }
 
-        // Set the STD_OUTPUT_HANDLE to that of std::cout/stdout. The child processes will inherit it.
-        SetStdHandle(STD_OUTPUT_HANDLE, (HANDLE)_get_osfhandle(_fileno(stdout)));
+        // If appending to a file, write a header.
+
+        if (wcsftime(sTimeBuf, NTIMEBUF, L"%F %H:%M:%S", &aNow) != 0)
+            std::cout << "=== COLEAT output at " << convertUTF16ToUTF8(sTimeBuf)
+                      << " ===" << std::endl;
+
+        hOutputHandle = (HANDLE)_get_osfhandle(_fileno(stdout));
+    }
+    else
+    {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+        hOutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
     }
 
     // Get our exe pathname.
@@ -113,6 +155,8 @@ int wmain(int argc, wchar_t** argv)
     if (nSize == NFILENAME - 20)
     {
         std::cout << "Pathname of this exe ridiculously long\n";
+        if (bDidAllocConsole)
+            waitForAnyKey();
         std::exit(1);
     }
 
@@ -122,6 +166,8 @@ int wmain(int argc, wchar_t** argv)
     if (pLastBackslash == NULL && pLastSlash == NULL)
     {
         std::cout << "Not a full path: '" << convertUTF16ToUTF8(sFileName) << "'?\n";
+        if (bDidAllocConsole)
+            waitForAnyKey();
         std::exit(1);
     }
     wchar_t* pAfterSlash
@@ -148,18 +194,22 @@ int wmain(int argc, wchar_t** argv)
     aWrappedProcessStartupInfo.cb = sizeof(aWrappedProcessStartupInfo);
     aWrappedProcessStartupInfo.dwFlags = STARTF_USESTDHANDLES;
 
-    if (!DuplicateHandle(GetCurrentProcess(), GetStdHandle(STD_INPUT_HANDLE), GetCurrentProcess(),
-                         &aWrappedProcessStartupInfo.hStdInput, 0, TRUE, DUPLICATE_SAME_ACCESS)
-        || !DuplicateHandle(GetCurrentProcess(), GetStdHandle(STD_OUTPUT_HANDLE),
-                            GetCurrentProcess(), &aWrappedProcessStartupInfo.hStdOutput, 0, TRUE,
-                            DUPLICATE_SAME_ACCESS)
-        || !DuplicateHandle(GetCurrentProcess(), GetStdHandle(STD_ERROR_HANDLE),
-                            GetCurrentProcess(), &aWrappedProcessStartupInfo.hStdError, 0, TRUE,
-                            DUPLICATE_SAME_ACCESS))
+    // We only *need* STD_OUTPUT_HANDLE
+    if (!DuplicateHandle(GetCurrentProcess(), hOutputHandle, GetCurrentProcess(),
+                         &aWrappedProcessStartupInfo.hStdOutput, 0, TRUE, DUPLICATE_SAME_ACCESS))
     {
-        std::cout << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "DuplicateHandle of output handle " << hOutputHandle
+                  << " for wrapped process failed: " << WindowsErrorString(GetLastError()) << "\n";
+        if (bDidAllocConsole)
+            waitForAnyKey();
         std::exit(1);
     }
+
+    // Ignore errors duplicatig the STD_INPUT_HANDLE or STD_ERROR_HANDLE
+    DuplicateHandle(GetCurrentProcess(), GetStdHandle(STD_INPUT_HANDLE), GetCurrentProcess(),
+                    &aWrappedProcessStartupInfo.hStdInput, 0, TRUE, DUPLICATE_SAME_ACCESS);
+    DuplicateHandle(GetCurrentProcess(), GetStdHandle(STD_ERROR_HANDLE), GetCurrentProcess(),
+                    &aWrappedProcessStartupInfo.hStdError, 0, TRUE, DUPLICATE_SAME_ACCESS);
 
     wchar_t* pCommandLine = _wcsdup(sCommandLine.data());
 
@@ -168,6 +218,8 @@ int wmain(int argc, wchar_t** argv)
     {
         std::cout << "CreateProcess(" << convertUTF16ToUTF8(pCommandLine)
                   << ") failed: " << WindowsErrorString(GetLastError()) << "\n";
+        if (bDidAllocConsole)
+            waitForAnyKey();
         std::exit(1);
     }
 
@@ -179,6 +231,8 @@ int wmain(int argc, wchar_t** argv)
         std::cout << "IsWow64Process failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(aWrappedProcessInfo.hProcess, 1);
         WaitForSingleObject(aWrappedProcessInfo.hProcess, INFINITE);
+        if (bDidAllocConsole)
+            waitForAnyKey();
         std::exit(1);
     }
 
@@ -206,9 +260,12 @@ int wmain(int argc, wchar_t** argv)
         || !DuplicateHandle(GetCurrentProcess(), aWrappedProcessInfo.hThread, GetCurrentProcess(),
                             &hInheritableWrappedThread, 0, TRUE, DUPLICATE_SAME_ACCESS))
     {
-        std::cout << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "DuplicateHandle of wrapped process or thread handle failed: "
+                  << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(aWrappedProcessInfo.hProcess, 1);
         WaitForSingleObject(aWrappedProcessInfo.hProcess, INFINITE);
+        if (bDidAllocConsole)
+            waitForAnyKey();
         std::exit(1);
     }
 
@@ -241,18 +298,21 @@ int wmain(int argc, wchar_t** argv)
     aExeWrapperStartupInfo.cb = sizeof(aExeWrapperStartupInfo);
     aExeWrapperStartupInfo.dwFlags = STARTF_USESTDHANDLES;
 
-    if (!DuplicateHandle(GetCurrentProcess(), GetStdHandle(STD_INPUT_HANDLE), GetCurrentProcess(),
-                         &aExeWrapperStartupInfo.hStdInput, 0, TRUE, DUPLICATE_SAME_ACCESS)
-        || !DuplicateHandle(GetCurrentProcess(), GetStdHandle(STD_OUTPUT_HANDLE),
-                            GetCurrentProcess(), &aExeWrapperStartupInfo.hStdOutput, 0, TRUE,
-                            DUPLICATE_SAME_ACCESS)
-        || !DuplicateHandle(GetCurrentProcess(), GetStdHandle(STD_ERROR_HANDLE),
-                            GetCurrentProcess(), &aExeWrapperStartupInfo.hStdError, 0, TRUE,
-                            DUPLICATE_SAME_ACCESS))
+    if (!DuplicateHandle(GetCurrentProcess(), hOutputHandle, GetCurrentProcess(),
+                         &aExeWrapperStartupInfo.hStdOutput, 0, TRUE, DUPLICATE_SAME_ACCESS))
     {
-        std::cout << "DuplicateHandle failed: " << WindowsErrorString(GetLastError()) << "\n";
+        std::cout << "DuplicateHandle of output handle " << hOutputHandle
+                  << " for exewrapper failed: " << WindowsErrorString(GetLastError()) << "\n";
+        if (bDidAllocConsole)
+            waitForAnyKey();
         std::exit(1);
     }
+
+    DuplicateHandle(GetCurrentProcess(), GetStdHandle(STD_INPUT_HANDLE), GetCurrentProcess(),
+                    &aExeWrapperStartupInfo.hStdInput, 0, TRUE, DUPLICATE_SAME_ACCESS);
+
+    DuplicateHandle(GetCurrentProcess(), GetStdHandle(STD_ERROR_HANDLE), GetCurrentProcess(),
+                    &aExeWrapperStartupInfo.hStdError, 0, TRUE, DUPLICATE_SAME_ACCESS);
 
     if (!CreateProcessW(NULL, pCommandLine, NULL, NULL, TRUE, 0, NULL, NULL,
                         &aExeWrapperStartupInfo, &aExeWrapperProcessInfo))
@@ -261,6 +321,8 @@ int wmain(int argc, wchar_t** argv)
                   << ") failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(aWrappedProcessInfo.hProcess, 1);
         WaitForSingleObject(aWrappedProcessInfo.hProcess, INFINITE);
+        if (bDidAllocConsole)
+            waitForAnyKey();
         std::exit(1);
     }
 
@@ -268,6 +330,9 @@ int wmain(int argc, wchar_t** argv)
 
     // Wait for the exewrapper process to finish. (It will wait for the wrapped process to finish.)
     WaitForSingleObject(aExeWrapperProcessInfo.hProcess, INFINITE);
+
+    if (bDidAllocConsole)
+        waitForAnyKey();
 
     return 0;
 }

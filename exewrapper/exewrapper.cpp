@@ -29,8 +29,12 @@
 #include "exewrapper.hpp"
 #include "utils.hpp"
 
+static bool bDidAllocConsole;
+
 static void Usage(wchar_t** argv)
 {
+    tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
     std::cout << convertUTF16ToUTF8(programName(argv[0]))
               << ": Usage error. This is not a program that users should run directly.\n";
     std::exit(1);
@@ -100,8 +104,6 @@ static DWORD WINAPI threadProc(ThreadProcParam* pParam)
 
 int wmain(int argc, wchar_t** argv)
 {
-    tryToEnsureStdHandlesOpen();
-
     if (argc < 3)
         Usage(argv);
 
@@ -111,6 +113,8 @@ int wmain(int argc, wchar_t** argv)
     if (!GetHandleInformation(hWrappedProcess, &nHandleFlags)
         || !GetHandleInformation(hWrappedThread, &nHandleFlags))
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "Inherited handle to wrapped process or its start thread is invalid?\n";
         std::exit(1);
     }
@@ -162,6 +166,8 @@ int wmain(int argc, wchar_t** argv)
     DWORD nSize = GetModuleFileNameW(NULL, sMyFileName, NFILENAME - 20);
     if (nSize == NFILENAME - 20)
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "Pathname of this exe ridiculously long\n";
         std::exit(1);
     }
@@ -171,6 +177,8 @@ int wmain(int argc, wchar_t** argv)
     {
         if (!GetProcessImageFileNameW(hWrappedProcess, sWrappedFileName, NFILENAME))
         {
+            tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
             std::cout << "GetProcessImageFileNameW failed: " << WindowsErrorString(GetLastError())
                       << "\n";
             TerminateProcess(hWrappedProcess, 1);
@@ -179,6 +187,8 @@ int wmain(int argc, wchar_t** argv)
         }
 
         // Give the developer a chance to attach us in a debugger
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "Waiting for you to attach a debugger to the '"
                   << convertUTF16ToUTF8(baseName(sMyFileName)) << "' process "
                   << std::to_string(GetProcessId(GetCurrentProcess())) << "\n";
@@ -202,6 +212,8 @@ int wmain(int argc, wchar_t** argv)
         pRover++;
     if (pRover - pEndOfNops >= 100)
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "Can't find end of threadProc\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
@@ -214,6 +226,8 @@ int wmain(int argc, wchar_t** argv)
         pRover++;
     if (pRover - pThreadProc >= 1000)
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "Can't find end of threadProc\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
@@ -230,6 +244,8 @@ int wmain(int argc, wchar_t** argv)
     wchar_t* pLastDot = wcsrchr(sDllFileName, L'.');
     if (pLastDot == NULL)
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "No period in '" << convertUTF16ToUTF8(sDllFileName) << "'?\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
@@ -262,6 +278,8 @@ int wmain(int argc, wchar_t** argv)
         = VirtualAllocEx(hWrappedProcess, NULL, sizeof(aParam), MEM_COMMIT, PAGE_READWRITE);
     if (pParamRemote == NULL)
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "VirtualAllocEx failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
@@ -271,6 +289,8 @@ int wmain(int argc, wchar_t** argv)
     SIZE_T nBytesWritten;
     if (!WriteProcessMemory(hWrappedProcess, pParamRemote, &aParam, sizeof(aParam), &nBytesWritten))
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "WriteProcessMemory failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
@@ -281,6 +301,8 @@ int wmain(int argc, wchar_t** argv)
         = VirtualAllocEx(hWrappedProcess, NULL, nSizeOfThreadProc, MEM_COMMIT, PAGE_READWRITE);
     if (pThreadProcRemote == NULL)
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "VirtualAllocEx failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
@@ -290,6 +312,8 @@ int wmain(int argc, wchar_t** argv)
     if (!WriteProcessMemory(hWrappedProcess, pThreadProcRemote, pThreadProc, nSizeOfThreadProc,
                             &nBytesWritten))
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "WriteProcessMemory failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
@@ -300,6 +324,8 @@ int wmain(int argc, wchar_t** argv)
     if (!VirtualProtectEx(hWrappedProcess, pThreadProcRemote, nSizeOfThreadProc, PAGE_EXECUTE,
                           &nOldProtection))
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "VirtualProtectEx failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
@@ -309,6 +335,8 @@ int wmain(int argc, wchar_t** argv)
     if (bDebug)
     {
         // Give the developer a chance to debug the wrapped program, too.
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "Waiting for you to attach a debugger to the wrapped '"
                   << convertUTF16ToUTF8(baseName(sWrappedFileName)) << "' process "
                   << std::to_string(GetProcessId(hWrappedProcess)) << "\n";
@@ -325,6 +353,8 @@ int wmain(int argc, wchar_t** argv)
         = CreateRemoteThread(hWrappedProcess, NULL, 0, pProc.pStartRoutine, pParamRemote, 0, NULL);
     if (!hThread)
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "CreateRemoteThread failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
@@ -336,6 +366,8 @@ int wmain(int argc, wchar_t** argv)
     SIZE_T nBytesRead;
     if (!ReadProcessMemory(hWrappedProcess, pParamRemote, &aParam, sizeof(aParam), &nBytesRead))
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "ReadProcessMemory failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
@@ -345,6 +377,8 @@ int wmain(int argc, wchar_t** argv)
     DWORD nExitCode;
     if (!GetExitCodeThread(hThread, &nExitCode))
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "GetExitCodeThread failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
@@ -352,6 +386,8 @@ int wmain(int argc, wchar_t** argv)
     }
     if (!nExitCode)
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "Injected thread failed";
 
         if (!aParam.mbPassedSizeCheck)
@@ -372,9 +408,14 @@ int wmain(int argc, wchar_t** argv)
 
     CloseHandle(hThread);
 
+    if (aParam.mbVerbose || aParam.mbTrace)
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
     DWORD nPreviousSuspendCount = ResumeThread(hWrappedThread);
     if (nPreviousSuspendCount == (DWORD)-1)
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "ResumeThread failed: " << WindowsErrorString(GetLastError()) << "\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);
@@ -382,10 +423,14 @@ int wmain(int argc, wchar_t** argv)
     }
     else if (nPreviousSuspendCount == 0)
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "Huh, thread was not suspended?\n";
     }
     else if (nPreviousSuspendCount > 1)
     {
+        tryToEnsureStdHandlesOpen(bDidAllocConsole);
+
         std::cout << "Thread still suspended after ResumeThread\n";
         TerminateProcess(hWrappedProcess, 1);
         WaitForSingleObject(hWrappedProcess, INFINITE);

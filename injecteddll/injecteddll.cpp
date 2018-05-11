@@ -42,6 +42,8 @@ static ThreadProcParam* pGlobalParamPtr;
 
 static int nHookedFunctions = 0;
 
+static bool bDidAllocConsole;
+
 static bool hook(bool bMandatory, ThreadProcParam* pParam, HMODULE hModule,
                  const wchar_t* sModuleName, const wchar_t* sDll, const char* sFunction,
                  PVOID pOwnFunction);
@@ -840,7 +842,7 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
 
     CProxiedUnknown::setParam(pGlobalParamPtr);
 
-    tryToEnsureStdHandlesOpen();
+    tryToEnsureStdHandlesOpen(bDidAllocConsole);
 
     // Do our IAT patching. We want to hook CoCreateInstance() and CoCreateInstanceEx().
 

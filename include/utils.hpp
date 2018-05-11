@@ -22,6 +22,8 @@
 #include <string>
 #include <vector>
 
+#include <conio.h>
+
 #include <Windows.h>
 #include <initguid.h>
 
@@ -354,9 +356,11 @@ inline std::string WindowsErrorStringFromHRESULT(HRESULT nResult)
     return WindowsErrorString(nErrorCode);
 }
 
-inline void tryToEnsureStdHandlesOpen()
+inline void tryToEnsureStdHandlesOpen(bool& rDidAllocConsole)
 {
     // Try to make sure we have std::cout writable.
+
+    rDidAllocConsole = false;
 
     HANDLE hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -400,7 +404,22 @@ inline void tryToEnsureStdHandlesOpen()
         {
             // Try to attach parent console; on error try to create new if necessary.
             if (!AttachConsole(ATTACH_PARENT_PROCESS))
+            {
                 AllocConsole();
+                rDidAllocConsole = true;
+
+                CONSOLE_SCREEN_BUFFER_INFO aBufferInfo;
+                GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &aBufferInfo);
+                const WORD nAttr = BACKGROUND_RED | BACKGROUND_BLUE | BACKGROUND_GREEN;
+                std::vector<WORD> vAttrs((size_t)(aBufferInfo.dwSize.X * aBufferInfo.dwSize.Y),
+                                         nAttr);
+                COORD aOrigin = { 0, 0 };
+                DWORD nWritten;
+                WriteConsoleOutputAttribute(GetStdHandle(STD_OUTPUT_HANDLE), vAttrs.data(),
+                                            (DWORD)(aBufferInfo.dwSize.X * aBufferInfo.dwSize.Y),
+                                            aOrigin, &nWritten);
+                SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), nAttr);
+            }
         }
 
 #pragma warning(push)
@@ -411,6 +430,20 @@ inline void tryToEnsureStdHandlesOpen()
         freopen("CONOUT$", "w", stdout);
 #pragma warning(pop)
     }
+}
+
+inline void waitForAnyKey()
+{
+    HWND hConsole = GetConsoleWindow();
+    if (hConsole)
+        SetForegroundWindow(hConsole);
+
+    std::cout << std::endl << std::endl;
+
+    std::cout << "Hit any key to close this window" << std::endl;
+
+    while (!_kbhit())
+        Sleep(100);
 }
 
 template <typename traits>
