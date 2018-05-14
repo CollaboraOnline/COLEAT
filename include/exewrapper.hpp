@@ -26,6 +26,8 @@ union FunPtr {
     PVOID(WINAPI* pGetProcAddress)(HMODULE, char*);
     BOOL(WINAPI* pSetEvent)(HANDLE);
     HRESULT(__stdcall* pDllGetClassObject)(REFCLSID, REFIID, LPVOID);
+    DLL_DIRECTORY_COOKIE(WINAPI* pAddDllDirectory)(PCWSTR);
+    BOOL(WINAPI* pSetDllDirectoryW)(LPCWSTR);
 };
 
 struct ThreadProcParam
