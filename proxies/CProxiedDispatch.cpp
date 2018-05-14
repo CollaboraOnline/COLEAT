@@ -217,14 +217,35 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::GetIDsOfNames(REFIID riid, LPOLESTR*
     HRESULT nResult;
 
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedDispatch::GetIDsOfNames..." << std::endl;
-
+    {
+        std::cout << this << "@CProxiedDispatch::GetIDsOfNames(" << cNames << ":[";
+        for (UINT i = 0; i < cNames; ++i)
+        {
+            if (i > 0)
+                std::cout << ",";
+            std::cout << "\"" << convertUTF16ToUTF8(rgszNames[i]) << "\"";
+        }
+        std::cout << "])..." << std::endl;
+    }
     nResult = mpDispatchToProxy->GetIDsOfNames(riid, rgszNames, cNames, lcid, rgDispId);
 
     if (getParam()->mbVerbose)
-        std::cout << "..." << this
-                  << "@CProxiedDispatch::GetIDsOfNames:" << WindowsErrorStringFromHRESULT(nResult)
-                  << std::endl;
+    {
+        std::cout << "..." << this << "@CProxiedDispatch::GetIDsOfNames: ";
+        if (nResult == S_OK)
+        {
+            std::cout << "[";
+            for (UINT i = 0; i < cNames; ++i)
+            {
+                if (i > 0)
+                    std::cout << ",";
+                std::cout << "\"" << convertUTF16ToUTF8(rgszNames[i]) << "\":" << rgDispId[i];
+            }
+            std::cout << "]" << std::endl;
+        }
+        else
+            std::cout << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+    }
 
     return nResult;
 }
