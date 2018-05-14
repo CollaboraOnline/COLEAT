@@ -44,7 +44,7 @@ used.
 There is also an option -v that gives verbose output than -t, but it
 is mostly intended as a debugging tool for COLEAT itself.
 
-COLEAT needs to be installed so that the three .exe files and two .dll
+COLEAT needs to be installed so that the four .exe files and two .dll
 files are in the same folder.
 
 Summary: Use it like this, in a Command Prompt window:
