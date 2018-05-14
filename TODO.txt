@@ -94,3 +94,8 @@
   we need to do that elsewhere, too, so probably should set some
   global flag in the parameter block when we have detected that the
   wrapped program is a such.
+
+- When wrapping Excel we proint the LCID parameters weirdly, as in:
+
+  Excel._Application<027F3D40>.Visible = 1033,True
+      Excel._Workbook<028016B8>.Author1033 -> "Tor Lillqvist"
