@@ -651,8 +651,9 @@ static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
 static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags)
 {
     if (pGlobalParamPtr->mbVerbose)
-        std::cout << "LoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ", " << to_uhex(dwFlags)
-                  << ") from " << prettyCodeAddress(_ReturnAddress()) << "..." << std::endl;
+        std::cout << "LoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ", 0x"
+                  << to_uhex(dwFlags) << ") from " << prettyCodeAddress(_ReturnAddress()) << "..."
+                  << std::endl;
 
     HMODULE hModule = LoadLibraryExW(lpFileName, hFile, dwFlags);
     DWORD nLastError = GetLastError();
@@ -660,14 +661,14 @@ static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD d
     if (hModule == NULL)
     {
         if (pGlobalParamPtr->mbVerbose)
-            std::cout << "...LoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ", "
+            std::cout << "...LoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ", 0x"
                       << to_uhex(dwFlags) << "): " << hModule << ": "
                       << WindowsErrorString(nLastError) << std::endl;
     }
     else
     {
         if (pGlobalParamPtr->mbVerbose)
-            std::cout << "...LoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ", "
+            std::cout << "...LoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ", 0x"
                       << to_uhex(dwFlags) << "): " << hModule << std::endl;
 
         if (!(dwFlags
