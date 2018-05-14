@@ -309,7 +309,7 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
         std::cout << "<" << (mpBaseClassUnknown ? mpBaseClassUnknown : this) << ">.";
 
         if (pTI == NULL)
-            std::cout << "?";
+            std::cout << dispIdMember;
         else
         {
             BSTR sFuncName = NULL;
@@ -347,6 +347,17 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
             }
             std::cout << ")";
         }
+        else if (pFuncDesc == NULL)
+        {
+            std::cout << "(";
+            for (UINT n = 0; n < pDispParams->cArgs; ++n)
+            {
+                if (n > 0)
+                    std::cout << ",";
+                std::cout << pDispParams->rgvarg[n];
+            }
+            std::cout << ")";
+        }
 
         mbIsAtBeginningOfLine = false;
     }
@@ -361,22 +372,51 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
 
     if (pFuncDesc != NULL)
     {
+#define nResult HIDDEN
+        // Do not overwrite nResult here. Pity there is no saner way to do this, without also
+        // disabling C4456?
+
+        HRESULT nInnerResult;
+
         if (pFuncDesc->invkind == INVOKE_FUNC || pFuncDesc->invkind == INVOKE_PROPERTYGET)
         {
             if (pVarResult != NULL && pVarResult->vt == VT_DISPATCH
                 && pFuncDesc->elemdescFunc.tdesc.vt == VT_PTR)
             {
                 ITypeInfo* pResultTI;
-                nResult = pVarResult->pdispVal->GetTypeInfo(0, LOCALE_USER_DEFAULT, &pResultTI);
+                nInnerResult
+                    = pVarResult->pdispVal->GetTypeInfo(0, LOCALE_USER_DEFAULT, &pResultTI);
                 TYPEATTR* pResultTA = NULL;
-                if (!FAILED(nResult))
+                if (!FAILED(nInnerResult))
                 {
-                    nResult = pResultTI->GetTypeAttr(&pResultTA);
+                    nInnerResult = pResultTI->GetTypeAttr(&pResultTA);
                 }
-                if (!FAILED(nResult))
+                if (!FAILED(nInnerResult))
                 {
                     pVarResult->pdispVal = ProxyCreator(pResultTA->guid, pVarResult->pdispVal);
                     pResultTI->ReleaseTypeAttr(pResultTA);
+                }
+            }
+            else if (pVarResult != NULL && pVarResult->vt == VT_DISPATCH
+                     && pFuncDesc->elemdescFunc.tdesc.vt == VT_DISPATCH)
+            {
+                ITypeInfo* pResultTI;
+                nInnerResult
+                    = pVarResult->pdispVal->GetTypeInfo(0, LOCALE_USER_DEFAULT, &pResultTI);
+                TYPEATTR* pResultTA = NULL;
+                if (!FAILED(nInnerResult))
+                {
+                    nInnerResult = pResultTI->GetTypeAttr(&pResultTA);
+                }
+                if (!FAILED(nInnerResult))
+                {
+                    pVarResult->pdispVal = ProxyCreator(pResultTA->guid, pVarResult->pdispVal);
+                    pResultTI->ReleaseTypeAttr(pResultTA);
+                }
+                else
+                {
+                    pVarResult->pdispVal = reinterpret_cast<IDispatch*>(
+                        CProxiedDispatch::get(nullptr, pVarResult->pdispVal, "Unknown"));
                 }
             }
             else if (dispIdMember == DISPID_NEWENUM && pVarResult != NULL
@@ -386,6 +426,7 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
                 pVarResult->punkVal = new CProxiedEnumVARIANT(pVarResult->punkVal, msLibName);
             }
         }
+#undef nResult
     }
 
     if (getParam()->mbTrace)

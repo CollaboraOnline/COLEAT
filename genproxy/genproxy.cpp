@@ -1611,6 +1611,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                 case VT_R4:
                 case VT_R8:
                 case VT_BSTR:
+                case VT_DISPATCH:
                 case VT_BOOL:
                 case VT_I1:
                 case VT_UI1:
@@ -1623,19 +1624,6 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                 case VT_HRESULT:
                 case VT_USERDEFINED:
                     // Unclear
-                    break;
-                case VT_DISPATCH:
-                    // Unclear what todo. We have no idea what the actual interface of the returned
-                    // value is, do we? Or should we call GetTypeInfo at run-time? But that would be
-                    // little use either. Let's just punt here too and let the returned IDispatch pointer
-                    // be returned as such.
-                    if (rFunc.mpFuncDesc->invkind == INVOKE_PROPERTYGET
-                        || rFunc.mpFuncDesc->invkind == INVOKE_FUNC)
-                    {
-                        aCode << "        if (getParam()->mbTrace || getParam()->mbVerbose)\n";
-                        aCode << "            std::cout << *"
-                              << convertUTF16ToUTF8(rFunc.mvNames[nRetvalParam + 1u]) << ";\n";
-                    }
                     break;
                 case VT_VARIANT:
                     // This one is unclear, too.
@@ -1733,6 +1721,25 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                         aCode << "            std::cout << \": \" << HRESULT_to_string(nResult) << "
                                  "std::endl;\n";
                         aCode << "        mbIsAtBeginningOfLine = true;\n";
+                        aCode << "    }\n";
+                    }
+                    else if (rFunc.mpFuncDesc->lprgelemdescParam[nRetvalParam].tdesc.lptdesc->vt
+                             == VT_DISPATCH)
+                    {
+                        aCode << "    if (nResult == S_OK)\n";
+                        aCode << "        *" << convertUTF16ToUTF8(rFunc.mvNames[nRetvalParam + 1u])
+                              << " = reinterpret_cast<IDispatch*>(CProxiedDispatch::get(nullptr, *"
+                              << convertUTF16ToUTF8(rFunc.mvNames[nRetvalParam + 1u]) << ", \""
+                              << sLibName << "\"));\n";
+                        aCode << "    if (getParam()->mbTrace || getParam()->mbVerbose)\n";
+                        aCode << "    {\n";
+                        aCode << "        if (nResult == S_OK)\n";
+                        aCode << "            std::cout << *"
+                              << convertUTF16ToUTF8(rFunc.mvNames[nRetvalParam + 1u])
+                              << " << std::endl;\n";
+                        aCode << "        else\n";
+                        aCode << "            std::cout << HRESULT_to_string(nResult) << "
+                                 "std::endl;\n";
                         aCode << "    }\n";
                     }
                     else if (isDirectlyPrintableType(
