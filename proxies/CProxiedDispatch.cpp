@@ -303,9 +303,31 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
             }
         }
 
-        mbIsAtBeginningOfLine = false;
+        // Print in and inout parameters. If we don't have type information, we don't know which
+        // ones are just out. If this is a property assignment, and there is just one parameter,
+        // that is the new property value, and we print the call like a pseudo-code assignment
+        // below.
 
-        // FIXME: Print in and inout parameters here
+        if (pFuncDesc != NULL
+            && !((pFuncDesc->invkind == INVOKE_PROPERTYPUT
+                  || pFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
+                 && pDispParams->cArgs == 1))
+        {
+            std::cout << "(";
+            for (UINT n = 0; n < pDispParams->cArgs; ++n)
+            {
+                if (n > 0)
+                    std::cout << ",";
+                if (pFuncDesc != NULL && (SHORT)n < pFuncDesc->cParams
+                    && !(pFuncDesc->lprgelemdescParam[n].paramdesc.wParamFlags & PARAMFLAG_FIN))
+                    std::cout << "<OUT>";
+                else
+                    std::cout << pDispParams->rgvarg[n];
+            }
+            std::cout << ")";
+        }
+
+        mbIsAtBeginningOfLine = false;
     }
     else if (getParam()->mbVerbose)
         std::cout << this << "@CProxiedDispatch::Invoke(0x" << to_hex(dispIdMember) << ")..."
@@ -368,6 +390,8 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
             else if (pFuncDesc->invkind == INVOKE_PROPERTYPUT
                      || pFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
             {
+                // FIXME: Why do we print the value being put here and not above, before the
+                // mpDispatchToProxy->Invoke() call?
                 if (pDispParams->cArgs > 0)
                 {
                     std::cout << " = " << pDispParams->rgvarg[pDispParams->cArgs - 1];
