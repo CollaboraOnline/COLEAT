@@ -70,6 +70,12 @@
   real-world clients use and then know what needs to be implemented in
   a replacement app.)
 
+  But if we start tracing also unknown interfaces (using dynamically
+  generated vtables and trampolines), if those interfaces don't have
+  any type information, the resulting output will be a bit hard to
+  decipher... Still, might well be that it is what needs to be done
+  for actual customer end cases.
+
 - Split up utils.hpp into smaller pieces. Especially, it would be good
   to have stuff that the generated proxy classes don't need in
   separate header(s), to avoid recompilations of those when those bits
