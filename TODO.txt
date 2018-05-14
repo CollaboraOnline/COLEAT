@@ -76,6 +76,10 @@
   decipher... Still, might well be that it is what needs to be done
   for actual customer end cases.
 
+  But anyway, how do we know the vtable size of unknown interfaces?
+  And the parameter lists of the methods? I am probably being too
+  optimistic above.
+
 - Split up utils.hpp into smaller pieces. Especially, it would be good
   to have stuff that the generated proxy classes don't need in
   separate header(s), to avoid recompilations of those when those bits
