@@ -354,28 +354,46 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
             if (pFuncDesc->invkind == INVOKE_FUNC || pFuncDesc->invkind == INVOKE_PROPERTYGET)
             {
                 if (pVarResult != NULL)
+                {
                     std::cout << " -> " << *pVarResult;
+                    mbIsAtBeginningOfLine = false;
+                }
 
-                std::cout << std::endl;
-                mbIsAtBeginningOfLine = true;
+                if (!mbIsAtBeginningOfLine)
+                {
+                    std::cout << std::endl;
+                    mbIsAtBeginningOfLine = true;
+                }
             }
             else if (pFuncDesc->invkind == INVOKE_PROPERTYPUT
                      || pFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
             {
                 if (pDispParams->cArgs > 0)
+                {
                     std::cout << " = " << pDispParams->rgvarg[pDispParams->cArgs - 1];
+                    mbIsAtBeginningOfLine = false;
+                }
 
-                std::cout << std::endl;
-                mbIsAtBeginningOfLine = true;
+                if (!mbIsAtBeginningOfLine)
+                {
+                    std::cout << std::endl;
+                    mbIsAtBeginningOfLine = true;
+                }
             }
         }
         else
         {
             if (pVarResult != NULL)
+            {
                 std::cout << " -> " << *pVarResult;
+                mbIsAtBeginningOfLine = false;
+            }
 
-            std::cout << std::endl;
-            mbIsAtBeginningOfLine = true;
+            if (!mbIsAtBeginningOfLine)
+            {
+                std::cout << std::endl;
+                mbIsAtBeginningOfLine = true;
+            }
         }
 
         if (pFuncDesc != NULL)
