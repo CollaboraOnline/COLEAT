@@ -1180,13 +1180,17 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         aCode << "        std::cout << indent() << \"" << sLibName << "." << sTypeName
               << "<\" << (mpBaseClassUnknown ? mpBaseClassUnknown : this) << \">."
               << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[0]);
-        if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET)
-            aCode << "\";\n";
-        else if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUT
+        if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC
+            || (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET
+                && vVtblFuncTable[nFunc].mpFuncDesc->cParams > 1)
+            || ((vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUT
                  || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
-            aCode << " = \";\n";
-        else if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
+                && vVtblFuncTable[nFunc].mpFuncDesc->cParams > 1))
             aCode << "(\";\n";
+        else if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUT
+                 || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUTREF
+                 || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET)
+            aCode << "\";\n";
         else
             assert(!"Unexpected invkind");
         aCode << "        mbIsAtBeginningOfLine = false;\n";
@@ -1453,11 +1457,100 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
             }
             aCode << "    }\n";
 
-            aCode << "    if (!bGotAll && (getParam()->mbTrace || getParam()->mbVerbose))\n";
-            aCode << "    {\n";
-            aCode << "        std::cout";
-            if (nParam > 0)
-                aCode << " << \",\"";
+            if (!((vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUT
+                   || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
+                  && nParam == vVtblFuncTable[nFunc].mpFuncDesc->cParams - 1))
+            {
+                aCode << "    if (!bGotAll && (getParam()->mbTrace || getParam()->mbVerbose))\n";
+                aCode << "    {\n";
+                aCode << "        std::cout";
+                if (nParam > 0)
+                    aCode << " << \",\"";
+                switch (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc.vt)
+                {
+                    case VT_I2:
+                    case VT_I4:
+                    case VT_R4:
+                    case VT_R8:
+                    case VT_BSTR:
+                    case VT_DISPATCH:
+                    case VT_UI2:
+                    case VT_UI4:
+                    case VT_I8:
+                    case VT_UI8:
+                    case VT_INT:
+                    case VT_UINT:
+                    case VT_INT_PTR:
+                    case VT_UINT_PTR:
+                    case VT_LPSTR:
+                    case VT_LPWSTR:
+                        aCode << " << " << sParamName << ";\n";
+                        break;
+                    case VT_BOOL:
+                        aCode << " << (" << sParamName << " ? \"True\" : \"False\");\n";
+                        break;
+                    case VT_VARIANT:
+                        aCode << " << \"\";\n";
+                        aCode << "        if (" << sParamName << ".vt == VT_ERROR\n";
+                        aCode << "            && " << sParamName
+                              << ".scode == DISP_E_PARAMNOTFOUND)\n";
+                        aCode << "            std::cout << \"(empty)\";\n";
+                        aCode << "        else\n";
+                        aCode << "            std::cout << " << sParamName << ";\n";
+                        break;
+                    case VT_PTR:
+                        if (vVtblFuncTable[nFunc]
+                                .mpFuncDesc->lprgelemdescParam[nParam]
+                                .tdesc.lptdesc->vt
+                            == VT_VARIANT)
+                        {
+                            aCode << " << *" << sParamName << ";\n";
+                        }
+                        else
+                        {
+                            aCode << " << " << sParamName << ";\n";
+                        }
+                        break;
+                    case VT_USERDEFINED:
+                        aCode << " << \"<USERDEFINED>\";\n";
+                        break;
+                    default:
+                        if (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc.vt
+                            & VT_BYREF)
+                        {
+                            if (nParam > 0)
+                                aCode << " << \",\";\n";
+                            aCode << " << " << sParamName << ";\n";
+                        }
+                        break;
+                }
+                aCode << "    }\n";
+            }
+        }
+
+        if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC
+            || ((vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUT
+                 || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
+                && vVtblFuncTable[nFunc].mpFuncDesc->cParams > 1)
+            || (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYGET
+                && vVtblFuncTable[nFunc].mpFuncDesc->cParams > 1))
+        {
+            aCode << "    if (getParam()->mbTrace || getParam()->mbVerbose)\n";
+            aCode << "        std::cout << \")";
+            aCode << "\";\n";
+        }
+
+        if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUT
+            || vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
+        {
+            const int nParam = vVtblFuncTable[nFunc].mpFuncDesc->cParams - 1;
+            std::string sParamName;
+            if ((size_t)(nParam + 1) < vVtblFuncTable[nFunc].mvNames.size())
+                sParamName = convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[(size_t)nParam + 1u]);
+            else
+                sParamName = "p" + std::to_string(nParam);
+            aCode << "    if (getParam()->mbTrace || getParam()->mbVerbose)\n";
+            aCode << "        std::cout << \" = \"";
             switch (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc.vt)
             {
                 case VT_I2:
@@ -1515,16 +1608,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                     }
                     break;
             }
-            aCode << "    }\n";
         }
-
-        if (vVtblFuncTable[nFunc].mpFuncDesc->invkind == INVOKE_FUNC)
-        {
-            aCode << "    if (getParam()->mbTrace || getParam()->mbVerbose)\n";
-            aCode << "        std::cout << \")";
-            aCode << "\";\n";
-        }
-
         aCode << "    std::vector<VARIANT> vReverseParams;\n";
 
         if (vVtblFuncTable[nFunc].mpFuncDesc->cParams > 0)
@@ -1549,6 +1633,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
               << vVtblFuncTable[nFunc].mpFuncDesc->invkind << ", "
               << "vReverseParams, " << sRetvalName << ");\n";
         aCode << "    decreaseIndent();\n";
+        aCode << "// nRetvalParam=" << nRetvalParam << "\n";
         if (nRetvalParam >= 0)
         {
             switch (vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nRetvalParam].tdesc.vt)
