@@ -691,10 +691,6 @@ static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD d
     return hModule;
 }
 
-// The functions below, InjectedDllMainFunction() and the functions it calls, can not write to
-// std::cout. They run in a thread created before those have been set up. They can, however, use
-// Win32 API directly.
-
 static bool hook(bool bMandatory, ThreadProcParam* pParam, HMODULE hModule,
                  const wchar_t* sModuleName, const wchar_t* sDll, const char* sFunction,
                  PVOID pOwnFunction)
