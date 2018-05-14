@@ -1602,7 +1602,6 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
               << "\", " << rFunc.mpFuncDesc->invkind << ", "
               << "vReverseParams, " << sRetvalName << ");\n";
         aCode << "    decreaseIndent();\n";
-        aCode << "// nRetvalParam=" << nRetvalParam << "\n";
         if (nRetvalParam >= 0)
         {
             switch (rFunc.mpFuncDesc->lprgelemdescParam[nRetvalParam].tdesc.vt)
