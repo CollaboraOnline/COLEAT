@@ -330,6 +330,7 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
         // below.
 
         if (pFuncDesc != NULL
+            && !(pFuncDesc->invkind == INVOKE_PROPERTYGET && pDispParams->cArgs == 0)
             && !((pFuncDesc->invkind == INVOKE_PROPERTYPUT
                   || pFuncDesc->invkind == INVOKE_PROPERTYPUTREF)
                  && pDispParams->cArgs == 1))
@@ -359,7 +360,10 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
             std::cout << ")";
         }
 
-        mbIsAtBeginningOfLine = false;
+        if (getParam()->mbVerbose)
+            std::cout << std::endl;
+        else
+            mbIsAtBeginningOfLine = false;
     }
     else if (getParam()->mbVerbose)
         std::cout << this << "@CProxiedDispatch::Invoke(0x" << to_hex(dispIdMember) << ")..."
