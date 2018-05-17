@@ -117,8 +117,13 @@ public:
 
     OutputFile(const OutputFile&) = delete;
 
+    ~OutputFile() { close(); }
+
     void close()
     {
+        if (!is_open())
+            return;
+
         std::ofstream::close();
         if (!good())
         {
@@ -183,6 +188,74 @@ static bool IsIgnoredUserdefinedType(const std::string& sLibName, ITypeInfo* pTy
             return IsIgnoredType(sLibName, pReferencedTypeInfo);
     }
     return false;
+}
+
+static std::string VarTypeAsString(VARTYPE n)
+{
+    if (n & (VT_VECTOR | VT_ARRAY | VT_BYREF))
+    {
+        std::cerr << "Not yet implemented: VECTOR, ARRAY and BYREF\n";
+        std::exit(1);
+    }
+
+    switch (n & ~(VT_VECTOR | VT_ARRAY | VT_BYREF))
+    {
+        case VT_I2:
+            return "VT_I2";
+        case VT_I4:
+            return "VT_I4";
+        case VT_R4:
+            return "VT_R4";
+        case VT_R8:
+            return "VT_R8";
+        case VT_DATE:
+            return "VT_DATE";
+        case VT_BSTR:
+            return "VT_BSTR";
+        case VT_DISPATCH:
+            return "VT_DISPATCH";
+        case VT_BOOL:
+            return "VT_BOOL";
+        case VT_VARIANT:
+            return "VT_VARIANT";
+        case VT_UNKNOWN:
+            return "VT_UNKNOWN";
+        case VT_I1:
+            return "VT_I1";
+        case VT_UI1:
+            return "VT_UI1";
+        case VT_UI2:
+            return "VT_UI2";
+        case VT_UI4:
+            return "VT_UI4";
+        case VT_I8:
+            return "VT_I8";
+        case VT_UI8:
+            return "VT_UI8";
+        case VT_INT:
+            return "VT_INT";
+        case VT_UINT:
+            return "VT_UINT";
+        case VT_VOID:
+            return "VT_VOID";
+        case VT_HRESULT:
+            return "VT_HRESULT";
+        case VT_PTR:
+            return "VT_PTR";
+        case VT_SAFEARRAY:
+            return "VT_SAFEARRAY";
+        case VT_USERDEFINED:
+            return "VT_USERDEFINED";
+        case VT_LPSTR:
+            return "VT_LPSTR";
+        case VT_LPWSTR:
+            return "VT_LPWSTR";
+        case VT_CLSID:
+            return "VT_CLSID";
+        default:
+            std::cerr << "Unhandled VARTYPE " << (int)n << "\n";
+            std::exit(1);
+    }
 }
 
 static std::string VarTypeToString(VARTYPE n)
@@ -643,9 +716,6 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
     aHeader << "            EXCEPINFO* pExcepInfo, UINT* puArgErr);\n";
     aHeader << "\n";
     aHeader << "#endif // INCLUDED_" << sClass << "_HXX\n";
-
-    aHeader.close();
-    aCode.close();
 }
 
 static void GenerateEnum(const std::string& sLibName, const std::string& sTypeName,
@@ -717,10 +787,11 @@ static void GenerateEnum(const std::string& sLibName, const std::string& sTypeNa
             continue;
         }
         aHeader << "    " << convertUTF16ToUTF8(sVarName) << " = "
+                << "/* " << VarTypeToString(pVarDesc->lpvarValue->vt) << "*/ "
                 << GetIntegralValue(*pVarDesc->lpvarValue) << ",\n";
     }
 
-    aHeader << "}\n";
+    aHeader << "};\n";
     aHeader << "\n";
     aHeader << "#endif // INCLUDED_E" << sClass << "_HXX\n";
 }
@@ -859,8 +930,6 @@ static void GenerateCoclass(const std::string& sLibName, const std::string& sTyp
 
     aHeader << "\n";
     aHeader << "#endif // INCLUDED_C" << sClass << "_HXX\n";
-
-    aHeader.close();
 }
 
 static void CollectFuncInfo(ITypeInfo* const pTypeInfo, const TYPEATTR* pTypeAttr,
@@ -897,6 +966,64 @@ static void CollectFuncInfo(ITypeInfo* const pTypeInfo, const TYPEATTR* pTypeAtt
         }
         rVtable[nFunc].mvNames.resize(nNames);
     }
+}
+
+static bool OutputUnderlyingEnumType(OutputFile& rFile, ITypeInfo* pTI, const ELEMDESC& rParam,
+                                     VARTYPE& rVT)
+{
+    HRESULT nResult;
+
+    if (rParam.tdesc.vt == VT_USERDEFINED)
+    {
+        ITypeInfo* pReferencedTI;
+        nResult = pTI->GetRefTypeInfo(rParam.tdesc.hreftype, &pReferencedTI);
+        if (FAILED(nResult))
+        {
+            std::cerr << "GetRefTypeInfo failed\n";
+            std::exit(1);
+        }
+        TYPEATTR* pReferencedTA;
+        nResult = pReferencedTI->GetTypeAttr(&pReferencedTA);
+        if (FAILED(nResult))
+        {
+            std::cerr << "GetTypeAttr failed\n";
+            std::exit(1);
+        }
+        if (pReferencedTA->typekind == TKIND_ENUM)
+        {
+            if (pReferencedTA->cVars == 0)
+            {
+                std::cerr << "Huh, enumeration has no values?\n";
+                std::exit(1);
+            }
+
+            // Assume all enumeration values are the same type.
+            VARDESC* pVD;
+            nResult = pReferencedTI->GetVarDesc(0, &pVD);
+            if (FAILED(nResult))
+            {
+                std::cerr << "GetVarDesc failed\n";
+                std::exit(1);
+            }
+            if (pVD->varkind != VAR_CONST)
+            {
+                std::cerr << "Huh, enum has non-const member?\n";
+                std::exit(1);
+            }
+
+            if (!IsIntegralType(pVD->lpvarValue->vt))
+            {
+                std::cerr << "Huh, enum has non-integral member?\n";
+                std::exit(1);
+            }
+            rVT = pVD->lpvarValue->vt;
+            pReferencedTI->ReleaseTypeAttr(pReferencedTA);
+            rFile << VarTypeToString(pVD->lpvarValue->vt);
+            pReferencedTI->ReleaseVarDesc(pVD);
+            return true;
+        }
+    }
+    return false;
 }
 
 static void GenerateDispatch(const std::string& sLibName, const std::string& sTypeName,
@@ -1139,15 +1266,19 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         aCode << sFuncName << "(";
 
         // Parameter list
+        std::vector<VARTYPE> vEnumParamVarTypes((unsigned)rFunc.mpFuncDesc->cParams, VT_EMPTY);
         for (int nParam = 0; nParam < rFunc.mpFuncDesc->cParams; ++nParam)
         {
             const ELEMDESC& rParam = rFunc.mpFuncDesc->lprgelemdescParam[nParam];
 
-            // FIXME: If a parameter is an enum type that we don't bother generating a C++ enum for,
-            // we should just use an integral type for it, not void*. Need to check the type
-            // description for the underlying integral type, though.
-            if (IsIgnoredUserdefinedType(sLibName, pVtblTypeInfo, rParam.tdesc))
+            if (OutputUnderlyingEnumType(aCode, pVtblTypeInfo, rParam,
+                                         vEnumParamVarTypes[(unsigned)nParam]))
+                aCode << " ";
+            else if (IsIgnoredUserdefinedType(sLibName, pVtblTypeInfo, rParam.tdesc))
+            {
+                // FIXME: Good enough to just use void* for random types?
                 aCode << "void* ";
+            }
             else
             {
                 aCode << TypeToString(sLibName, pVtblTypeInfo, rParam.tdesc, sReferencedName)
@@ -1155,8 +1286,17 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
 
                 if (sReferencedName != "" && !aIncludedHeaders.count(sReferencedName))
                 {
-                    // Just output a forward declaration in case of circular dependnecy between headers
-                    aHeader << "class " << sReferencedName << ";\n";
+                    // FIXME: Maybe need a more explicit way to differentiate between enum and class
+                    // types.
+                    if (sReferencedName[0] == 'E')
+                    {
+                        aHeader << "#include \"" << sReferencedName << ".hxx\"\n";
+                    }
+                    else
+                    {
+                        // Just output a forward declaration in case of circular dependnecy between headers
+                        aHeader << "class " << sReferencedName << ";\n";
+                    }
                     aIncludedHeaders.insert(sReferencedName);
                 }
             }
@@ -1400,8 +1540,17 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                     break;
                 case VT_USERDEFINED:
                     aCode << "        VariantInit(&vParams[" << nParam << "]);\n";
-                    aCode << "        vParams[nActualParams].vt = VT_USERDEFINED;\n";
-                    aCode << "        vParams[nActualParams].byref = " << sParamName << ";\n";
+                    if (vEnumParamVarTypes[(unsigned)nParam] != VT_EMPTY)
+                    {
+                        aCode << "        vParams[nActualParams].vt = "
+                              << VarTypeAsString(vEnumParamVarTypes[(unsigned)nParam]) << ";\n";
+                        aCode << "        vParams[nActualParams].llVal = " << sParamName << ";\n";
+                    }
+                    else
+                    {
+                        aCode << "        vParams[nActualParams].vt = VT_USERDEFINED;\n";
+                        aCode << "        vParams[nActualParams].byref = " << sParamName << ";\n";
+                    }
                     aCode << "        nActualParams++;\n";
                     break;
                 case VT_LPSTR:
@@ -1486,7 +1635,10 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                         }
                         break;
                     case VT_USERDEFINED:
-                        aCode << " << \"<USERDEFINED>\";\n";
+                        if (vEnumParamVarTypes[(unsigned)nParam] != VT_EMPTY)
+                            aCode << " << " << sParamName << ";\n";
+                        else
+                            aCode << " << \"<USERDEFINED>\";\n";
                         break;
                     default:
                         if (rParam.tdesc.vt & VT_BYREF)
@@ -1567,7 +1719,10 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                     }
                     break;
                 case VT_USERDEFINED:
-                    aCode << " << \"<USERDEFINED>\";\n";
+                    if (vEnumParamVarTypes[(unsigned)nParam] != VT_EMPTY)
+                        aCode << " << " << sParamName << ";\n";
+                    else
+                        aCode << " << \"<USERDEFINED>\";\n";
                     break;
                 default:
                     if (rParam.tdesc.vt & VT_BYREF)
@@ -1840,9 +1995,14 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         aHeader << convertUTF16ToUTF8(vVtblFuncTable[nFunc].mvNames[0]) << "(";
         for (int nParam = 0; nParam < vVtblFuncTable[nFunc].mpFuncDesc->cParams; ++nParam)
         {
-            if (IsIgnoredUserdefinedType(
-                    sLibName, pVtblTypeInfo,
-                    vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc))
+            VARTYPE nDummyVT;
+            if (OutputUnderlyingEnumType(
+                    aHeader, pVtblTypeInfo,
+                    vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam], nDummyVT))
+                ;
+            else if (IsIgnoredUserdefinedType(
+                         sLibName, pVtblTypeInfo,
+                         vVtblFuncTable[nFunc].mpFuncDesc->lprgelemdescParam[nParam].tdesc))
                 aHeader << "void*";
             else
                 aHeader << TypeToString(
@@ -1864,13 +2024,13 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
     // This is a bit unconventional, to #include other headers at the *end*, but one way to get out
     // of silly Catch-22 where you either get circularity problems or undefinedness problems.
     for (auto i : aIncludedHeaders)
-        aHeader << "#include \"" << i << ".hxx\"\n";
+    {
+        if (i[0] != 'E')
+            aHeader << "#include \"" << i << ".hxx\"\n";
+    }
     aHeader << "\n";
 
     aHeader << "#endif // INCLUDED_C" << sClass << "_HXX\n";
-
-    aHeader.close();
-    aCode.close();
 }
 
 static void Generate(const std::string& sLibName, ITypeInfo* const pTypeInfo)
@@ -1973,8 +2133,6 @@ static void GenerateCallbackInvoker()
 
     aHeader << "\n";
     aHeader << "#endif // INCLUDED_CallbackInvoker_HXX\n";
-
-    aHeader.close();
 }
 
 static void GenerateDefaultInterfaceCreator()
@@ -2034,8 +2192,6 @@ static void GenerateDefaultInterfaceCreator()
 
     aHeader << "\n";
     aHeader << "#endif // INCLUDED_DefaultInterfaceCreator_HXX\n";
-
-    aHeader.close();
 }
 
 static void GenerateOutgoingInterfaceMap()
@@ -2095,8 +2251,6 @@ static void GenerateOutgoingInterfaceMap()
     aHeader << "};\n";
     aHeader << "\n";
     aHeader << "#endif // INCLUDED__OutgoingInterfaceMap_HXX\n";
-
-    aHeader.close();
 }
 
 static void GenerateProxyCreator()
@@ -2137,8 +2291,6 @@ static void GenerateProxyCreator()
     aHeader << "};\n";
     aHeader << "\n";
     aHeader << "#endif // INCLUDED_ProxyCreator_HXX\n";
-
-    aHeader.close();
 }
 
 static void GenerateInterfaceMapping()
@@ -2172,8 +2324,6 @@ static void GenerateInterfaceMapping()
     aHeader << "};\n";
     aHeader << "\n";
     aHeader << "#endif // INCLUDED_InterfaceMapping_HXX\n";
-
-    aHeader.close();
 }
 
 static void Usage(wchar_t** argv)
