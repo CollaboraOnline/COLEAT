@@ -28,6 +28,7 @@ union FunPtr {
     HRESULT(__stdcall* pDllGetClassObject)(REFCLSID, REFIID, LPVOID);
     DLL_DIRECTORY_COOKIE(WINAPI* pAddDllDirectory)(PCWSTR);
     BOOL(WINAPI* pSetDllDirectoryW)(LPCWSTR);
+    BOOL(WINAPI* pSetDllDirectoryA)(LPCSTR);
 };
 
 struct ThreadProcParam

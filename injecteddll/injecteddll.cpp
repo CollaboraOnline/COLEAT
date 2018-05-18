@@ -46,6 +46,7 @@ static bool bDidAllocConsole;
 
 static DLL_DIRECTORY_COOKIE(WINAPI* pAddDllDirectory)(PCWSTR) = NULL;
 static BOOL(WINAPI* pSetDllDirectoryW)(LPCWSTR) = NULL;
+static BOOL(WINAPI* pSetDllDirectoryA)(LPCSTR) = NULL;
 
 static bool hook(bool bMandatory, ThreadProcParam* pParam, HMODULE hModule,
                  const wchar_t* sModuleName, const wchar_t* sDll, const char* sFunction,
@@ -638,6 +639,18 @@ static BOOL WINAPI mySetDllDirectoryW(LPCWSTR lpPathName)
     return bResult;
 }
 
+static BOOL WINAPI mySetDllDirectoryA(LPCSTR lpPathName)
+{
+    BOOL bResult = (*pSetDllDirectoryA)(lpPathName);
+
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "SetDllDirectoryA(" << convertUTF16ToUTF8(convertACPToUTF16(lpPathName).data())
+                  << ") from " << prettyCodeAddress(_ReturnAddress()) << ": " << bResult
+                  << std::endl;
+
+    return bResult;
+}
+
 static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
 {
     if (pGlobalParamPtr->mbVerbose)
@@ -668,6 +681,9 @@ static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
         if (pSetDllDirectoryW)
             hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", "SetDllDirectoryW",
                  mySetDllDirectoryW);
+        if (pSetDllDirectoryA)
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", "SetDllDirectoryA",
+                 mySetDllDirectoryA);
         hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", "LoadLibraryW",
              myLoadLibraryW);
         hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", "LoadLibraryA",
@@ -718,6 +734,9 @@ static HMODULE WINAPI myLoadLibraryA(LPCSTR lpFileName)
         if (pSetDllDirectoryW)
             hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"kernel32.dll",
                  "SetDllDirectoryW", mySetDllDirectoryW);
+        if (pSetDllDirectoryA)
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"kernel32.dll",
+                 "SetDllDirectoryA", mySetDllDirectoryA);
         hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"kernel32.dll", "LoadLibraryW",
              myLoadLibraryW);
         hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"kernel32.dll", "LoadLibraryA",
@@ -770,6 +789,9 @@ static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD d
             if (pSetDllDirectoryW)
                 hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll",
                      "SetDllDirectoryW", mySetDllDirectoryW);
+            if (pSetDllDirectoryA)
+                hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll",
+                     "SetDllDirectoryA", mySetDllDirectoryA);
             hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", "LoadLibraryW",
                  myLoadLibraryW);
             hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", "LoadLibraryA",
@@ -825,6 +847,9 @@ static HMODULE WINAPI myLoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWORD dw
             if (pSetDllDirectoryW)
                 hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"kernel32.dll",
                      "SetDllDirectoryW", mySetDllDirectoryW);
+            if (pSetDllDirectoryA)
+                hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"kernel32.dll",
+                     "SetDllDirectoryA", mySetDllDirectoryA);
             hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"kernel32.dll",
                  "LoadLibraryW", myLoadLibraryW);
             hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"kernel32.dll",
@@ -1000,6 +1025,9 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
     aFun.pProc = GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "SetDllDirectoryW");
     pSetDllDirectoryW = aFun.pSetDllDirectoryW;
 
+    aFun.pProc = GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "SetDllDirectoryA");
+    pSetDllDirectoryA = aFun.pSetDllDirectoryA;
+
     // Do our IAT patching. We want to hook CoCreateInstance() and CoCreateInstanceEx().
 
     HMODULE hMsvbvm60 = GetModuleHandleW(L"msvbvm60.dll");
@@ -1045,6 +1073,8 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
             hook(false, pParam, nullptr, L"kernel32.dll", "AddDllDirectory", myAddDllDirectory);
         if (pSetDllDirectoryW)
             hook(false, pParam, nullptr, L"kernel32.dll", "SetDllDirectoryW", mySetDllDirectoryW);
+        if (pSetDllDirectoryA)
+            hook(false, pParam, nullptr, L"kernel32.dll", "SetDllDirectoryA", mySetDllDirectoryA);
         hook(false, pParam, nullptr, L"kernel32.dll", "LoadLibraryW", myLoadLibraryW);
         hook(false, pParam, nullptr, L"kernel32.dll", "LoadLibraryA", myLoadLibraryA);
         hook(false, pParam, nullptr, L"kernel32.dll", "LoadLibraryExW", myLoadLibraryExW);
