@@ -41,9 +41,6 @@
   Anyway, some out parameters or retvals are marked to be just
   IDispatch*, but presumably could actually be some type we know?
 
-- Print out parameters also in CProxiedDispatch::Invoke, like in the
-  generated proxy methods.
-
 - When doing no redirection, just tracing, as long as the client uses
   late binding, we should be able to trace also interfaces we haven't
   generated any proxies for, as long as all the necessary type
