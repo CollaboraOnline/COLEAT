@@ -91,3 +91,9 @@
   we need to do that elsewhere, too, so probably should set some
   global flag in the parameter block when we have detected that the
   wrapped program is a such.
+
+- Add some subtle but obvious hints to the trace-only output to show
+  whether it is the generated proxy code or generic Invoke() code that
+  is handling something. (In the verbose output the mention of
+  genericInvoke() is a giveaway that it was called from generated
+  proxy code.)
