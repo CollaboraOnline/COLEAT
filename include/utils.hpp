@@ -38,6 +38,30 @@ inline std::string convertUTF16ToUTF8(const wchar_t* pWchar)
     return std::string(aUTF16ToUTF8.to_bytes(pWchar));
 }
 
+inline std::wstring convertACPToUTF16(const char* pChar)
+{
+    int nChars = MultiByteToWideChar(CP_ACP, 0, pChar, -1, NULL, 0);
+
+    if (nChars == 0)
+        return L"?";
+
+    wchar_t* pResult = new wchar_t[(unsigned)nChars];
+
+    nChars = MultiByteToWideChar(CP_ACP, 0, pChar, -1, pResult, nChars);
+
+    if (nChars == 0)
+    {
+        delete[] pResult;
+        return L"?";
+    }
+
+    std::wstring sResult(pResult);
+
+    delete[] pResult;
+
+    return sResult;
+}
+
 inline std::wstring convertUTF8ToUTF16(const char* pChar)
 {
     static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> aUTF8ToUTF16;
