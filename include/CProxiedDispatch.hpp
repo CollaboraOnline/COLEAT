@@ -44,8 +44,8 @@ public:
     static CProxiedDispatch* get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
                                  const IID& rIID1, const IID& rIID2, const char* sLibName);
 
-    HRESULT genericInvoke(std::string sFuncName, int nInvKind, std::vector<VARIANT>& rParameters,
-                          void* pRetval);
+    HRESULT genericInvoke(const std::string& rFuncName, int nInvKind,
+                          std::vector<VARIANT>& rParameters, void* pRetval);
 
     // IDispatch
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT* pctinfo);
