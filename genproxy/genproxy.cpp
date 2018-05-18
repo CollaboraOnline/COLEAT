@@ -1939,7 +1939,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
         }
         else
         {
-            aCode << "    if (getParam()->mbTrace || getParam()->mbVerbose)\n";
+            aCode << "    if (getParam()->mbTrace && !getParam()->mbVerbose)\n";
             aCode << "    {\n";
             aCode << "        std::cout << std::endl;\n";
             aCode << "        mbIsAtBeginningOfLine = true;\n";

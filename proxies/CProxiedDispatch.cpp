@@ -75,8 +75,11 @@ HRESULT CProxiedDispatch::genericInvoke(const std::string& rFuncName, int nInvKi
                                         std::vector<VARIANT>& rParameters, void* pRetval)
 {
     if (getParam()->mbVerbose)
+    {
+        std::cout << std::endl;
         std::cout << this << "@CProxiedDispatch::genericInvoke(" << rFuncName << ")..."
                   << std::endl;
+    }
 
     HRESULT nResult = S_OK;
 
