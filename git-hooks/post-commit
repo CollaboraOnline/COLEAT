@@ -1,0 +1,3 @@
+#!/bin/bash
+
+echo '#define COLEAT_GIT_HEAD "'$(git log -1 --pretty=format:%H)'"' >include/coleat-git-version.h
