@@ -33,6 +33,9 @@
 #include "exewrapper.hpp"
 #include "utils.hpp"
 
+#define STRINGIFY2(x) #x
+#define STRINGIFY(x) STRINGIFY2(x)
+
 static bool bDebug = false;
 static bool bDidAllocConsole;
 
@@ -89,7 +92,7 @@ int wmain(int argc, wchar_t** argv)
                 break;
             case L'V':
                 std::cout << "COLEAT " << COLEAT_VERSION_MAJOR << "." << COLEAT_VERSION_MINOR
-                          << " (" << COLEAT_GIT_HEAD << ")" << std::endl;
+                          << " (" STRINGIFY(COLEAT_GIT_HEAD) ")" << std::endl;
                 std::exit(0);
                 break;
             default:
@@ -143,8 +146,8 @@ int wmain(int argc, wchar_t** argv)
 
         if (wcsftime(sTimeBuf, NTIMEBUF, L"%F %H:%M:%S", &aNow) != 0)
             std::cout << "=== COLEAT " << COLEAT_VERSION_MAJOR << "." << COLEAT_VERSION_MINOR
-                      << " (" << COLEAT_GIT_HEAD << ") output at " << convertUTF16ToUTF8(sTimeBuf)
-                      << " ===" << std::endl;
+                      << " (" STRINGIFY(COLEAT_GIT_HEAD) ") output at "
+                      << convertUTF16ToUTF8(sTimeBuf) << " ===" << std::endl;
 
         hOutputHandle = (HANDLE)_get_osfhandle(_fileno(stdout));
     }

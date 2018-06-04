@@ -107,6 +107,9 @@
     <PostBuildEvent>
       <Command>copy $(OutputPath)coleat.exe $(OutputPath)coleatw.exe &amp; link -edit -subsystem:windows $(OutputPath)coleatw.exe</Command>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>echo | set /p dummyName=#define COLEAT_GIT_HEAD &gt; $(ProjectDir)../include/coleat-git-version.h &amp; git rev-parse --verify HEAD &gt;&gt;$(ProjectDir)../include/coleat-git-version.h</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -127,6 +130,9 @@
     <PostBuildEvent>
       <Command>copy $(OutputPath)coleat.exe $(OutputPath)coleatw.exe &amp; link -edit -subsystem:windows $(OutputPath)coleatw.exe</Command>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>echo | set /p dummyName=#define COLEAT_GIT_HEAD &gt; $(ProjectDir)../include/coleat-git-version.h &amp; git rev-parse --verify HEAD &gt;&gt;$(ProjectDir)../include/coleat-git-version.h</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -151,6 +157,9 @@
     <PostBuildEvent>
       <Command>copy $(OutputPath)coleat.exe $(OutputPath)coleatw.exe &amp; link -edit -subsystem:windows $(OutputPath)coleatw.exe</Command>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>echo | set /p dummyName=#define COLEAT_GIT_HEAD &gt; $(ProjectDir)../include/coleat-git-version.h &amp; git rev-parse --verify HEAD &gt;&gt;$(ProjectDir)../include/coleat-git-version.h</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -175,6 +184,9 @@
     <PostBuildEvent>
       <Command>copy $(OutputPath)coleat.exe $(OutputPath)coleatw.exe &amp; link -edit -subsystem:windows $(OutputPath)coleatw.exe</Command>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>echo | set /p dummyName=#define COLEAT_GIT_HEAD &gt; $(ProjectDir)../include/coleat-git-version.h &amp; git rev-parse --verify HEAD &gt;&gt;$(ProjectDir)../include/coleat-git-version.h</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="coleat.cpp" />
