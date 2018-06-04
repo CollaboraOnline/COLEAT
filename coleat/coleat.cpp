@@ -28,6 +28,8 @@
 
 #pragma warning(pop)
 
+#include "coleat-version.h"
+#include "coleat-git-version.h"
 #include "exewrapper.hpp"
 #include "utils.hpp"
 
@@ -46,7 +48,8 @@ static void Usage(wchar_t** argv)
                  "    -o file                      output file (default: stdout, in new console if "
                  "necessary)\n"
                  "    -t                           terse trace output\n"
-                 "    -v                           verbose logging of internal operation\n";
+                 "    -v                           verbose logging of internal operation\n"
+                 "    -V                           print COLEAT version information\n";
     if (bDidAllocConsole)
         waitForAnyKey();
     std::exit(1);
@@ -83,6 +86,11 @@ int wmain(int argc, wchar_t** argv)
             case L't':
                 break;
             case L'v':
+                break;
+            case L'V':
+                std::cout << "COLEAT " << COLEAT_VERSION_MAJOR << "." << COLEAT_VERSION_MINOR
+                          << " (" << COLEAT_GIT_HEAD << ")" << std::endl;
+                std::exit(0);
                 break;
             default:
                 Usage(argv);
@@ -134,7 +142,8 @@ int wmain(int argc, wchar_t** argv)
         // If appending to a file, write a header.
 
         if (wcsftime(sTimeBuf, NTIMEBUF, L"%F %H:%M:%S", &aNow) != 0)
-            std::cout << "=== COLEAT output at " << convertUTF16ToUTF8(sTimeBuf)
+            std::cout << "=== COLEAT " << COLEAT_VERSION_MAJOR << "." << COLEAT_VERSION_MINOR
+                      << " (" << COLEAT_GIT_HEAD << ") output at " << convertUTF16ToUTF8(sTimeBuf)
                       << " ===" << std::endl;
 
         hOutputHandle = (HANDLE)_get_osfhandle(_fileno(stdout));
