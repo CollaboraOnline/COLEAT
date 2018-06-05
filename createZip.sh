@@ -1,7 +1,11 @@
 #!/bin/sh
 
-tstamp=$(TZ=UTC0 date +'%Y%m%d.%H%M').$(git log -1 --pretty=format:%h)
-zip=coleat-$tstamp.zip
+COLEAT_VERSION_MAJOR=$(grep COLEAT_VERSION_MAJOR include/coleat-version.h | awk '{print $3}')
+COLEAT_VERSION_MINOR=$(grep COLEAT_VERSION_MINOR include/coleat-version.h | awk '{print $3}')
+COLEAT_GIT_HEAD=$(grep COLEAT_GIT_HEAD include/coleat-git-version.h  | awk '{print substr($3,1,7)}')
+
+tstamp=$(TZ=UTC0 date +'%Y%m%d.%H%M')
+zip=coleat-$COLEAT_VERSION_MAJOR.$COLEAT_VERSION_MINOR-$tstamp.$COLEAT_GIT_HEAD.zip
 
 zip $zip README.txt
 
