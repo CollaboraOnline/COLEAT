@@ -11,4 +11,4 @@ zip $zip README.txt
 
 (cd bin; zip ../$zip *.exe *.dll)
 
-zip $zip demo.vbs demo.exe demo.frm u1.odt u2.doc
+zip $zip demo.vbs demo.exe demo.frm u1.odt u2.docx
