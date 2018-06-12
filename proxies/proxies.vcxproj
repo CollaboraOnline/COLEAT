@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -172,6 +172,7 @@
     <ClCompile Include="..\generated\CWord_Comment.cxx" />
     <ClCompile Include="..\generated\CWord_Comments.cxx" />
     <ClCompile Include="..\generated\CWord_Documents.cxx" />
+    <ClCompile Include="..\generated\CWord_MailMerge.cxx" />
     <ClCompile Include="..\generated\CWord_Paragraph.cxx" />
     <ClCompile Include="..\generated\CWord_Paragraphs.cxx" />
     <ClCompile Include="..\generated\CWord_Range.cxx" />

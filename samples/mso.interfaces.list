@@ -10,6 +10,7 @@ Word.Documents
 Word.Font
 Word._Font
 Word.Footnote
+Word.MailMerge
 Word.Paragraph
 Word.Paragraphs
 Word.Range
