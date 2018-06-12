@@ -1,8 +1,7 @@
 COLEAT = Collabora OLE Automation Translator
 
     IMPORTANT: Note that for the redirection to Collabora Office to
-    work, you need a version of Collabora Office with changes that
-    aren't available yet in any build of it. Always use the -n option.
+    work, you need Collabora Office 6.0 or later.
 
 COLEAT (coleat.exe) is an application that runs another application
 (passed on its command line) in one of two modes: Either as such, but
