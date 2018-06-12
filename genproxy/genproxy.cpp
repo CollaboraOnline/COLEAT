@@ -1889,11 +1889,11 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                         aCode << "    if (getParam()->mbTrace || getParam()->mbVerbose)\n";
                         aCode << "    {\n";
                         aCode << "        if (nResult == S_OK)\n";
-                        aCode << "            std::cout << *"
+                        aCode << "            std::cout << \" -> \" << *"
                               << convertUTF16ToUTF8(rFunc.mvNames[nRetvalParam + 1u])
                               << " << std::endl;\n";
                         aCode << "        else\n";
-                        aCode << "            std::cout << HRESULT_to_string(nResult) << "
+                        aCode << "            std::cout << \": \" << HRESULT_to_string(nResult) << "
                                  "std::endl;\n";
                         aCode << "    }\n";
                     }
