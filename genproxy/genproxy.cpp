@@ -1885,7 +1885,8 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
                         aCode << "        *" << convertUTF16ToUTF8(rFunc.mvNames[nRetvalParam + 1u])
                               << " = reinterpret_cast<IDispatch*>(CProxiedDispatch::get(nullptr, *"
                               << convertUTF16ToUTF8(rFunc.mvNames[nRetvalParam + 1u]) << ", \""
-                              << sLibName << "\"));\n";
+                              << sLibName << "\", \"" << convertUTF16ToUTF8(rFunc.mvNames[0])
+                              << "\"));\n";
                         aCode << "    if (getParam()->mbTrace || getParam()->mbVerbose)\n";
                         aCode << "    {\n";
                         aCode << "        if (nResult == S_OK)\n";

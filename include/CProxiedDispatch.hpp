@@ -32,13 +32,16 @@ private:
     // available.
     std::map<DISPID, std::string>* mpDispIdToName;
 
+    // The name of this property, as a fallback in case of no type information
+    const char* const msPropName;
+
 protected:
-    CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
-                     const char* sLibName);
+    CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const char* sLibName,
+                     const char* sPropName = nullptr);
     CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& rIID,
-                     const char* sLibName);
+                     const char* sLibName, const char* sPropName = nullptr);
     CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& rIID1,
-                     const IID& rIID2, const char* sLibName);
+                     const IID& rIID2, const char* sLibName, const char* sPropName = nullptr);
 
 #if 0
     // We can't have a non-virtual destructor because of the "class has virtual functions, but
@@ -56,11 +59,13 @@ protected:
 
 public:
     static CProxiedDispatch* get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
-                                 const char* sLibName);
+                                 const char* sLibName, const char* sPropName = nullptr);
     static CProxiedDispatch* get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
-                                 const IID& rIID, const char* sLibName);
+                                 const IID& rIID, const char* sLibName,
+                                 const char* sPropName = nullptr);
     static CProxiedDispatch* get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
-                                 const IID& rIID1, const IID& rIID2, const char* sLibName);
+                                 const IID& rIID1, const IID& rIID2, const char* sLibName,
+                                 const char* sPropName = nullptr);
 
     HRESULT genericInvoke(const std::string& rFuncName, int nInvKind,
                           std::vector<VARIANT>& rParameters, void* pRetval);
