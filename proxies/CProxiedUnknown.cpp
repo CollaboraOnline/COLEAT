@@ -245,7 +245,7 @@ ULONG STDMETHODCALLTYPE CProxiedUnknown::Release()
     if (nRetval == 0 && mpBaseClassUnknown == NULL)
     {
         assert(mpLookupMap->maMap.count(mpUnknownToProxy) == 1);
-        mpLookupMap->maMap.erase(this);
+        mpLookupMap->maMap.erase(mpUnknownToProxy);
     }
 
     return nRetval;
