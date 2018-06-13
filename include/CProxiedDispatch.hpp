@@ -25,6 +25,9 @@
 
 class CProxiedDispatch : public CProxiedUnknown
 {
+private:
+    IDispatch* const mpDispatchToProxy;
+
 protected:
     CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
                      const char* sLibName);
@@ -32,9 +35,6 @@ protected:
                      const char* sLibName);
     CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& rIID1,
                      const IID& rIID2, const char* sLibName);
-
-private:
-    IDispatch* const mpDispatchToProxy;
 
 public:
     static CProxiedDispatch* get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,

@@ -25,15 +25,13 @@
 
 class CProxiedClassFactory : public CProxiedUnknown
 {
-public:
-    CProxiedClassFactory(IClassFactory* pClassFactoryToProxy, const char* sLibName);
-
 private:
     IClassFactory* const mpClassFactoryToProxy;
 
 public:
-    // IClassFactory
+    CProxiedClassFactory(IClassFactory* pClassFactoryToProxy, const char* sLibName);
 
+    // IClassFactory
     virtual HRESULT STDMETHODCALLTYPE CreateInstance(IUnknown* pUnkOuter, REFIID riid,
                                                      void** ppvObject);
 };

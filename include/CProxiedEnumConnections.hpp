@@ -39,7 +39,6 @@ public:
                             const char* sLibName);
 
     // IEnumConnections
-
     virtual HRESULT STDMETHODCALLTYPE Next(ULONG cConnections, LPCONNECTDATA rgcd,
                                            ULONG* pcFetched);
 

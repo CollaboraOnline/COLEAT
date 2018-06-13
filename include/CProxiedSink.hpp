@@ -49,7 +49,6 @@ public:
                  const char* sLibName);
 
     // IDispatch
-
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT* pctinfo);
 
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo** ppTInfo);
