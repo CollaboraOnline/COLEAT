@@ -2,6 +2,8 @@ How to release COLEAT binaries
 
 - Bump the version number in include/coleat-version.h
 
+- git commit it, git push
+
 - In Visual Studio, select the "Release x64" configuration
 
 -- Clean Solution, Build Solution
