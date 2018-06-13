@@ -1,0 +1,22 @@
+How to release COLEAT binaries
+
+- Bump the version number in include/coleat-version.h
+
+- In Visual Studio, select the "Release x64" configuration
+
+-- Clean Solution, Build Solution
+
+-- Select the "Release x86" configuration
+
+-- Clean Solution, Build Solution
+
+   (In that order so that the bin/coleat.exe and bin/coleatw.exe are
+   the 32-bit ones, so that it will run on a 32-bit OS.)
+
+- Run createZipAndTarball.sh
+
+- git push
+
+- On GitHub, do a release: Create a new tag in the format like v0.6,
+  select the coleat-x.y-timestamp.hash.zip created by
+  createZipAndTarball.sh to upload and attach the the release.
