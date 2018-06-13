@@ -10,6 +10,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4668 4820 4917)
 
+#include <cassert>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -43,6 +44,7 @@ CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDisp
                                    const IID& rIID1, const IID& rIID2, const char* sLibName)
     : CProxiedUnknown(pBaseClassUnknown, pDispatchToProxy, rIID1, rIID2, sLibName)
     , mpDispatchToProxy(pDispatchToProxy)
+    , mpDispIdToName(new std::map<DISPID, std::string>)
 {
     if (getParam()->mbVerbose)
         std::cout << this << "@CProxiedDispatch::CTOR(" << pBaseClassUnknown << ", "
@@ -232,6 +234,15 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::GetIDsOfNames(REFIID riid, LPOLESTR*
     }
     nResult = mpDispatchToProxy->GetIDsOfNames(riid, rgszNames, cNames, lcid, rgDispId);
 
+    if (rgszNames && rgDispId && nResult == S_OK && getParam()->mbTrace)
+    {
+        std::string sName = convertUTF16ToUTF8(rgszNames[0]);
+        if (mpDispIdToName->count(rgDispId[0]))
+            assert((*maDispIdToName)[rgDispId[0]] == sName);
+        else
+            (*mpDispIdToName)[rgDispId[0]] = sName;
+    }
+
     if (getParam()->mbVerbose)
     {
         std::cout << "..." << this << "@CProxiedDispatch::GetIDsOfNames: ";
@@ -312,7 +323,10 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
         std::cout << "<" << (mpBaseClassUnknown ? mpBaseClassUnknown : this) << ">.";
 
         if (pTI == NULL)
-            std::cout << dispIdMember;
+            if (mpDispIdToName->count(dispIdMember))
+                std::cout << (*mpDispIdToName)[dispIdMember];
+            else
+                std::cout << dispIdMember;
         else
         {
             BSTR sFuncName = NULL;

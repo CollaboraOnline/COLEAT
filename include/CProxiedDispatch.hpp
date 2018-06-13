@@ -28,6 +28,10 @@ class CProxiedDispatch : public CProxiedUnknown
 private:
     IDispatch* const mpDispatchToProxy;
 
+    // Cached results from GetIDsOfNames() calls, to use for logging in case no type information is
+    // available.
+    std::map<DISPID, std::string>* mpDispIdToName;
+
 protected:
     CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
                      const char* sLibName);
@@ -35,6 +39,20 @@ protected:
                      const char* sLibName);
     CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy, const IID& rIID1,
                      const IID& rIID2, const char* sLibName);
+
+#if 0
+    // We can't have a non-virtual destructor because of the "class has virtual functions, but
+    // destructor is not virtual" problem and we can't make the destructor virtual because our
+    // vtable should have *only* the entries from IUnknown plus the ones from this class
+    // (corresponding to the entries for IDispatch). So ideally we should delete mpDispIdToName in
+    // Release() when the reference count reaches zero.
+
+    ~CProxiedDispatch()
+    {
+        delete mpDispIdToName;
+    }
+
+#endif
 
 public:
     static CProxiedDispatch* get(IUnknown* pBaseClassUnknown, IDispatch* pDispatchToProxy,
