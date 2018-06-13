@@ -238,7 +238,7 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::GetIDsOfNames(REFIID riid, LPOLESTR*
     {
         std::string sName = convertUTF16ToUTF8(rgszNames[0]);
         if (mpDispIdToName->count(rgDispId[0]))
-            assert((*maDispIdToName)[rgDispId[0]] == sName);
+            assert((*mpDispIdToName)[rgDispId[0]] == sName);
         else
             (*mpDispIdToName)[rgDispId[0]] = sName;
     }
