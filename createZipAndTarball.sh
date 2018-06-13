@@ -7,12 +7,9 @@ COLEAT_GIT_HEAD=$(grep COLEAT_GIT_HEAD include/coleat-git-version.h  | awk '{pri
 tstamp=$(TZ=UTC0 date +'%Y%m%d.%H%M')
 prefix=coleat-$COLEAT_VERSION_MAJOR.$COLEAT_VERSION_MINOR-$tstamp.$COLEAT_GIT_HEAD
 zip=$prefix.zip
-tarball=$prefix.tar.gz
 
 zip $zip README.txt
 
 (cd bin; zip ../$zip *.exe *.dll)
 
 zip $zip demo.vbs demo.exe demo.frm u1.odt u2.docx
-
-git archive --prefix=$prefix/ -o $tarball $COLEAT_GIT_HEAD
