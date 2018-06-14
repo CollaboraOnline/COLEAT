@@ -37,21 +37,7 @@ struct FuncTableEntry
     std::vector<BSTR> mvNames;
 };
 
-struct Callback
-{
-    IID maIID;
-    std::string msLibName;
-    std::string msName;
-};
-
-struct DefaultInterface
-{
-    const std::string msLibName;
-    const std::string msName;
-    const IID maIID;
-};
-
-struct Dispatch
+struct Interface
 {
     const std::string msLibName;
     const std::string msName;
@@ -63,20 +49,15 @@ static std::string sOutputFolder = "generated";
 static std::set<IID> aAlreadyHandledIIDs;
 static std::set<std::string> aOnlyTheseInterfaces;
 
-static std::set<Callback> aCallbacks;
-static std::set<DefaultInterface> aDefaultInterfaces;
-static std::vector<Dispatch> aDispatches;
+static std::set<Interface> aCallbacks;
+static std::set<Interface> aDefaultInterfaces;
+static std::vector<Interface> aDispatches;
 static std::vector<InterfaceMapping> aInterfaceMap;
 static std::vector<OutgoingInterfaceMapping> aOutgoingInterfaceMap;
 
 static void Generate(const std::string& sLibName, ITypeInfo* pTypeInfo);
 
-inline bool operator<(const Callback& a, const Callback& b)
-{
-    return ((a.msLibName < b.msLibName) || ((a.msLibName == b.msLibName) && (a.msName < b.msName)));
-}
-
-inline bool operator<(const DefaultInterface& a, const DefaultInterface& b)
+inline bool operator<(const Interface& a, const Interface& b)
 {
     return ((a.msLibName < b.msLibName) || ((a.msLibName == b.msLibName) && (a.msName < b.msName)));
 }
@@ -508,7 +489,7 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
         return;
     aAlreadyHandledIIDs.insert(pTypeAttr->guid);
 
-    aCallbacks.insert({ pTypeAttr->guid, sLibName, convertUTF16ToUTF8(sName) });
+    aCallbacks.insert({ sLibName, convertUTF16ToUTF8(sName), pTypeAttr->guid });
 
     const std::string sHeader = sOutputFolder + "/" + sClass + ".hxx";
     OutputFile aHeader(sHeader);
