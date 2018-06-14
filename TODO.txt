@@ -32,29 +32,6 @@
   "unknown" and weird.) We probably need to handle such in some
   places.
 
-- Add detection of type of objects returned from enumerations: Add a
-  check if the objects if of some of the types of interfaces that we
-  handle, and in that case proxy it.
-
-  For objects returned as out parameters from methods or from property
-  getters I think it already works like that. At least the latter.
-  Anyway, some out parameters or retvals are marked to be just
-  IDispatch*, but presumably could actually be some type we know?
-
-  There should be a way to tell what the expected type of objects
-  returned from a DISPID_NEWENUM is. (As far as I see, the type
-  information gives no such information, so one probably needs to
-  provide it explicitly as input to genproxy.
-
-  In cases where Foobars._NewEnum() returns an enumerator that returns
-  objects of type FooBar, i.e. the collection type has a "s" suffix
-  and the element is the same with just the "s" suffix dropped, the
-  code could just guess and that would work. At least for msword.olb
-  many of the interfaces providing a _NewEnum() seem to be like that
-  For instance enumerating a Paragraphs object returns Paragraph
-  objects. But not all, for instance enumerating a FontNames object
-  returns strings.)
-
 - When doing no redirection, just tracing, as long as the client uses
   late binding, we should be able to trace also interfaces we haven't
   generated any proxies for, as long as all the necessary type
