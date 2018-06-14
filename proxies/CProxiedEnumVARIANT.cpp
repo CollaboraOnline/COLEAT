@@ -24,6 +24,8 @@
 
 #include "CProxiedEnumVARIANT.hpp"
 
+#include "ProxyCreator.hxx"
+
 CProxiedEnumVARIANT::CProxiedEnumVARIANT(IUnknown* pUnknownToProxy, const char* sLibName)
     : CProxiedUnknown(nullptr, pUnknownToProxy, IID_IEnumVARIANT, sLibName)
 {
@@ -79,16 +81,15 @@ HRESULT STDMETHODCALLTYPE CProxiedEnumVARIANT::Next(ULONG celt, VARIANT* rgVar, 
 
         for (ULONG i = 0; i < nFetched; i++)
         {
+            std::string sPrettyResultTypeName;
             if (rgVar[i].vt == VT_DISPATCH)
-            {
-                IUnknown* pExisting = find(rgVar[i].pdispVal);
-                if (pExisting != nullptr)
-                {
-                    std::cout << "... Already have proxy for " << rgVar[i].pdispVal << "\n";
-                    rgVar[i].pdispVal = static_cast<IDispatch*>(pExisting);
-                }
-            }
-            std::cout << "... " << i << ": " << rgVar[i] << "\n";
+                rgVar[i].pdispVal = ProxyCreator(rgVar[i].pdispVal, sPrettyResultTypeName);
+            std::cout << "... " << i << ": ";
+            if (sPrettyResultTypeName != "")
+                std::cout << sPrettyResultTypeName << "<" << rgVar[i] << ">";
+            else
+                std::cout << rgVar[i];
+            std::cout << "\n";
         }
         std::cout << std::flush;
     }

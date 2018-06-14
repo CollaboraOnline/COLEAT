@@ -2257,16 +2257,50 @@ static void GenerateProxyCreator()
     aHeader << "\n";
 
     aHeader << "static IDispatch* "
-            << "ProxyCreator(const IID& aIID, IDispatch* pDispatchToProxy)\n";
+            << "ProxyCreator(IDispatch* pDispatchToProxy, std::string& sPrettyTypeName)\n";
     aHeader << "{\n";
+    aHeader << "    HRESULT nResult;\n";
+    aHeader << "    bool bFoundOne = false;\n";
+    aHeader << "    IUnknown* pUnknown;\n";
+    aHeader << "\n";
+    aHeader << "    sPrettyTypeName = \"\";\n";
+    aHeader << "\n";
 
+    // First check that the object matches at most one of the interfaces we know.
     for (const auto i : aDispatches)
     {
         aHeader << "    const IID aIID_" << i.msLibName << "_" << i.msName << " = "
                 << IID_initializer(i.maIID) << ";\n";
-        aHeader << "    if (IsEqualIID(aIID, aIID_" << i.msLibName << "_" << i.msName << "))\n";
+        aHeader << "    nResult = pDispatchToProxy->QueryInterface(aIID_" << i.msLibName << "_"
+                << i.msName << ", (void**)&pUnknown);\n";
+        aHeader << "    if (nResult == S_OK)\n";
+        aHeader << "    {\n";
+        aHeader << "        pUnknown->Release();\n";
+        aHeader << "        if (bFoundOne)\n";
+        // Multiple matches.
+        aHeader << "            return pDispatchToProxy;\n";
+        aHeader << "        bFoundOne = true;\n";
+        aHeader << "    }\n";
+        aHeader << "\n";
+    }
+
+    aHeader << "    if (!bFoundOne)\n";
+    aHeader << "        return pDispatchToProxy;\n";
+    aHeader << "\n";
+
+    // Next create the proxy
+    for (const auto i : aDispatches)
+    {
+        aHeader << "    nResult = pDispatchToProxy->QueryInterface(aIID_" << i.msLibName << "_"
+                << i.msName << ", (void**)&pUnknown);\n";
+        aHeader << "    if (nResult == S_OK)\n";
+        aHeader << "    {\n";
+        aHeader << "        pUnknown->Release();\n";
+        aHeader << "        sPrettyTypeName = \"" << i.msLibName << "." << i.msName << "\";\n";
         aHeader << "        return reinterpret_cast<IDispatch*>(C" << i.msLibName << "_" << i.msName
                 << "::get(nullptr, pDispatchToProxy));\n";
+        aHeader << "    }\n";
+        aHeader << "\n";
     }
 
     aHeader << "    return pDispatchToProxy;\n";

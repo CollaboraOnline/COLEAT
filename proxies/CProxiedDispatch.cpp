@@ -400,54 +400,26 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
                                         pExcepInfo, puArgErr);
     decreaseIndent();
 
+    std::string sPrettyResultTypeName;
+
     if (pFuncDesc != NULL)
     {
-#define nResult HIDDEN
-        // Do not overwrite nResult here. Pity there is no saner way to do this, without also
-        // disabling C4456?
-
-        HRESULT nInnerResult;
-
         if (pFuncDesc->invkind == INVOKE_FUNC || pFuncDesc->invkind == INVOKE_PROPERTYGET)
         {
             if (pVarResult != NULL && pVarResult->vt == VT_DISPATCH
                 && pFuncDesc->elemdescFunc.tdesc.vt == VT_PTR)
             {
-                ITypeInfo* pResultTI;
-                nInnerResult
-                    = pVarResult->pdispVal->GetTypeInfo(0, LOCALE_USER_DEFAULT, &pResultTI);
-                TYPEATTR* pResultTA = NULL;
-                if (!FAILED(nInnerResult))
-                {
-                    nInnerResult = pResultTI->GetTypeAttr(&pResultTA);
-                }
-                if (!FAILED(nInnerResult))
-                {
-                    pVarResult->pdispVal = ProxyCreator(pResultTA->guid, pVarResult->pdispVal);
-                    pResultTI->ReleaseTypeAttr(pResultTA);
-                }
+                pVarResult->pdispVal = ProxyCreator(pVarResult->pdispVal, sPrettyResultTypeName);
             }
             else if (pVarResult != NULL && pVarResult->vt == VT_DISPATCH
                      && pFuncDesc->elemdescFunc.tdesc.vt == VT_DISPATCH)
             {
-                ITypeInfo* pResultTI;
-                nInnerResult
-                    = pVarResult->pdispVal->GetTypeInfo(0, LOCALE_USER_DEFAULT, &pResultTI);
-                TYPEATTR* pResultTA = NULL;
-                if (!FAILED(nInnerResult))
-                {
-                    nInnerResult = pResultTI->GetTypeAttr(&pResultTA);
-                }
-                if (!FAILED(nInnerResult))
-                {
-                    pVarResult->pdispVal = ProxyCreator(pResultTA->guid, pVarResult->pdispVal);
-                    pResultTI->ReleaseTypeAttr(pResultTA);
-                }
+                IDispatch* pNewDispVal = ProxyCreator(pVarResult->pdispVal, sPrettyResultTypeName);
+                if (pNewDispVal != pVarResult->pdispVal)
+                    pVarResult->pdispVal = pNewDispVal;
                 else
-                {
                     pVarResult->pdispVal = reinterpret_cast<IDispatch*>(
                         CProxiedDispatch::get(nullptr, pVarResult->pdispVal, "Unknown"));
-                }
             }
             else if (dispIdMember == DISPID_NEWENUM && pVarResult != NULL
                      && pVarResult->vt == VT_UNKNOWN
@@ -456,7 +428,6 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
                 pVarResult->punkVal = new CProxiedEnumVARIANT(pVarResult->punkVal, msLibName);
             }
         }
-#undef nResult
     }
 
     if (getParam()->mbTrace)
@@ -469,7 +440,11 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
             {
                 if (pVarResult != NULL)
                 {
-                    std::cout << " -> " << *pVarResult;
+                    std::cout << " -> ";
+                    if (sPrettyResultTypeName != "")
+                        std::cout << sPrettyResultTypeName << "<" << *pVarResult << ">";
+                    else
+                        std::cout << *pVarResult;
                     mbIsAtBeginningOfLine = false;
                 }
 
