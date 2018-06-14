@@ -172,6 +172,7 @@
     <ClCompile Include="..\generated\CWord_Comment.cxx" />
     <ClCompile Include="..\generated\CWord_Comments.cxx" />
     <ClCompile Include="..\generated\CWord_Documents.cxx" />
+    <ClCompile Include="..\generated\CWord_FontNames.cxx" />
     <ClCompile Include="..\generated\CWord_MailMerge.cxx" />
     <ClCompile Include="..\generated\CWord_Paragraph.cxx" />
     <ClCompile Include="..\generated\CWord_Paragraphs.cxx" />
