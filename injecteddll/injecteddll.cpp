@@ -58,43 +58,14 @@ static HMODULE WINAPI myLoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWORD dw
 
 static void printCreateInstanceResult(void* pV)
 {
-    HRESULT nResult;
-    IDispatch* pDispatch = NULL;
+    std::string sName = prettyNameOfType(pGlobalParamPtr, (IUnknown*)pV);
 
-    // Silence verbosity while doing the QueryInterface() etc calls here, they might go through our
-    // proxies, and it is pointless to do verbose logging those proxies for caused by fetching of
-    // information for verbose logging...
-    bool bWasVerbose = pGlobalParamPtr->mbVerbose;
-    pGlobalParamPtr->mbVerbose = false;
+    std::cout << pV;
 
-    nResult = ((IUnknown*)pV)->QueryInterface(IID_IDispatch, (void**)&pDispatch);
+    if (sName != "")
+        std::cout << " (" << sName << ")";
 
-    ITypeInfo* pTI = NULL;
-    if (nResult == S_OK)
-        nResult = pDispatch->GetTypeInfo(0, LOCALE_SYSTEM_DEFAULT, &pTI);
-
-    BSTR sTypeName = NULL;
-    if (nResult == S_OK)
-        nResult = pTI->GetDocumentation(MEMBERID_NIL, &sTypeName, NULL, NULL, NULL);
-
-    ITypeLib* pTL = NULL;
-    UINT nIndex;
-    if (nResult == S_OK)
-        nResult = pTI->GetContainingTypeLib(&pTL, &nIndex);
-
-    BSTR sLibName = NULL;
-    if (nResult == S_OK)
-        nResult = pTL->GetDocumentation(-1, &sLibName, NULL, NULL, NULL);
-
-    std::cout << pV << " (" << (sLibName != NULL ? convertUTF16ToUTF8(sLibName) : "?") << "."
-              << (sTypeName != NULL ? convertUTF16ToUTF8(sTypeName) : "?") << ")" << std::endl;
-
-    if (sTypeName != NULL)
-        SysFreeString(sTypeName);
-    if (sLibName != NULL)
-        SysFreeString(sLibName);
-
-    pGlobalParamPtr->mbVerbose = bWasVerbose;
+    std::cout << std::endl;
 }
 
 static void* generateTrampoline(void* pFunction, uintptr_t nId, short nArguments)

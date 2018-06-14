@@ -29,6 +29,8 @@
 
 #pragma warning(pop)
 
+#include "exewrapper.hpp"
+
 inline bool operator<(const IID& a, const IID& b) { return std::memcmp(&a, &b, sizeof(a)) < 0; }
 
 inline std::string convertUTF16ToUTF8(const wchar_t* pWchar)
@@ -788,6 +790,57 @@ inline std::string prettyCodeAddress(void* pCode)
         return to_ullhex((uintptr_t)pCode);
 
     return moduleName(hModule) + "!" + to_ullhex((uintptr_t)pCode, sizeof(void*) * 2);
+}
+
+// Returns the cleartext name of the type of an object, if it supports IDispatch and there is type
+// information. The return value is the type library name and the interface name combined with a
+// period. If either is unknown, a question mark is used. If both are unknown, an empty string is
+// returned.
+
+inline std::string prettyNameOfType(ThreadProcParam* pParam, IUnknown* pUnknown)
+{
+    HRESULT nResult;
+    IDispatch* pDispatch = NULL;
+
+    // Silence verbosity while doing the QueryInterface() etc calls here, they might go through our
+    // proxies, and it is pointless to do verbose logging in those proxies caused by fetching of
+    // information for verbose logging...
+    bool bWasVerbose = pParam->mbVerbose;
+    pParam->mbVerbose = false;
+
+    nResult = pUnknown->QueryInterface(IID_IDispatch, (void**)&pDispatch);
+
+    ITypeInfo* pTI = NULL;
+    if (nResult == S_OK)
+        nResult = pDispatch->GetTypeInfo(0, LOCALE_SYSTEM_DEFAULT, &pTI);
+
+    BSTR sTypeName = NULL;
+    if (nResult == S_OK)
+        nResult = pTI->GetDocumentation(MEMBERID_NIL, &sTypeName, NULL, NULL, NULL);
+
+    ITypeLib* pTL = NULL;
+    UINT nIndex;
+    if (nResult == S_OK)
+        nResult = pTI->GetContainingTypeLib(&pTL, &nIndex);
+
+    BSTR sLibName = NULL;
+    if (nResult == S_OK)
+        nResult = pTL->GetDocumentation(-1, &sLibName, NULL, NULL, NULL);
+
+    std::string sResult;
+
+    if (sLibName != NULL || sTypeName != NULL)
+        sResult = (sLibName != NULL ? convertUTF16ToUTF8(sLibName) : "?") + "."
+                  + (sTypeName != NULL ? convertUTF16ToUTF8(sTypeName) : "?");
+
+    if (sTypeName != NULL)
+        SysFreeString(sTypeName);
+    if (sLibName != NULL)
+        SysFreeString(sLibName);
+
+    pParam->mbVerbose = bWasVerbose;
+
+    return sResult;
 }
 
 class WaitForDebugger
