@@ -1,3 +1,6 @@
+Toolchain
+=========
+
 COLEAT is built using Visual Studio. 2015 or 2017 should work, has not
 been tested with earlier versions.
 
@@ -21,6 +24,18 @@ the pre-build event from the coleat project and manually edit
 include/coleat-git-version.h to have something like this single line:
 
 #define COLEAT_GIT_HEAD current
+
+Type libraries to use
+=====================
+
+I use the type libraries from Office 2013 as input to genproxy. The
+post-build event for the 'genproxy' project expects them to be in the
+parent directory of the coleat directory. You can of course modify
+that as needed locally.
+
+
+Coding style
+============
 
 The C++ source files are kept in uniform indentation and whitespace
 style using clang-format. The .clang-format file used is the same as
