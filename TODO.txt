@@ -88,3 +88,5 @@
   is handling something. (In the verbose output the mention of
   genericInvoke() is a giveaway that it was called from generated
   proxy code.)
+
+- Turn this file and the other *.txt ones into *.md instead.
