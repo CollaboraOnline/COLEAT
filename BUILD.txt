@@ -1,0 +1,40 @@
+COLEAT is built using Visual Studio. 2015 or 2017 should work, has not
+been tested with earlier versions.
+
+There is a top-level solution, coleat.sln, that includes half a dozen
+projects. One project for each separate executable ('genproxy',
+'coleat', and 'exewrapper'), one for the static library 'proxies', and
+one for the DLL 'injecteddll'
+
+In order to make it possible for the 'coleat' executable to show the
+git version of the build, the pre-build event for the 'coleat' project
+wants to run the 'git' command. Thus you need to make sure that there
+is a proper git.exe that supports the rev-parse sub-command in the
+PATH when Visual Studio runs.
+
+Personally, I use the Cygwin shell (because that is what I need to use
+in order to work with the Collabora Office and LibreOffice codebase on
+Windows anyway), and start Visual Studio for the coleat solution from
+a Cygwin shell with the command 'cmd /c start coleat.sln'. Others
+might prefer other ways. Or, if you don't want the bother, just remove
+the pre-build event from the coleat project and manually edit
+include/coleat-git-version.h to have something like this single line:
+
+#define COLEAT_GIT_HEAD current
+
+The C++ source files are kept in uniform indentation and whitespace
+style using clang-format. The .clang-format file used is the same as
+used for LibreOffice. I don't claim that I find the resulting style to
+be 100% to my liking, but I strongly think that uniformity is more
+important than getting every detail just "right" according to personal
+taste anyway.
+
+To ensure that the code stays like that, please run clang-format as
+appropriate. The easiest way, when using a Cygwin shell (or other
+comparable Unix style shell) is to make a symlink from
+.git/hooks/pre-commit to git-hooks/pre-commit .
+
+The code uses "Hungarian" prefixes for variable names. Not sure I like
+it that much, but that is what I was used to from LibreOffice, so it
+came naturally. Again, uniformity is more important than personal
+taste.
