@@ -583,7 +583,7 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
 
     if (pGlobalParamPtr->mbVerbose)
         std::cout << "GetProcAddress(" << moduleName(hModule) << ", " << lpProcName << ") from "
-                  << prettyCodeAddress(_ReturnAddress()) << ": unhandled: " << pRetval << std::endl;
+                  << prettyCodeAddress(_ReturnAddress()) << ": " << pRetval << std::endl;
 
     return pRetval;
 }
