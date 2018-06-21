@@ -433,8 +433,7 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
                 for (DWORD j = 0; j < dwCount; ++j)
                 {
                     std::cout << "...CoCreateInstanceEx(" << clsid << "): " << j << "(" << dwCount
-                              << "): "
-                              << ": ";
+                              << "): ";
                     if (pResults[j].hr == S_OK)
                     {
                         std::cout << *pResults[j].pIID << ": ";
