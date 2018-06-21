@@ -441,7 +441,6 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
                     }
                     else
                         std::cout << HRESULT_to_string(pResults[j].hr) << std::endl;
-                    ;
                 }
             }
             if (nSuccess == dwCount)
@@ -453,7 +452,25 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
         }
     }
 
-    return CoCreateInstanceEx(clsid, pUnkOuter, dwClsCtx, pServerInfo, dwCount, pResults);
+    HRESULT nRetval
+        = CoCreateInstanceEx(clsid, pUnkOuter, dwClsCtx, pServerInfo, dwCount, pResults);
+
+    if (pGlobalParamPtr->mbVerbose)
+    {
+        for (DWORD j = 0; j < dwCount; ++j)
+        {
+            std::cout << "...CoCreateInstanceEx(" << clsid << "): " << j << "(" << dwCount << "): ";
+            if (pResults[j].hr == S_OK)
+            {
+                std::cout << *pResults[j].pIID << ": ";
+                printCreateInstanceResult(pResults[j].pItf);
+            }
+            else
+                std::cout << HRESULT_to_string(pResults[j].hr) << std::endl;
+        }
+    }
+
+    return nRetval;
 }
 
 static HRESULT __stdcall myCoGetClassObject(REFCLSID rclsid, DWORD dwClsContext,
