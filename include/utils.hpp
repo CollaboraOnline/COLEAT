@@ -287,11 +287,17 @@ inline std::string VARTYPE_to_string(VARTYPE nVt)
 
 inline bool GetWindowsErrorString(DWORD nErrorCode, LPWSTR* pPMsgBuf)
 {
+    // Prefer English error messages
     if (FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM
                            | FORMAT_MESSAGE_IGNORE_INSERTS,
-                       nullptr, nErrorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                       nullptr, nErrorCode, MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
                        reinterpret_cast<LPWSTR>(pPMsgBuf), 0, nullptr)
-        == 0)
+            == 0
+        && FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM
+                              | FORMAT_MESSAGE_IGNORE_INSERTS,
+                          nullptr, nErrorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                          reinterpret_cast<LPWSTR>(pPMsgBuf), 0, nullptr)
+               == 0)
     {
         return false;
     }
@@ -304,14 +310,94 @@ inline bool GetWindowsErrorString(DWORD nErrorCode, LPWSTR* pPMsgBuf)
 
 inline std::string WindowsErrorString(DWORD nErrorCode)
 {
+    // Always include the numeric code, too.
+    std::string sResult = to_uhex(nErrorCode, 8);
+
+    // Don't bother with "The operation completed successfully" in the no-error case, and textual
+    // explanations for other very common and obvious error codes. This is mostly just a guesstimate
+    // of which ones are "commmon and obvious" of course.
+    switch (nErrorCode)
+    {
+        case ERROR_SUCCESS:
+            return sResult + ": SUCCESS";
+        case ERROR_INVALID_FUNCTION:
+            return sResult + ": INVALID_FUNCTION";
+        case ERROR_FILE_NOT_FOUND:
+            return sResult + ": FILE_NOT_FOUND";
+        case ERROR_PATH_NOT_FOUND:
+            return sResult + ": PATH_NOT_FOUND";
+        case ERROR_TOO_MANY_OPEN_FILES:
+            return sResult + ": TOO_MANY_OPEN_FILES";
+        case ERROR_ACCESS_DENIED:
+            return sResult + ": ACCESS_DENIED";
+        case ERROR_INVALID_HANDLE:
+            return sResult + ": INVALID_HANDLE";
+        case ERROR_ARENA_TRASHED:
+            return sResult + ": ARENA_TRASHED";
+        case ERROR_NOT_ENOUGH_MEMORY:
+            return sResult + ": NOT_ENOUGH_MEMORY";
+        case ERROR_INVALID_BLOCK:
+            return sResult + ": INVALID_BLOCK";
+        case ERROR_BAD_ENVIRONMENT:
+            return sResult + ": BAD_ENVIRONMENT";
+        case ERROR_INVALID_ACCESS:
+            return sResult + ": INVALID_ACCESS";
+        case ERROR_INVALID_DATA:
+            return sResult + ":INVALID_DATA";
+        case ERROR_OUTOFMEMORY:
+            return sResult + ": OUTOFMEMORY";
+        case ERROR_CURRENT_DIRECTORY:
+            return sResult + ": CURRENT_DIRECTORY";
+        case ERROR_NOT_SAME_DEVICE:
+            return sResult + ": NOT_SAME_DEVICE";
+        case ERROR_NO_MORE_FILES:
+            return sResult + ": NO_MORE_FILES";
+        case ERROR_WRITE_PROTECT:
+            return sResult + ": WRITE_PROTECT";
+        case ERROR_GEN_FAILURE:
+            return sResult + ": GEN_FAILURE";
+        case ERROR_SHARING_VIOLATION:
+            return sResult + ": SHARING_VIOLATION";
+        case ERROR_LOCK_VIOLATION:
+            return sResult + ": LOCK_VIOLATION";
+        case ERROR_HANDLE_EOF:
+            return sResult + ": HANDLE_EOF";
+        case ERROR_HANDLE_DISK_FULL:
+            return sResult + ": HANDLE_DISK_FULL";
+        case ERROR_NOT_SUPPORTED:
+            return sResult + ": NOT_SUPPORTED";
+        case ERROR_FILE_EXISTS:
+            return sResult + ": FILE_EXISTS";
+        case ERROR_CANNOT_MAKE:
+            return sResult + ": CANNOT_MAKE";
+        case ERROR_INVALID_PARAMETER:
+            return sResult + ": INVALID_PARAMETER";
+        case ERROR_BROKEN_PIPE:
+            return sResult + ": BROKEN_PIPE";
+        case ERROR_OPEN_FAILED:
+            return sResult + ": OPEN_FAILED";
+        case ERROR_BUFFER_OVERFLOW:
+            return sResult + ": BUFFER_OVERFLOW";
+        case ERROR_DISK_FULL:
+            return sResult + ": DISK_FULL";
+        case ERROR_INVALID_NAME:
+            return sResult + ": INVALID_NAME";
+        case ERROR_MOD_NOT_FOUND:
+            return sResult + ": MOD_NOT_FOUND";
+        case ERROR_PROC_NOT_FOUND:
+            return sResult + ": PROC_NOT_FOUND";
+        case ERROR_WAIT_NO_CHILDREN:
+            return sResult + ": WAIT_NO_CHILDREN";
+    }
+
+    // For other errors, append the textual explanation.
+
     LPWSTR pMsgBuf;
 
     if (!GetWindowsErrorString(nErrorCode, &pMsgBuf))
-    {
-        return to_uhex(nErrorCode, 8);
-    }
+        return sResult;
 
-    std::string sResult(convertUTF16ToUTF8(pMsgBuf));
+    sResult += ": " + convertUTF16ToUTF8(pMsgBuf);
 
     HeapFree(GetProcessHeap(), 0, pMsgBuf);
 
