@@ -23,6 +23,7 @@ Word.ApplicationEvents4
 Word.DocumentEvents2
 Excel.Application
 Excel._Application
+Excel.Sheets
 Excel.Workbook
 Excel._Workbook
 Excel.Workbooks
