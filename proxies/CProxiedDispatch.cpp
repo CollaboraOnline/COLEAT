@@ -259,7 +259,8 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::GetIDsOfNames(REFIID riid, LPOLESTR*
             {
                 if (i > 0)
                     std::cout << ",";
-                std::cout << "\"" << convertUTF16ToUTF8(rgszNames[i]) << "\":" << rgDispId[i];
+                std::cout << "\"" << convertUTF16ToUTF8(rgszNames[i]) << "\":0x"
+                          << to_hex(rgDispId[i]);
             }
             std::cout << "]" << std::endl;
         }
