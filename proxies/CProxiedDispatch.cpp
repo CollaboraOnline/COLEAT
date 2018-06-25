@@ -403,7 +403,7 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
 
     std::string sPrettyResultTypeName;
 
-    if (pFuncDesc != NULL)
+    if (nResult == S_OK && pFuncDesc != NULL)
     {
         if (pFuncDesc->invkind == INVOKE_FUNC || pFuncDesc->invkind == INVOKE_PROPERTYGET)
         {
@@ -431,7 +431,7 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
         }
     }
 
-    if (getParam()->mbTrace)
+    if (nResult == S_OK && getParam()->mbTrace)
     {
         // FIXME: Print inout and out parameters here.
 
@@ -490,6 +490,11 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
 
         if (pFuncDesc != NULL)
             pTI->ReleaseFuncDesc(pFuncDesc);
+    }
+    else if (getParam()->mbTrace)
+    {
+        std::cout << ": " << WindowsErrorStringFromHRESULT(nResult) << std::endl;
+        mbIsAtBeginningOfLine = true;
     }
     else if (getParam()->mbVerbose)
         std::cout << "..." << this << "@CProxiedDispatch::Invoke(0x" << to_hex(dispIdMember)
