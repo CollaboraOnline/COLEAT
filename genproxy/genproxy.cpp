@@ -2544,7 +2544,7 @@ int wmain(int argc, wchar_t** argv)
     for (; argi < argc; ++argi)
     {
         wchar_t* const pColon = std::wcschr(argv[argi], L':');
-        const wchar_t* pInterface = L"Application";
+        const wchar_t* pInterface = nullptr;
         if (pColon)
         {
             *pColon = L'\0';
@@ -2603,7 +2603,7 @@ int wmain(int argc, wchar_t** argv)
                 std::exit(1);
             }
 
-            if (std::wcscmp(sTypeName, pInterface) != 0)
+            if (pInterface && std::wcscmp(sTypeName, pInterface) != 0)
                 continue;
 
             ITypeInfo* pTypeInfo;
@@ -2615,14 +2615,18 @@ int wmain(int argc, wchar_t** argv)
                 std::exit(1);
             }
 
+            if (!pInterface && IsIgnoredType(sLibName, pTypeInfo))
+                continue;
+
             bFound = true;
 
             Generate(sLibName, pTypeInfo);
 
-            break;
+            if (pInterface)
+                break;
         }
 
-        if (!bFound)
+        if (pInterface && !bFound)
         {
             std::cerr << "Could not find " << pInterface << " in " << argv[argi] << "\n";
             std::exit(1);
