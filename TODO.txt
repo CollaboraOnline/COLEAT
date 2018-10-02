@@ -90,3 +90,7 @@
   proxy code.)
 
 - Turn this file and the other *.txt ones into *.md instead.
+
+- Factor out the mostly copy-pasted identical sequences of hook()
+  calls in injecteddll.cpp into a separate function. (Checking
+  carefully whether they actually are identical, of course.)
