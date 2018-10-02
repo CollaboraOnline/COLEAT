@@ -38,6 +38,13 @@
 
 #include "InterfaceMapping.hxx"
 
+struct UNICODE_STRING
+{
+    USHORT Length;
+    USHORT MaximumLength;
+    PWCH Buffer;
+};
+
 static ThreadProcParam* pGlobalParamPtr;
 
 static int nHookedFunctions = 0;
@@ -55,6 +62,8 @@ static bool hook(bool bMandatory, ThreadProcParam* pParam, HMODULE hModule,
 static HMODULE WINAPI myLoadLibraryA(LPCSTR lpFileName);
 static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags);
 static HMODULE WINAPI myLoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWORD dwFlags);
+static NTSTATUS NTAPI myLdrLoadDll(PWCHAR PathToFile, ULONG Flags, UNICODE_STRING* ModuleFileName,
+                                   PHANDLE ModuleHandle);
 
 static void printCreateInstanceResult(void* pV)
 {
@@ -679,6 +688,7 @@ static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
              myLoadLibraryExW);
         hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", "LoadLibraryExA",
              myLoadLibraryExA);
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"ntdll.dll", "LdrLoadDll", myLdrLoadDll);
         hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "CoCreateInstance",
              myCoCreateInstance);
         hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "CoCreateInstanceEx",
@@ -732,6 +742,8 @@ static HMODULE WINAPI myLoadLibraryA(LPCSTR lpFileName)
              myLoadLibraryExW);
         hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"kernel32.dll", "LoadLibraryExA",
              myLoadLibraryExA);
+        hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ntdll.dll", "LdrLoadDll",
+             myLdrLoadDll);
         hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll", "CoCreateInstance",
              myCoCreateInstance);
         hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll", "CoCreateInstanceEx",
@@ -741,20 +753,16 @@ static HMODULE WINAPI myLoadLibraryA(LPCSTR lpFileName)
     return hModule;
 }
 
-static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags)
+static HMODULE WINAPI innerMyLoadLibraryExW(const std::string& caller, LPCWSTR lpFileName,
+                                            HANDLE hFile, DWORD dwFlags)
 {
-    if (pGlobalParamPtr->mbVerbose)
-        std::cout << "LoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ", 0x"
-                  << to_uhex(dwFlags) << ") from " << prettyCodeAddress(_ReturnAddress()) << "..."
-                  << std::endl;
-
     HMODULE hModule = LoadLibraryExW(lpFileName, hFile, dwFlags);
     DWORD nLastError = GetLastError();
 
     if (hModule == NULL)
     {
         if (pGlobalParamPtr->mbVerbose)
-            std::cout << "...LoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ", 0x"
+            std::cout << "..." << caller << "(" << convertUTF16ToUTF8(lpFileName) << ", 0x"
                       << to_uhex(dwFlags) << "): " << hModule << ": "
                       << WindowsErrorString(nLastError) << std::endl;
     }
@@ -785,6 +793,8 @@ static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD d
                  myLoadLibraryA);
             hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", "LoadLibraryExW",
                  myLoadLibraryExW);
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"ntdll.dll", "LdrLoadDll",
+                 myLdrLoadDll);
             hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "CoCreateInstance",
                  myCoCreateInstance);
             hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "CoCreateInstanceEx",
@@ -793,6 +803,16 @@ static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD d
     }
 
     return hModule;
+}
+
+static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags)
+{
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "LoadLibraryExW(" << convertUTF16ToUTF8(lpFileName) << ", 0x"
+                  << to_uhex(dwFlags) << ") from " << prettyCodeAddress(_ReturnAddress()) << "..."
+                  << std::endl;
+
+    return innerMyLoadLibraryExW("LoadLibraryExW", lpFileName, hFile, dwFlags);
 }
 
 static HMODULE WINAPI myLoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWORD dwFlags)
@@ -845,6 +865,8 @@ static HMODULE WINAPI myLoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWORD dw
                  "LoadLibraryExW", myLoadLibraryExW);
             hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"kernel32.dll",
                  "LoadLibraryExA", myLoadLibraryExA);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ntdll.dll", "LdrLoadDll",
+                 myLdrLoadDll);
             hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll",
                  "CoCreateInstance", myCoCreateInstance);
             hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll",
@@ -853,6 +875,28 @@ static HMODULE WINAPI myLoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWORD dw
     }
 
     return hModule;
+}
+
+static NTSTATUS NTAPI myLdrLoadDll(PWCHAR PathToFile, ULONG Flags, UNICODE_STRING* ModuleFileName,
+                                   PHANDLE ModuleHandle)
+{
+    std::vector<WCHAR> fileName(ModuleFileName->Length + 1u);
+    memcpy(fileName.data(), ModuleFileName->Buffer, ModuleFileName->Length * 2u);
+    fileName[ModuleFileName->Length] = L'\0';
+
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "LdrLoadDll(" << convertUTF16ToUTF8(PathToFile) << ", 0x" << to_uhex(Flags)
+                  << "," << convertUTF16ToUTF8(fileName.data()) << ") from "
+                  << prettyCodeAddress(_ReturnAddress()) << "..." << std::endl;
+
+    HMODULE handle = innerMyLoadLibraryExW("LdrLoadDll", fileName.data(), NULL, Flags);
+
+    if (handle != NULL)
+        *ModuleHandle = handle;
+    else
+        return (NTSTATUS)GetLastError();
+
+    return 0;
 }
 
 static bool hook(bool bMandatory, ThreadProcParam* pParam, HMODULE hModule,
@@ -987,7 +1031,7 @@ static bool hook(bool bMandatory, ThreadProcParam* pParam, const wchar_t* sModul
 extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
 {
 // Magic to export this function using a plain undecorated name despite it being WINAPI
-#pragma comment(linker, "/EXPORT:" __FUNCTION__ "=" __FUNCDNAME__)
+#pragma comment(linker, "/EXPORT:InjectedDllMainFunction=_InjectedDllMainFunction@4")
 
     if (pParam->mnSize != sizeof(*pParam))
     {
@@ -1049,6 +1093,7 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         hook(false, pParam, L"msvbvm60.dll", L"kernel32.dll", "LoadLibraryA", myLoadLibraryA);
         hook(false, pParam, L"msvbvm60.dll", L"kernel32.dll", "LoadLibraryExW", myLoadLibraryExW);
         hook(false, pParam, L"msvbvm60.dll", L"kernel32.dll", "LoadLibraryExA", myLoadLibraryExA);
+        hook(false, pParam, L"msvbvm60.dll", L"ntdll.dll", "LdrLoadDll", myLdrLoadDll);
     }
     else
     {
@@ -1066,6 +1111,7 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         hook(false, pParam, nullptr, L"kernel32.dll", "LoadLibraryA", myLoadLibraryA);
         hook(false, pParam, nullptr, L"kernel32.dll", "LoadLibraryExW", myLoadLibraryExW);
         hook(false, pParam, nullptr, L"kernel32.dll", "LoadLibraryExA", myLoadLibraryExA);
+        hook(false, pParam, nullptr, L"ntdll.dll", "LdrLoadDll", myLdrLoadDll);
         hook(false, pParam, nullptr, L"ole32.dll", "CoCreateInstance", myCoCreateInstance);
         hook(false, pParam, nullptr, L"ole32.dll", "CoCreateInstanceEx", myCoCreateInstanceEx);
         hook(false, pParam, nullptr, L"ole32.dll", "CoGetClassObject", myCoGetClassObject);
