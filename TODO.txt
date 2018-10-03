@@ -1,5 +1,3 @@
-- Log the command line as the first line of output.
-
 - Expand the -t output to be even more useful. Make sure callbacks
   (events) are also handled.
 

@@ -189,6 +189,8 @@ int wmain(int argc, wchar_t** argv)
                                      : (pLastSlash > pLastBackslash ? pLastSlash : pLastBackslash)))
           + 1;
 
+    std::cout << "Command line: " << convertUTF16ToUTF8(GetCommandLineW()) << "\n" << std::endl;
+
     // Start the process to wrap. Start it as suspended.
 
     std::wstring sCommandLine;
