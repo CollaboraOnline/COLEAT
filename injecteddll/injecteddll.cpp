@@ -1031,7 +1031,11 @@ static bool hook(bool bMandatory, ThreadProcParam* pParam, const wchar_t* sModul
 extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
 {
 // Magic to export this function using a plain undecorated name despite it being WINAPI
+#ifdef _WIN64
+#pragma comment(linker, "/EXPORT:InjectedDllMainFunction=InjectedDllMainFunction")
+#else
 #pragma comment(linker, "/EXPORT:InjectedDllMainFunction=_InjectedDllMainFunction@4")
+#endif
 
     if (pParam->mnSize != sizeof(*pParam))
     {
