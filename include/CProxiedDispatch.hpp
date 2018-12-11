@@ -11,7 +11,7 @@
 #define INCLUDED_CProxiedDispatch_hpp
 
 #pragma warning(push)
-#pragma warning(disable : 4668 4820 4917)
+#pragma warning(disable : 4365 4571 4625 4668 4820 4917 5026)
 
 #include <string>
 #include <vector>

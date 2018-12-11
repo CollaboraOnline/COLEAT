@@ -31,8 +31,8 @@ CProxiedConnectionPointContainer::CProxiedConnectionPointContainer(
     IProvideClassInfo* pProvideClassInfo, const char* sLibName)
     : CProxiedUnknown(pBaseClassUnknown, pCPCToProxy, IID_IConnectionPointContainer, sLibName)
     , mpCPCToProxy(pCPCToProxy)
-    , mpProvideClassInfo(pProvideClassInfo)
     , mpConnectionPoints(new ConnectionPointMapHolder())
+    , mpProvideClassInfo(pProvideClassInfo)
 {
     if (getParam()->mbVerbose)
         std::cout << this << "@CProxiedConnectionPointContainer::CTOR(" << pBaseClassUnknown << ", "

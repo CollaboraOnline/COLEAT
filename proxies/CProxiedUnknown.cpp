@@ -43,13 +43,13 @@ CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknown
 
 CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknownToProxy,
                                  const IID& rIID1, const IID& rIID2, const char* sLibName)
-    : mpBaseClassUnknown(pBaseClassUnknown)
+    : mpUnknownToProxy(pUnknownToProxy)
+    // FIXME: Must delete mpExtraInterfaces when Release() returns zero?
+    , mpExtraInterfaces(new IIDMapHolder())
+    , mpBaseClassUnknown(pBaseClassUnknown)
     , maIID1(rIID1)
     , maIID2(rIID2)
     , msLibName(sLibName)
-    , mpUnknownToProxy(pUnknownToProxy)
-    // FIXME: Must delete mpExtraInterfaces when Release() returns zero?
-    , mpExtraInterfaces(new IIDMapHolder())
 {
     if (getParam()->mbVerbose)
         std::cout << this << "@CProxiedUnknown::CTOR(" << pBaseClassUnknown << ", "

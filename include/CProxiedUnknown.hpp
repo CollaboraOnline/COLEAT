@@ -11,7 +11,7 @@
 #define INCLUDED_CProxiedUnknown_hpp
 
 #pragma warning(push)
-#pragma warning(disable : 4668 4820 4917)
+#pragma warning(disable : 4625 4668 4774 4820 4917)
 
 #include <map>
 

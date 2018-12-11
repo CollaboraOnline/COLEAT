@@ -1,11 +1,12 @@
 /* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4; fill-column: 100 -*- */
 
 #pragma warning(push)
-#pragma warning(disable : 4668 4820 4917)
+#pragma warning(disable : 4365 4571 4625 4626 4668 4774 4820 4917 5026 5027 5039)
 
 #include <cassert>
 #include <iostream>
 
+#include <intrin.h>
 #include <Windows.h>
 
 #pragma warning(pop)

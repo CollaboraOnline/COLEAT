@@ -8,7 +8,7 @@
  */
 
 #pragma warning(push)
-#pragma warning(disable : 4668 4820 4917)
+#pragma warning(disable : 4365 4571 4625 4668 4774 4820 4917 5026 5039 5045)
 
 #include <cassert>
 #include <cstdio>
@@ -503,7 +503,7 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
     aHeader << "#define INCLUDED_" << sClass << "_HXX\n";
     aHeader << "\n";
     aHeader << "#pragma warning(push)\n";
-    aHeader << "#pragma warning(disable: 4668 4820 4917)\n";
+    aHeader << "#pragma warning(disable: 4668 4820 4917 5039)\n";
     aHeader << "#include <Windows.h>\n";
     aHeader << "#pragma warning(pop)\n";
     aHeader << "\n";
@@ -1146,7 +1146,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
     aHeader << "#define INCLUDED_C" << sClass << "_HXX\n";
     aHeader << "\n";
     aHeader << "#pragma warning(push)\n";
-    aHeader << "#pragma warning(disable: 4668 4820 4917)\n";
+    aHeader << "#pragma warning(disable: 4668 4820 4917 5039)\n";
     aHeader << "#include <Windows.h>\n";
     aHeader << "#pragma warning(pop)\n";
     aHeader << "\n";

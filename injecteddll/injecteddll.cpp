@@ -8,7 +8,7 @@
  */
 
 #pragma warning(push)
-#pragma warning(disable : 4668 4820 4917)
+#pragma warning(disable : 4365 4571 4625 4668 4774 4820 4917 5026 5039)
 
 #include <cassert>
 #include <cstdio>
@@ -19,6 +19,7 @@
 #include <sstream>
 #include <string>
 
+#include <intrin.h>
 #include <Windows.h>
 
 // DbgHelp.h has even more sloppier code than <Windows.h>
