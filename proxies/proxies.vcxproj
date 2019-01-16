@@ -197,6 +197,7 @@
     <ClCompile Include="CProxiedEnumConnectionPoints.cpp" />
     <ClCompile Include="CProxiedEnumConnections.cpp" />
     <ClCompile Include="CProxiedEnumVARIANT.cpp" />
+    <ClCompile Include="CProxiedMoniker.cpp" />
     <ClCompile Include="CProxiedSink.cpp" />
     <ClCompile Include="CProxiedUnknown.cpp" />
   </ItemGroup>
