@@ -547,6 +547,21 @@ static HRESULT __stdcall myDllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOI
     return nResult;
 }
 
+static HRESULT WINAPI myMkParseDisplayName(LPBC pbc,
+                                           LPCOLESTR szUserName,
+                                           ULONG     *pchEaten,
+                                           LPMONIKER *ppmk)
+{
+    HRESULT nResult = MkParseDisplayName(pbc, szUserName, pchEaten, ppmk);
+    if (pGlobalParamPtr->mbVerbose)
+        if (nResult == S_OK)
+            std::cout << "MkParseDisplayName(" << pbc << "," << convertUTF16ToUTF8(szUserName) << ",...): " << *ppmk << std::endl;
+        else
+            std::cout << "MkParseDisplayName(" << pbc << "," << convertUTF16ToUTF8(szUserName) << ",...): " << HRESULT_to_string(nResult) << std::endl;
+
+    return nResult;
+}
+
 static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
 {
     HMODULE hOle32 = GetModuleHandleW(L"ole32.dll");
@@ -694,6 +709,8 @@ static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
              myCoCreateInstance);
         hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "CoCreateInstanceEx",
              myCoCreateInstanceEx);
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "MkParseDisplayName",
+             myMkParseDisplayName);
     }
 
     return hModule;
@@ -749,6 +766,8 @@ static HMODULE WINAPI myLoadLibraryA(LPCSTR lpFileName)
              myCoCreateInstance);
         hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll", "CoCreateInstanceEx",
              myCoCreateInstanceEx);
+        hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll", "MkParseDisplayName",
+             myMkParseDisplayName);
     }
 
     return hModule;
@@ -800,6 +819,8 @@ static HMODULE WINAPI innerMyLoadLibraryExW(const std::string& caller, LPCWSTR l
                  myCoCreateInstance);
             hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "CoCreateInstanceEx",
                  myCoCreateInstanceEx);
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "MkParseDisplayName",
+                 myMkParseDisplayName);
         }
     }
 
@@ -872,6 +893,8 @@ static HMODULE WINAPI myLoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWORD dw
                  "CoCreateInstance", myCoCreateInstance);
             hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll",
                  "CoCreateInstanceEx", myCoCreateInstanceEx);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll",
+                 "MkParseDisplayName", myMkParseDisplayName);
         }
     }
 
@@ -1087,6 +1110,8 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
 
         hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "CoCreateInstanceEx",
              myCoCreateInstanceEx);
+
+        hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "MkParseDisplayName", myMkParseDisplayName);
 
         hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "CoGetClassObject", myCoGetClassObject);
 
