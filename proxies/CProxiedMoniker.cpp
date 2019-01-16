@@ -23,18 +23,8 @@
 
 #include "CProxiedMoniker.hpp"
 
-static void* getBaseClass(IUnknown* pUnknown, REFIID riid)
-{
-    HRESULT nResult;
-    void* pResult;
-
-    nResult = pUnknown->QueryInterface(riid, &pResult);
-
-    return pResult;
-}
-
 CProxiedPersist::CProxiedPersist(IUnknown* pBaseClassUnknown, IPersist* pPersistToProxy, const char* sLibName)
-    : CProxiedUnknown(pBaseClassUnknown, pPersistToProxy, IID_IPersist, sLibName)
+    : CProxiedUnknown(pBaseClassUnknown, pPersistToProxy, IID_IPersist, IID_IMoniker, sLibName)
     , mpPersistToProxy(pPersistToProxy)
 {
 }
@@ -45,7 +35,7 @@ HRESULT STDMETHODCALLTYPE CProxiedPersist::GetClassID(CLSID *pClassID)
 }
 
 CProxiedPersistStream::CProxiedPersistStream(IUnknown* pBaseClassUnknown, IPersistStream* pPersistStreamToProxy, const char* sLibName)
-    : CProxiedPersist(pBaseClassUnknown, static_cast<IPersist*>(getBaseClass(pPersistStreamToProxy, IID_IPersist)), sLibName)
+    : CProxiedPersist(pBaseClassUnknown, pPersistStreamToProxy, sLibName)
     , mpPersistStreamToProxy(pPersistStreamToProxy)
 {
 }
@@ -72,7 +62,7 @@ HRESULT STDMETHODCALLTYPE CProxiedPersistStream::GetSizeMax(ULARGE_INTEGER *pcbS
 }
 
 CProxiedMoniker::CProxiedMoniker(IUnknown* pBaseClassUnknown, IMoniker* pMonikerToProxy, const char* sLibName)
-    : CProxiedPersistStream(pBaseClassUnknown, static_cast<IPersistStream*>(getBaseClass(pMonikerToProxy, IID_IPersistStream)), sLibName)
+    : CProxiedPersistStream(pBaseClassUnknown, pMonikerToProxy, sLibName)
     , mpMonikerToProxy(pMonikerToProxy)
 {
 }

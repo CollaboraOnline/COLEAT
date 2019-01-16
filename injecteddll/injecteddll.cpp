@@ -36,6 +36,7 @@
 #include "CProxiedClassFactory.hpp"
 #include "CProxiedCoclass.hpp"
 #include "CProxiedDispatch.hpp"
+#include "CProxiedMoniker.hpp"
 
 #include "InterfaceMapping.hxx"
 
@@ -555,7 +556,10 @@ static HRESULT WINAPI myMkParseDisplayName(LPBC pbc,
     HRESULT nResult = MkParseDisplayName(pbc, szUserName, pchEaten, ppmk);
     if (pGlobalParamPtr->mbVerbose)
         if (nResult == S_OK)
+        {
             std::cout << "MkParseDisplayName(" << pbc << "," << convertUTF16ToUTF8(szUserName) << ",...): " << *ppmk << std::endl;
+            *ppmk = reinterpret_cast<IMoniker*>(new CProxiedMoniker(nullptr, *ppmk, "Word")); // ???
+        }
         else
             std::cout << "MkParseDisplayName(" << pbc << "," << convertUTF16ToUTF8(szUserName) << ",...): " << HRESULT_to_string(nResult) << std::endl;
 
