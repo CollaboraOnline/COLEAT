@@ -397,6 +397,13 @@ static HRESULT WINAPI myCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, D
             CProxiedCoclass* pCoclass = new CProxiedCoclass(aInterfaceMap[i]);
             pCoclass->AddRef();
             *ppv = pCoclass;
+            if (pGlobalParamPtr->mbVerbose)
+            {
+                std::cout << "...CoCreateInstance(" << rclsid << ", " << riid << ")"
+                          << " -> ";
+                printCreateInstanceResult(*ppv);
+            }
+
             return S_OK;
         }
     }
