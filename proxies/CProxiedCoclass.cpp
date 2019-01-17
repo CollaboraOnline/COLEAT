@@ -26,8 +26,6 @@
 #include "CProxiedDispatch.hpp"
 #include "DefaultInterfaceCreator.hxx"
 
-bool CProxiedCoclass::mbIsActive = false;
-
 CProxiedCoclass::CProxiedCoclass(const InterfaceMapping& rMapping)
     : CProxiedDispatch(nullptr, createDispatchToProxy(rMapping), rMapping.maFromDefault,
                        rMapping.msFromLibName)
@@ -36,15 +34,12 @@ CProxiedCoclass::CProxiedCoclass(const InterfaceMapping& rMapping)
     , maReplacementAppCoclassIID(rMapping.maReplacementCoclass)
 {
     // We logged in createDispatchToProxy(), which is called only above
-    assert(!mbIsActive);
-    mbIsActive = true;
-
     if (getParam()->mbTrace || getParam()->mbVerbose)
         std::cout << "new " << rMapping.msFromLibName << "." << rMapping.msFromCoclassName << " -> "
                   << this << "\n";
 }
 
-bool CProxiedCoclass::IsActive() { return mbIsActive; }
+bool CProxiedCoclass::IsActive() { return true; }
 
 IDispatch* CProxiedCoclass::createDispatchToProxy(const InterfaceMapping& rMapping)
 {

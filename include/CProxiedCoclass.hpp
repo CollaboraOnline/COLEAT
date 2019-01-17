@@ -27,7 +27,6 @@ private:
     const IID maProxiedAppCoclassIID;
     const IID maProxiedAppDefaultIID;
     const IID maReplacementAppCoclassIID;
-    static bool mbIsActive;
     IDispatch* mpReplacementAppDispatch;
 
     IDispatch* createDispatchToProxy(const InterfaceMapping& rMapping);
