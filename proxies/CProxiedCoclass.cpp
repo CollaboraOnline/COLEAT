@@ -48,6 +48,7 @@ bool CProxiedCoclass::IsActive() { return mbIsActive; }
 
 IDispatch* CProxiedCoclass::createDispatchToProxy(const InterfaceMapping& rMapping)
 {
+    HRESULT nResult;
     const IID aProxiedOrReplacementIID
         = (getParam()->mbNoReplacement ? rMapping.maFromCoclass : rMapping.maReplacementCoclass);
 
@@ -56,16 +57,18 @@ IDispatch* CProxiedCoclass::createDispatchToProxy(const InterfaceMapping& rMappi
     // mpReplacementAppDispatch fields in this object will actually be those of the real
     // ("proxied") application.
 
-    if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedCoclass::CTOR: CoCreateInstance(" << aProxiedOrReplacementIID
-                  << ")..." << std::endl;
-
-    if (FAILED(CoCreateInstance(aProxiedOrReplacementIID, NULL, CLSCTX_LOCAL_SERVER, IID_IDispatch,
-                                (void**)&mpReplacementAppDispatch)))
+    nResult = CoCreateInstance(aProxiedOrReplacementIID, NULL, CLSCTX_LOCAL_SERVER, IID_IDispatch,
+                               (void**)&mpReplacementAppDispatch);
+    if (FAILED(nResult))
     {
-        std::cout << "Could not create instance of " << aProxiedOrReplacementIID << std::endl;
+        // As we exit on failure here (why?), let's print this regardless whether verbose or not.
+        std::cout << this << "@CProxiedCoclass::CTOR: CoCreateInstance(" << aProxiedOrReplacementIID
+                  << "): " << HRESULT_to_string(nResult) << std::endl;
         std::exit(1);
     }
+    else if (getParam()->mbVerbose)
+        std::cout << this << "@CProxiedCoclass::CTOR: CoCreateInstance(" << aProxiedOrReplacementIID
+                  << "): " << mpReplacementAppDispatch << std::endl;
 
 #if 0
     HRESULT hr;
