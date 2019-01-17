@@ -565,6 +565,10 @@ static HRESULT WINAPI myMkParseDisplayName(LPBC pbc,
         if (nResult == S_OK)
         {
             std::cout << "MkParseDisplayName(" << pbc << "," << convertUTF16ToUTF8(szUserName) << ",...): " << *ppmk << std::endl;
+
+            // Not sure why this is needed, but without it I get a crash when running against a trivial test VB6 app.
+            (*ppmk)->AddRef();
+
             *ppmk = reinterpret_cast<IMoniker*>(new CProxiedMoniker(nullptr, *ppmk, "Word")); // ???
         }
         else
