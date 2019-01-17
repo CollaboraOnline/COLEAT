@@ -251,7 +251,7 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::IsRunning(IBindCtx *pbc,
     nResult = mpMonikerToProxy->IsRunning(pbc, pmkToLeft, pmkNewlyRunning);
 
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedMoniker:IsRunning): "
+        std::cout << this << "@CProxiedMoniker:IsRunning: "
                   << HRESULT_to_string(nResult) << std::endl;
 
     return nResult;
