@@ -128,10 +128,10 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::BindToObject(IBindCtx *pbc,
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedMoniker::BindToObject: "
+            std::cout << this << "@CProxiedMoniker::BindToObject(" << riidResult << "): "
                       << HRESULT_to_string(nResult) << std::endl;
         else
-            std::cout << this << "@CProxiedMoniker::BindToObject: "
+            std::cout << this << "@CProxiedMoniker::BindToObject(" << riidResult << "): "
                       << *ppvResult << std::endl;
 
     return nResult;
