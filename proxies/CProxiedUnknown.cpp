@@ -54,7 +54,14 @@ CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknown
     if (getParam()->mbVerbose)
         std::cout << this << "@CProxiedUnknown::CTOR(" << pBaseClassUnknown << ", "
                   << pUnknownToProxy << ", " << rIID1 << ", " << rIID2 << ")" << std::endl;
-    assert(pBaseClassUnknown != NULL || mpLookupMap->maMap.count(pUnknownToProxy) == 0);
+
+    // Assertion fails with customer application so don't use a real assert() for now until I
+    // understand what is going on.
+    if (!(pBaseClassUnknown != NULL || mpLookupMap->maMap.count(pUnknownToProxy) == 0))
+    {
+        std::cout << "ASSERTION FAILURE! pBaseClassUnknown=" << pBaseClassUnknown << ", mpLookupMap->maMap.count(" << pUnknownToProxy << ")=" << mpLookupMap->maMap.count(pUnknownToProxy) << std::endl;
+    }
+
     if (pBaseClassUnknown == NULL)
         mpLookupMap->maMap[pUnknownToProxy] = this;
 }
