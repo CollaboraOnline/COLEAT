@@ -727,6 +727,8 @@ inline std::basic_ostream<char, traits>& operator<<(std::basic_ostream<char, tra
         return stream << VARTYPE_to_string(rVariant.vt);
     }
 
+    stream << "<" << VARTYPE_to_string(rVariant.vt & VT_TYPEMASK) << ">";
+
     if (rVariant.vt & VT_BYREF)
         return stream << rVariant.byref;
 
@@ -796,6 +798,8 @@ inline std::basic_ostream<char, traits>& operator<<(std::basic_ostream<char, tra
             stream << HRESULT_to_string(rVariant.lVal);
             break;
         case VT_PTR:
+            stream << rVariant.byref;
+            break;
         case VT_CARRAY:
             stream << rVariant.byref;
             break;
@@ -810,6 +814,8 @@ inline std::basic_ostream<char, traits>& operator<<(std::basic_ostream<char, tra
                               (UINT)wcslen((const wchar_t*)rVariant.byref), stream);
             break;
         case VT_INT_PTR:
+            stream << rVariant.plVal;
+            break;
         case VT_UINT_PTR:
             stream << rVariant.plVal;
             break;
