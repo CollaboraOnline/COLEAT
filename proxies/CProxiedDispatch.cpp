@@ -169,6 +169,18 @@ HRESULT CProxiedDispatch::genericInvoke(const std::string& rFuncName, int nInvKi
     {
         switch (aResult.vt)
         {
+            case VT_I2:
+                *(int16_t*)pRetval = aResult.iVal;
+                break;
+            case VT_I4:
+                *(int32_t*)pRetval = aResult.lVal;
+                break;
+            case VT_R4:
+                *(float*)pRetval = aResult.fltVal;
+                break;
+            case VT_R8:
+                *(double*)pRetval = aResult.dblVal;
+                break;
             case VT_BSTR:
                 *(BSTR*)pRetval = aResult.bstrVal;
                 break;
