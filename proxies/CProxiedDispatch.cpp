@@ -46,7 +46,7 @@ CProxiedDispatch::CProxiedDispatch(IUnknown* pBaseClassUnknown, IDispatch* pDisp
                                    const char* sPropName)
     : CProxiedUnknown(pBaseClassUnknown, pDispatchToProxy, rIID1, rIID2, sLibName)
     , mpDispatchToProxy(pDispatchToProxy)
-    , mpDispIdToName(new std::map<DISPID, std::string>)
+    , mpDispIdToName(new std::map<DISPID, std::map<DISPID, std::string>>)
     , msPropName(sPropName)
 {
     if (getParam()->mbVerbose)
@@ -256,9 +256,9 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::GetIDsOfNames(REFIID riid, LPOLESTR*
     {
         std::string sName = convertUTF16ToUTF8(rgszNames[0]);
         if (mpDispIdToName->count(rgDispId[0]))
-            assert((*mpDispIdToName)[rgDispId[0]] == sName);
+            assert((*mpDispIdToName)[rgDispId[0]][0] == sName);
         else
-            (*mpDispIdToName)[rgDispId[0]] = sName;
+            (*mpDispIdToName)[rgDispId[0]][0] = sName;
     }
 
     if (getParam()->mbVerbose)
@@ -273,6 +273,8 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::GetIDsOfNames(REFIID riid, LPOLESTR*
                     std::cout << ",";
                 std::cout << "\"" << convertUTF16ToUTF8(rgszNames[i]) << "\":0x"
                           << to_hex(rgDispId[i]);
+                if (i > 0)
+                    (*mpDispIdToName)[rgDispId[0]][rgDispId[i]] = convertUTF16ToUTF8(rgszNames[i]);
             }
             std::cout << "]" << std::endl;
         }
@@ -346,7 +348,7 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
 
         if (pTI == NULL)
             if (mpDispIdToName->count(dispIdMember))
-                std::cout << (*mpDispIdToName)[dispIdMember];
+                std::cout << (*mpDispIdToName)[dispIdMember][0];
             else
                 std::cout << dispIdMember;
         else
@@ -394,6 +396,11 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
             {
                 if (n > 0)
                     std::cout << ",";
+                if (n < pDispParams->cNamedArgs && pTI == NULL)
+                    if (mpDispIdToName->count(dispIdMember) &&
+                        (*mpDispIdToName)[dispIdMember].count(pDispParams->rgdispidNamedArgs[n]))
+                        std::cout << (*mpDispIdToName)[dispIdMember][pDispParams->rgdispidNamedArgs[n]] << ":=";
+
                 std::cout << pDispParams->rgvarg[n];
             }
             std::cout << ")";
