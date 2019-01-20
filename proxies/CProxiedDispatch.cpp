@@ -281,6 +281,17 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::GetIDsOfNames(REFIID riid, LPOLESTR*
         else
             std::cout << WindowsErrorStringFromHRESULT(nResult) << std::endl;
     }
+    else if (getParam()->mbTrace)
+    {
+        if (nResult == S_OK)
+        {
+            for (UINT i = 1; i < cNames; ++i)
+            {
+                (*mpDispIdToName)[rgDispId[0]][rgDispId[i]] = convertUTF16ToUTF8(rgszNames[i]);
+            }
+        }
+    }
+
 
     return nResult;
 }
