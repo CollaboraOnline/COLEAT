@@ -759,7 +759,7 @@ inline std::basic_ostream<char, traits>& operator<<(std::basic_ostream<char, tra
             stream << rVariant.pdispVal;
             break;
         case VT_ERROR:
-            stream << to_hex(rVariant.lVal, 8);
+            stream << HRESULT_to_string(rVariant.lVal);
             break;
         case VT_BOOL:
             stream << (rVariant.boolVal ? "True" : "False");
