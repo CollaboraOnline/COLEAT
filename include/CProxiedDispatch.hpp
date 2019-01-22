@@ -30,7 +30,7 @@ private:
 
     // Cached results from GetIDsOfNames() calls, to use for logging in case no type information is
     // available.
-    std::map<DISPID, std::string>* mpDispIdToName;
+    std::map<DISPID, std::map<DISPID, std::string>>* mpDispIdToName;
 
     // The name of this property, as a fallback in case of no type information
     const char* const msPropName;
