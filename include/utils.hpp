@@ -758,15 +758,12 @@ template <typename traits>
 inline std::basic_ostream<char, traits>& operator<<(std::basic_ostream<char, traits>& stream,
                                                     const VARIANT& rVariant)
 {
-    if (rVariant.vt & (VT_VECTOR | VT_ARRAY))
+    if (rVariant.vt & (VT_VECTOR | VT_ARRAY | VT_BYREF))
     {
-        return stream << VARTYPE_to_string(rVariant.vt);
+        return stream << "<" << VARTYPE_to_string(rVariant.vt) << ">";
     }
 
     stream << "<" << VARTYPE_to_string(rVariant.vt & VT_TYPEMASK) << ">";
-
-    if (rVariant.vt & VT_BYREF)
-        return stream << rVariant.byref;
 
     switch (rVariant.vt & VT_TYPEMASK)
     {
