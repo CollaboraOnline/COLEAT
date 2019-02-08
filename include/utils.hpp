@@ -434,6 +434,42 @@ inline std::string HRESULT_to_string(HRESULT nResult)
             return "E_FAIL";
         case E_ACCESSDENIED:
             return "E_ACCESSDENIED";
+        case DISP_E_UNKNOWNINTERFACE:
+            return "DISP_E_UNKNOWNINTERFACE";
+        case DISP_E_MEMBERNOTFOUND:
+            return "DISP_E_MEMBERNOTFOUND";
+        case DISP_E_PARAMNOTFOUND:
+            return "DISP_E_PARAMNOTFOUND";
+        case DISP_E_TYPEMISMATCH:
+            return "DISP_E_TYPEMISMATCH";
+        case DISP_E_UNKNOWNNAME:
+            return "DISP_E_UNKNOWNNAME";
+        case DISP_E_NONAMEDARGS:
+            return "DISP_E_NONAMEDARGS";
+        case DISP_E_BADVARTYPE:
+            return "DISP_E_BADVARTYPE";
+        case DISP_E_EXCEPTION:
+            return "DISP_E_EXCEPTION";
+        case DISP_E_OVERFLOW:
+            return "DISP_E_OVERFLOW";
+        case DISP_E_BADINDEX:
+            return "DISP_E_BADINDEX";
+        case DISP_E_UNKNOWNLCID:
+            return "DISP_E_UNKNOWNLCID";
+        case DISP_E_ARRAYISLOCKED:
+            return "DISP_E_ARRAYISLOCKED";
+        case DISP_E_BADPARAMCOUNT:
+            return "DISP_E_BADPARAMCOUNT";
+        case DISP_E_PARAMNOTOPTIONAL:
+            return "DISP_E_PARAMNOTOPTIONAL";
+        case DISP_E_BADCALLEE:
+            return "DISP_E_BADCALLEE";
+        case DISP_E_NOTACOLLECTION:
+            return "DISP_E_NOTACOLLECTION";
+        case DISP_E_DIVBYZERO:
+            return "DISP_E_DIVBYZERO";
+        case DISP_E_BUFFERTOOSMALL:
+            return "DISP_E_BUFFERTOOSMALL";
         default:
             return to_hex(nResult, 8);
     }
