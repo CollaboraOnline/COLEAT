@@ -20,6 +20,7 @@ Word.Sections
 Word.Window
 Word.Windows
 Word.ApplicationEvents4
+Word.DocumentEvents
 Word.DocumentEvents2
 Excel.Application
 Excel._Application

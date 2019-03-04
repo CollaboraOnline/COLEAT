@@ -188,6 +188,7 @@
     <ClCompile Include="..\generated\CWord__Font.cxx" />
     <ClCompile Include="..\generated\Excel_AppEvents.cxx" />
     <ClCompile Include="..\generated\Word_ApplicationEvents4.cxx" />
+    <ClCompile Include="..\generated\Word_DocumentEvents.cxx" />
     <ClCompile Include="..\generated\Word_DocumentEvents2.cxx" />
     <ClCompile Include="CProxiedClassFactory.cpp" />
     <ClCompile Include="CProxiedCoclass.cpp" />
