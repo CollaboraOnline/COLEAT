@@ -168,6 +168,7 @@
     <ClCompile Include="..\generated\CExcel_Workbooks.cxx" />
     <ClCompile Include="..\generated\CExcel__Application.cxx" />
     <ClCompile Include="..\generated\CExcel__Workbook.cxx" />
+    <ClCompile Include="..\generated\CExcel__Worksheet.cxx" />
     <ClCompile Include="..\generated\CWord_Bookmark.cxx" />
     <ClCompile Include="..\generated\CWord_Bookmarks.cxx" />
     <ClCompile Include="..\generated\CWord_Comment.cxx" />

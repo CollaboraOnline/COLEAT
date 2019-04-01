@@ -28,4 +28,6 @@ Excel.Sheets
 Excel.Workbook
 Excel._Workbook
 Excel.Workbooks
+Excel.Worksheet
+Excel._Worksheet
 Excel.AppEvents
