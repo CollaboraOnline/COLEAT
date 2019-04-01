@@ -466,7 +466,7 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
         std::exit(1);
     }
 
-    std::cerr << sLibName << "_" << convertUTF16ToUTF8(sName) << " (sink)\n";
+    std::cerr << sLibName << "." << convertUTF16ToUTF8(sName) << " (sink)\n";
 
     std::string sClass = sLibName + "_" + convertUTF16ToUTF8(sName);
 
