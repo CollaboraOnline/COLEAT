@@ -1012,7 +1012,7 @@ static void GenerateDispatch(const std::string& sLibName, const std::string& sTy
 {
     HRESULT nResult;
 
-    std::cout << sLibName << "." << sTypeName << " (dispatch)\n";
+    std::cout << sLibName << "." << sTypeName << " (dispatch)" << std::endl;
 
     if (!(pDispTypeAttr->wTypeFlags & TYPEFLAG_FDUAL))
     {
