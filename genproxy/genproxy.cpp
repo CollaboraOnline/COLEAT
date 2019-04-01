@@ -468,7 +468,7 @@ static void GenerateSink(const std::string& sLibName, ITypeInfo* const pTypeInfo
 
     std::cerr << sLibName << "." << convertUTF16ToUTF8(sName) << " (sink)\n";
 
-    std::string sClass = sLibName + "_" + convertUTF16ToUTF8(sName);
+    const std::string sClass = sLibName + "_" + convertUTF16ToUTF8(sName);
 
     TYPEATTR* pTypeAttr;
     nResult = pTypeInfo->GetTypeAttr(&pTypeAttr);
