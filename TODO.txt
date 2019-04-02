@@ -1,17 +1,17 @@
-- There are several more or less serious missing features when using
-  COLEAT to redirect use of Word or Excel to Collabora Office.
+- Probably not a problem: We don't handle interfaces that are not dual
+  in genproxy, i.e. dispinterface only. One important such is Range in
+  the Excel type library. But do we need to? Doesn't "dispinterface"
+  mean that the interface can be used only in the late-binding way,
+  and there thus is no need to generate any proxy class for it?
 
-  1) We don't handle interfaces that are not dual, i.e. dispinterface
-  only. One important such is Range in the Excel type library.
-
-  2) We don't handle references to another type library. For instance
+- We should handle references to another type library. For instance
   _Application.CommandBars in the Word type library is a property of
   type CommandBars which is defined in the MSO type library.
 
-  3) We don't handle an interface that is derived from another (and
-  not from IDispatch). For instance the above mentioned CommandBars in
-  the MSO type library is derived from the _IMsoDispObj interface
-  (which is derived from IDispatch).
+- We should handle an interface that is derived from another (and not
+  from IDispatch). For instance the above mentioned CommandBars in the
+  MSO type library is derived from the _IMsoDispObj interface (which
+  is derived from IDispatch).
 
 - Expand the -t output to be even more useful. Make sure callbacks
   (events) are also handled.
