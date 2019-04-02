@@ -491,6 +491,40 @@ static HRESULT WINAPI myCoCreateInstanceEx(REFCLSID clsid, LPUNKNOWN pUnkOuter, 
     return nRetval;
 }
 
+static HRESULT WINAPI myCoCreateInstanceFromApp(REFCLSID clsid, IUnknown *punkOuter,
+                                                DWORD dwClsCtx, PVOID reserved,
+                                                DWORD dwCount, MULTI_QI *pResults)
+{
+    if (pGlobalParamPtr->mbVerbose)
+    {
+        std::cout << "CoCreateInstanceFromApp(" << clsid << ", " << dwCount << ") from "
+                  << prettyCodeAddress(_ReturnAddress()) << "..." << std::endl;
+
+        for (DWORD j = 0; j < dwCount; ++j)
+            std::cout << "   " << j << "(" << dwCount << "): " << *pResults[j].pIID << std::endl;
+    }
+
+    HRESULT nRetval = CoCreateInstanceFromApp(clsid, punkOuter, dwClsCtx, reserved, dwCount, pResults);
+
+    if (pGlobalParamPtr->mbVerbose)
+    {
+        for (DWORD j = 0; j < dwCount; ++j)
+        {
+            std::cout << "...CoCreateInstanceFromApp(" << clsid << "): " << j << "(" << dwCount << "): ";
+            if (pResults[j].hr == S_OK)
+            {
+                std::cout << *pResults[j].pIID << ": ";
+                printCreateInstanceResult(pResults[j].pItf);
+            }
+            else
+                std::cout << HRESULT_to_string(pResults[j].hr) << std::endl;
+        }
+    }
+
+    return nRetval;
+}
+
+
 static HRESULT __stdcall myCoGetClassObject(REFCLSID rclsid, DWORD dwClsContext,
                                             COSERVERINFO* pServerInfo, REFIID riid, LPVOID* ppv)
 {
@@ -559,6 +593,15 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
 {
     HMODULE hOle32 = GetModuleHandleW(L"ole32.dll");
     FunPtr pFun;
+
+    if (hModule == hOle32 && std::strcmp(lpProcName, "CoCreateInstanceFromApp") == 0)
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << "GetProcAddress(ole32.dll, CoCreateInstanceFromApp) from "
+                      << prettyCodeAddress(_ReturnAddress()) << std::endl;
+        pFun.pVoid = myCoCreateInstanceFromApp;
+        return pFun.pProc;
+    }
 
     if (hModule == hOle32 && std::strcmp(lpProcName, "CoCreateInstanceEx") == 0)
     {
@@ -702,6 +745,8 @@ static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
              myCoCreateInstance);
         hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "CoCreateInstanceEx",
              myCoCreateInstanceEx);
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "CoCreateInstanceFromApp",
+             myCoCreateInstanceFromApp);
     }
 
     return hModule;
@@ -757,6 +802,8 @@ static HMODULE WINAPI myLoadLibraryA(LPCSTR lpFileName)
              myCoCreateInstance);
         hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll", "CoCreateInstanceEx",
              myCoCreateInstanceEx);
+        hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll", "CoCreateInstanceFromApp",
+             myCoCreateInstanceFromApp);
     }
 
     return hModule;
@@ -808,6 +855,8 @@ static HMODULE WINAPI innerMyLoadLibraryExW(const std::string& caller, LPCWSTR l
                  myCoCreateInstance);
             hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "CoCreateInstanceEx",
                  myCoCreateInstanceEx);
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "CoCreateInstanceFromApp",
+                 myCoCreateInstanceFromApp);
         }
     }
 
@@ -880,6 +929,8 @@ static HMODULE WINAPI myLoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWORD dw
                  "CoCreateInstance", myCoCreateInstance);
             hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll",
                  "CoCreateInstanceEx", myCoCreateInstanceEx);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll",
+                 "CoCreateInstanceFromApp", myCoCreateInstanceFromApp);
         }
     }
 
@@ -1096,6 +1147,9 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "CoCreateInstanceEx",
              myCoCreateInstanceEx);
 
+        hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "CoCreateInstanceFromApp",
+             myCoCreateInstanceFromApp);
+
         hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "CoGetClassObject", myCoGetClassObject);
 
         if (!hook(true, pParam, L"msvbvm60.dll", L"kernel32.dll", "GetProcAddress",
@@ -1127,6 +1181,7 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         hook(false, pParam, nullptr, L"ntdll.dll", "LdrLoadDll", myLdrLoadDll);
         hook(false, pParam, nullptr, L"ole32.dll", "CoCreateInstance", myCoCreateInstance);
         hook(false, pParam, nullptr, L"ole32.dll", "CoCreateInstanceEx", myCoCreateInstanceEx);
+        hook(false, pParam, nullptr, L"ole32.dll", "CoCreateInstanceFromApp", myCoCreateInstanceFromApp);
         hook(false, pParam, nullptr, L"ole32.dll", "CoGetClassObject", myCoGetClassObject);
         if (nHookedFunctions == 0)
         {
