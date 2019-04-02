@@ -511,6 +511,24 @@ static HRESULT __stdcall myCoGetClassObject(REFCLSID rclsid, DWORD dwClsContext,
     return nRetval;
 }
 
+static HRESULT WINAPI myOleCreateLink(LPMONIKER pmkLinkSrc, REFIID riid, DWORD renderopt,
+                                      LPFORMATETC lpFormatEtc, LPOLECLIENTSITE pClientSite,
+                                      LPSTORAGE pStg, LPVOID *ppvObj)
+{
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "OleCreateLink(" << riid << ")..." << std::endl;
+
+    HRESULT nRetval = OleCreateLink(pmkLinkSrc, riid, renderopt, lpFormatEtc, pClientSite, pStg, ppvObj);
+
+    if (pGlobalParamPtr->mbVerbose)
+    {
+        std::cout << "...OleCreateLink(" << riid << "): " << HRESULT_to_string(nRetval) << std::endl;
+    }
+
+    return nRetval;
+}
+
+
 static HRESULT __stdcall myDllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
 {
 #ifndef _WIN64
@@ -559,6 +577,15 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
 {
     HMODULE hOle32 = GetModuleHandleW(L"ole32.dll");
     FunPtr pFun;
+
+    if (hModule == hOle32 && std::strcmp(lpProcName, "OleCreateLink") == 0)
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << "GetProcAddress(ole32.dll, OleCreateLink) from "
+                      << prettyCodeAddress(_ReturnAddress()) << std::endl;
+        pFun.pVoid = myOleCreateLink;
+        return pFun.pProc;
+    }
 
     if (hModule == hOle32 && std::strcmp(lpProcName, "CoCreateInstanceEx") == 0)
     {
@@ -702,6 +729,8 @@ static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
              myCoCreateInstance);
         hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "CoCreateInstanceEx",
              myCoCreateInstanceEx);
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "OleCreateLink",
+             myOleCreateLink);
     }
 
     return hModule;
@@ -757,6 +786,8 @@ static HMODULE WINAPI myLoadLibraryA(LPCSTR lpFileName)
              myCoCreateInstance);
         hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll", "CoCreateInstanceEx",
              myCoCreateInstanceEx);
+        hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll", "OleCreateLink",
+             myOleCreateLink);
     }
 
     return hModule;
@@ -808,6 +839,8 @@ static HMODULE WINAPI innerMyLoadLibraryExW(const std::string& caller, LPCWSTR l
                  myCoCreateInstance);
             hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "CoCreateInstanceEx",
                  myCoCreateInstanceEx);
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "OleCreateLink",
+                 myOleCreateLink);
         }
     }
 
@@ -880,6 +913,8 @@ static HMODULE WINAPI myLoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWORD dw
                  "CoCreateInstance", myCoCreateInstance);
             hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll",
                  "CoCreateInstanceEx", myCoCreateInstanceEx);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll",
+                 "OleCreateLink", myOleCreateLink);
         }
     }
 
@@ -1096,6 +1131,9 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "CoCreateInstanceEx",
              myCoCreateInstanceEx);
 
+        hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "OleCreateLink",
+             myOleCreateLink);
+
         hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "CoGetClassObject", myCoGetClassObject);
 
         if (!hook(true, pParam, L"msvbvm60.dll", L"kernel32.dll", "GetProcAddress",
@@ -1127,6 +1165,7 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         hook(false, pParam, nullptr, L"ntdll.dll", "LdrLoadDll", myLdrLoadDll);
         hook(false, pParam, nullptr, L"ole32.dll", "CoCreateInstance", myCoCreateInstance);
         hook(false, pParam, nullptr, L"ole32.dll", "CoCreateInstanceEx", myCoCreateInstanceEx);
+        hook(false, pParam, nullptr, L"ole32.dll", "OleCreateLink", myOleCreateLink);
         hook(false, pParam, nullptr, L"ole32.dll", "CoGetClassObject", myCoGetClassObject);
         if (nHookedFunctions == 0)
         {
