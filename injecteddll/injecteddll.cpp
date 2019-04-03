@@ -528,6 +528,117 @@ static HRESULT WINAPI myOleCreateLink(LPMONIKER pmkLinkSrc, REFIID riid, DWORD r
     return nRetval;
 }
 
+static HINSTANCE myShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters,
+                                 LPCSTR lpDirectory, INT nShowCmd)
+{
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "ShellExecuteA(" << hwnd << ","
+                  << (lpOperation ? lpOperation : "NULL") << ","
+                  << convertUTF16ToUTF8(convertACPToUTF16(lpFile).data()) << ","
+                  << (lpParameters ? convertUTF16ToUTF8(convertACPToUTF16(lpParameters).data()) : "NULL") << ","
+                  << (lpDirectory ? convertUTF16ToUTF8(convertACPToUTF16(lpDirectory).data()) : "NULL") << ","
+                  << nShowCmd << ")..." << std::endl;
+
+    HINSTANCE hInstance = ShellExecuteA(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, nShowCmd);
+    DWORD nLastError = GetLastError();
+
+    if (pGlobalParamPtr->mbVerbose)
+    {
+        std::cout << "...ShellExecuteA(): " << (int)hInstance;
+        if ((int)hInstance <= 32)
+            std::cout << ": " << WindowsErrorString(nLastError);
+
+        std::cout << std::endl;
+    }
+
+    SetLastError(nLastError);
+
+    return hInstance;
+}
+
+static HINSTANCE myShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile, LPCWSTR lpParameters,
+                                 LPCWSTR lpDirectory, INT nShowCmd)
+{
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "ShellExecuteW(" << hwnd << ","
+                  << (lpOperation ? convertUTF16ToUTF8(lpOperation) : "NULL") << ","
+                  << convertUTF16ToUTF8(lpFile) << ","
+                  << (lpParameters ? convertUTF16ToUTF8(lpParameters) : "NULL") << ","
+                  << (lpDirectory ? convertUTF16ToUTF8(lpDirectory) : "NULL") << ","
+                  << nShowCmd << ")..." << std::endl;
+
+    HINSTANCE hInstance = ShellExecuteW(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, nShowCmd);
+    DWORD nLastError = GetLastError();
+
+    if (pGlobalParamPtr->mbVerbose)
+    {
+        std::cout << "...ShellExecuteW(): " << (int)hInstance;
+        if ((int)hInstance <= 32)
+            std::cout << ": " << WindowsErrorString(nLastError);
+
+        std::cout << std::endl;
+    }
+
+    SetLastError(nLastError);
+
+    return hInstance;
+}
+
+static BOOL myShellExecuteExA(SHELLEXECUTEINFOA *pExecInfo)
+{
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "ShellExecuteExA({hwnd=" << pExecInfo->hwnd
+                  << ",verb="
+                  << (pExecInfo->lpVerb ? convertUTF16ToUTF8(convertACPToUTF16(pExecInfo->lpVerb).data()) : "NULL") << ",file="
+                  << convertUTF16ToUTF8(convertACPToUTF16(pExecInfo->lpFile).data()) << ",parameters="
+                  << (pExecInfo->lpParameters ? convertUTF16ToUTF8(convertACPToUTF16(pExecInfo->lpParameters).data()) : "NULL") << ",directory="
+                  << (pExecInfo->lpDirectory ? convertUTF16ToUTF8(convertACPToUTF16(pExecInfo->lpDirectory).data()) : "NULL") << ",show="
+                  << pExecInfo->nShow << "})..." << std::endl;
+
+    BOOL nResult = ShellExecuteExA(pExecInfo);
+    DWORD nLastError = GetLastError();
+
+    if (pGlobalParamPtr->mbVerbose)
+    {
+        std::cout << "...ShellExecuteExA(): " << (nResult ? "TRUE" : "FALSE");
+        if (!nResult)
+            std::cout << ": " << WindowsErrorString(nLastError);
+
+        std::cout << std::endl;
+    }
+
+    SetLastError(nLastError);
+
+    return nResult;
+}
+
+static BOOL myShellExecuteExW(SHELLEXECUTEINFOW *pExecInfo)
+{
+    if (pGlobalParamPtr->mbVerbose)
+        std::cout << "ShellExecuteExW({hwnd=" << pExecInfo->hwnd
+                  << ",verb="
+                  << (pExecInfo->lpVerb ? convertUTF16ToUTF8(pExecInfo->lpVerb) : "NULL") << ",file="
+                  << convertUTF16ToUTF8(pExecInfo->lpFile) << ",parameters="
+                  << (pExecInfo->lpParameters ? convertUTF16ToUTF8(pExecInfo->lpParameters) : "NULL") << ",directory="
+                  << (pExecInfo->lpDirectory ? convertUTF16ToUTF8(pExecInfo->lpDirectory) : "NULL") << ",show="
+                  << pExecInfo->nShow << "})..." << std::endl;
+
+    BOOL nResult = ShellExecuteExW(pExecInfo);
+    DWORD nLastError = GetLastError();
+
+    if (pGlobalParamPtr->mbVerbose)
+    {
+        std::cout << "...ShellExecuteExW(): " << (nResult ? "TRUE" : "FALSE");
+        if (!nResult)
+            std::cout << ": " << WindowsErrorString(nLastError);
+
+        std::cout << std::endl;
+    }
+
+    SetLastError(nLastError);
+
+    return nResult;
+}
 
 static HRESULT __stdcall myDllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
 {
@@ -576,7 +687,44 @@ static HRESULT __stdcall myDllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOI
 static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
 {
     HMODULE hOle32 = GetModuleHandleW(L"ole32.dll");
+    HMODULE hShell32 = GetModuleHandleW(L"shell32.dll");
     FunPtr pFun;
+
+    if (hModule == hShell32 && std::strcmp(lpProcName, "ShellExecuteA") == 0)
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << "GetProcAddress(shell32.dll, ShellExecuteA) from "
+                      << prettyCodeAddress(_ReturnAddress()) << std::endl;
+        pFun.pVoid = myShellExecuteA;
+        return pFun.pProc;
+    }
+
+    if (hModule == hShell32 && std::strcmp(lpProcName, "ShellExecuteW") == 0)
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << "GetProcAddress(shell32.dll, ShellExecuteW) from "
+                      << prettyCodeAddress(_ReturnAddress()) << std::endl;
+        pFun.pVoid = myShellExecuteW;
+        return pFun.pProc;
+    }
+
+    if (hModule == hShell32 && std::strcmp(lpProcName, "ShellExecuteExA") == 0)
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << "GetProcAddress(shell32.dll, ShellExecuteExA) from "
+                      << prettyCodeAddress(_ReturnAddress()) << std::endl;
+        pFun.pVoid = myShellExecuteExA;
+        return pFun.pProc;
+    }
+
+    if (hModule == hShell32 && std::strcmp(lpProcName, "ShellExecuteExW") == 0)
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << "GetProcAddress(shell32.dll, ShellExecuteExW) from "
+                      << prettyCodeAddress(_ReturnAddress()) << std::endl;
+        pFun.pVoid = myShellExecuteExW;
+        return pFun.pProc;
+    }
 
     if (hModule == hOle32 && std::strcmp(lpProcName, "OleCreateLink") == 0)
     {
@@ -731,6 +879,14 @@ static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
              myCoCreateInstanceEx);
         hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "OleCreateLink",
              myOleCreateLink);
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"shell32.dll", "ShellExecuteA",
+             myShellExecuteA);
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"shell32.dll", "ShellExecuteW",
+             myShellExecuteW);
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"shell32.dll", "ShellExecuteExA",
+             myShellExecuteExA);
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"shell32.dll", "ShellExecuteExW",
+             myShellExecuteExW);
     }
 
     return hModule;
@@ -788,6 +944,14 @@ static HMODULE WINAPI myLoadLibraryA(LPCSTR lpFileName)
              myCoCreateInstanceEx);
         hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll", "OleCreateLink",
              myOleCreateLink);
+        hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll", "ShellExecuteA",
+             myShellExecuteA);
+        hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll", "ShellExecuteW",
+             myShellExecuteW);
+        hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll", "ShellExecuteExA",
+             myShellExecuteExA);
+        hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll", "ShellExecuteExW",
+             myShellExecuteExW);
     }
 
     return hModule;
@@ -841,6 +1005,14 @@ static HMODULE WINAPI innerMyLoadLibraryExW(const std::string& caller, LPCWSTR l
                  myCoCreateInstanceEx);
             hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "OleCreateLink",
                  myOleCreateLink);
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"shell32.dll", "ShellExecuteA",
+                 myShellExecuteA);
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"shell32.dll", "ShellExecuteW",
+                 myShellExecuteW);
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"shell32.dll", "ShellExecuteExA",
+                 myShellExecuteExA);
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"shell32.dll", "ShellExecuteExW",
+                 myShellExecuteExW);
         }
     }
 
@@ -915,6 +1087,14 @@ static HMODULE WINAPI myLoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWORD dw
                  "CoCreateInstanceEx", myCoCreateInstanceEx);
             hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll",
                  "OleCreateLink", myOleCreateLink);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll", "ShellExecuteA",
+                 myShellExecuteA);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll", "ShellExecuteW",
+                 myShellExecuteW);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll", "ShellExecuteExA",
+                 myShellExecuteExA);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll", "ShellExecuteExW",
+                 myShellExecuteExW);
         }
     }
 
@@ -1145,6 +1325,10 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         hook(false, pParam, L"msvbvm60.dll", L"kernel32.dll", "LoadLibraryExW", myLoadLibraryExW);
         hook(false, pParam, L"msvbvm60.dll", L"kernel32.dll", "LoadLibraryExA", myLoadLibraryExA);
         hook(false, pParam, L"msvbvm60.dll", L"ntdll.dll", "LdrLoadDll", myLdrLoadDll);
+        hook(false, pParam, L"msvbvm60.dll", L"shell32.dll", "ShellExecuteA", myShellExecuteA);
+        hook(false, pParam, L"msvbvm60.dll", L"shell32.dll", "ShellExecuteW", myShellExecuteW);
+        hook(false, pParam, L"msvbvm60.dll", L"shell32.dll", "ShellExecuteExA", myShellExecuteExA);
+        hook(false, pParam, L"msvbvm60.dll", L"shell32.dll", "ShellExecuteExW", myShellExecuteExW);
     }
     else
     {
@@ -1163,6 +1347,10 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         hook(false, pParam, nullptr, L"kernel32.dll", "LoadLibraryExW", myLoadLibraryExW);
         hook(false, pParam, nullptr, L"kernel32.dll", "LoadLibraryExA", myLoadLibraryExA);
         hook(false, pParam, nullptr, L"ntdll.dll", "LdrLoadDll", myLdrLoadDll);
+        hook(false, pParam, nullptr, L"shell32.dll", "ShellExecuteA", myShellExecuteA);
+        hook(false, pParam, nullptr, L"shell32.dll", "ShellExecuteW", myShellExecuteW);
+        hook(false, pParam, nullptr, L"shell32.dll", "ShellExecuteExA", myShellExecuteExA);
+        hook(false, pParam, nullptr, L"shell32.dll", "ShellExecuteExW", myShellExecuteExW);
         hook(false, pParam, nullptr, L"ole32.dll", "CoCreateInstance", myCoCreateInstance);
         hook(false, pParam, nullptr, L"ole32.dll", "CoCreateInstanceEx", myCoCreateInstanceEx);
         hook(false, pParam, nullptr, L"ole32.dll", "OleCreateLink", myOleCreateLink);
