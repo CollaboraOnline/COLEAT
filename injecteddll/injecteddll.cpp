@@ -544,8 +544,8 @@ static HINSTANCE myShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, L
 
     if (pGlobalParamPtr->mbVerbose)
     {
-        std::cout << "...ShellExecuteA(): " << (int)hInstance;
-        if ((int)hInstance <= 32)
+        std::cout << "...ShellExecuteA(): " << (intptr_t)hInstance;
+        if ((intptr_t)hInstance <= 32)
             std::cout << ": " << WindowsErrorString(nLastError);
 
         std::cout << std::endl;
@@ -572,8 +572,8 @@ static HINSTANCE myShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile,
 
     if (pGlobalParamPtr->mbVerbose)
     {
-        std::cout << "...ShellExecuteW(): " << (int)hInstance;
-        if ((int)hInstance <= 32)
+        std::cout << "...ShellExecuteW(): " << (intptr_t)hInstance;
+        if ((intptr_t)hInstance <= 32)
             std::cout << ": " << WindowsErrorString(nLastError);
 
         std::cout << std::endl;
