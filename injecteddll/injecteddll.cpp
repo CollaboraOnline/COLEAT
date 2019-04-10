@@ -814,7 +814,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
     nResult = CoGetMalloc(1, &pMalloc);
     if (nResult != S_OK)
     {
-        std::cout << "CoGetMalloc failed: " << HRESULT_to_string(nResult) << "\n";
+        std::cout << "CoGetMalloc failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
         return S_FALSE;
     }
 
@@ -825,7 +825,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     if (nResult != S_OK)
     {
-        std::cout << "CreateBindCtx failed: " << HRESULT_to_string(nResult) << "\n";
+        std::cout << "CreateBindCtx failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
         return S_FALSE;
     }
 
@@ -835,7 +835,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     if (nResult != S_OK)
     {
-        std::cout << "IMoniker::GetDisplayName failed: " << HRESULT_to_string(nResult) << "\n";
+        std::cout << "IMoniker::GetDisplayName failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
         pBindContext->Release();
         return S_FALSE;
     }
@@ -908,7 +908,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     if (nResult != ERROR_SUCCESS)
     {
-        std::cout << "Can not find Collabora Office installation, RegOpenKeyExW failed: " << HRESULT_to_string(nResult) << "\n";
+        std::cout << "Can not find Collabora Office installation, RegOpenKeyExW failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
         pMalloc->Free(sDisplayName);
         pBindContext->Release();
         return S_FALSE;
@@ -919,7 +919,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
     nResult = RegQueryValueW(hUno, NULL, sLOPath, &nLOPathSize);
     if (nResult != ERROR_SUCCESS)
     {
-        std::cout << "Can not find Collabora Office installation, RegQueryValueW failed: " << HRESULT_to_string(nResult) << "\n";
+        std::cout << "Can not find Collabora Office installation, RegQueryValueW failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
         RegCloseKey(hUno);
         pMalloc->Free(sDisplayName);
         pBindContext->Release();
@@ -941,7 +941,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
     nResult = CreateProcessW(NULL, const_cast<wchar_t*>(sCommandLine.data()), NULL, NULL, FALSE, 0, NULL, NULL, &aStartupInfo, &aProcessInformation);
     if (nResult == 0)
     {
-        std::cout << "Can not run soffice, CreateProcessW failed: " << HRESULT_to_string(nResult) << "\n";
+        std::cout << "Can not run soffice, CreateProcessW failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
         pMalloc->Free(sDisplayName);
         pBindContext->Release();
         return S_FALSE;
@@ -973,7 +973,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
     nResult = MkParseDisplayName(pBindContext, sEmptyDocument.data(), &nChEaten, &pEmptyDocumentMoniker);
     if (nResult != S_OK)
     {
-        std::cout << "MkParseDisplayName failed: " << HRESULT_to_string(nResult) << "\n";
+        std::cout << "MkParseDisplayName failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
         pMalloc->Free(sDisplayName);
         pBindContext->Release();
         return S_FALSE;
@@ -982,7 +982,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
     HRESULT nRetval = OleCreateLink(pEmptyDocumentMoniker, riid, renderopt, lpFormatEtc, pClientSite, pStg, ppvObj);
     if (nRetval != S_OK)
     {
-        std::cout << "OleCreateLink failed: " << HRESULT_to_string(nRetval) << "\n";
+        std::cout << "OleCreateLink failed: " << WindowsErrorStringFromHRESULT(nRetval) << "\n";
         pEmptyDocumentMoniker->Release();
         pMalloc->Free(sDisplayName);
         pBindContext->Release();
@@ -1024,7 +1024,7 @@ static HRESULT WINAPI myOleCreateLink(LPMONIKER pmkLinkSrc, REFIID riid, DWORD r
         if (pGlobalParamPtr->mbVerbose)
         {
             std::cout << "...OleCreateLink(" << pmkLinkSrc << "," << riid << ",...): "
-                      << HRESULT_to_string(nRetval) << std::endl;
+                      << WindowsErrorStringFromHRESULT(nRetval) << std::endl;
         }
         return S_OK;
     }
@@ -1035,7 +1035,7 @@ static HRESULT WINAPI myOleCreateLink(LPMONIKER pmkLinkSrc, REFIID riid, DWORD r
     if (pGlobalParamPtr->mbVerbose)
     {
         std::cout << "...OleCreateLink(" << pmkLinkSrc << "," << riid << ",...): "
-                  << HRESULT_to_string(nRetval) << std::endl;
+                  << WindowsErrorStringFromHRESULT(nRetval) << std::endl;
     }
 
     return nRetval;
