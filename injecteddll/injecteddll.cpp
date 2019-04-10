@@ -982,7 +982,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
     HRESULT nRetval = OleCreateLink(pEmptyDocumentMoniker, riid, renderopt, lpFormatEtc, pClientSite, pStg, ppvObj);
     if (nRetval != S_OK)
     {
-        std::cout << "OleCreateLink failed: " << HRESULT_to_string(nResult) << "\n";
+        std::cout << "OleCreateLink failed: " << HRESULT_to_string(nRetval) << "\n";
         pEmptyDocumentMoniker->Release();
         pMalloc->Free(sDisplayName);
         pBindContext->Release();
