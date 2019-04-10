@@ -8,19 +8,24 @@
  */
 
 #pragma warning(push)
-#pragma warning(disable : 4365 4571 4625 4668 4774 4820 4917 5026 5039)
+#pragma warning(disable : 4365 4458 4571 4625 4668 4774 4820 4917 5026 5039)
 
 #include <cassert>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cwchar>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
 
 #include <intrin.h>
+#include <process.h>
+
 #include <Windows.h>
+#include <gdiplus.h>
 
 // DbgHelp.h has even more sloppier code than <Windows.h>
 #pragma warning(push)
@@ -511,18 +516,526 @@ static HRESULT __stdcall myCoGetClassObject(REFCLSID rclsid, DWORD dwClsContext,
     return nRetval;
 }
 
+#ifdef HARDCODE_MSO_TO_CO
+
+class myViewObjectWrapper : IViewObject
+{
+private:
+    IViewObject* const mpWrappedViewObject;
+    const std::wstring* const msImageFile;
+
+public:
+    myViewObjectWrapper(IViewObject* pViewObject, const std::wstring* const sImageFile) :
+        mpWrappedViewObject(pViewObject),
+        msImageFile(sImageFile)
+    {
+    }
+
+    // IUnknown
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
+    {
+        return mpWrappedViewObject->QueryInterface(riid, ppvObject);
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef() override
+    {
+        return mpWrappedViewObject->AddRef();
+    }
+
+    ULONG STDMETHODCALLTYPE Release() override
+    {
+        ULONG nRetval = mpWrappedViewObject->Release();
+        if (nRetval == 0)
+        {
+            _wremove(msImageFile->data());
+            delete msImageFile;
+            delete this;
+        }
+        return nRetval;
+    }
+
+    // IViewObject
+    HRESULT STDMETHODCALLTYPE Draw(DWORD dwDrawAspect, LONG lindex, void *pvAspect, DVTARGETDEVICE *ptd,
+                                   HDC hdcTargetDev, HDC hdcDraw, LPCRECTL lprcBounds, LPCRECTL lprcWBounds,
+                                   BOOL (STDMETHODCALLTYPE *pfnContinue)(ULONG_PTR dwContinue),
+                                   ULONG_PTR dwContinue) override
+    {
+        (void) dwDrawAspect, lindex, pvAspect, ptd, hdcTargetDev,  lprcWBounds, pfnContinue, dwContinue;
+
+        Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+        ULONG_PTR gdiplusToken;
+        Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
+        Gdiplus::Bitmap* pBitmap = Gdiplus::Bitmap::FromFile( msImageFile->data() );
+
+        HBITMAP hBitmap;
+        pBitmap->GetHBITMAP(Gdiplus::Color(), &hBitmap);
+
+        HDC hdcMem = CreateCompatibleDC(hdcDraw);
+        HGDIOBJ hBitmapOld = SelectObject(hdcMem, hBitmap);
+
+        BITMAP aBitmap;
+        GetObject(hBitmap, sizeof(aBitmap), &aBitmap);
+
+        BitBlt(hdcDraw, lprcBounds->left, lprcBounds->top, aBitmap.bmWidth, aBitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
+
+        SelectObject(hdcMem, hBitmapOld);
+        DeleteDC(hdcMem);
+
+#if 0
+        // Debugging code. Just of interest, check these in the debugger.
+        int nW = GetDeviceCaps(hdcDraw, HORZRES);
+        int nH = GetDeviceCaps(hdcDraw, VERTRES);
+
+        (void) nW, nH;
+
+        // Draw some trivial line graphics.
+        SelectObject(hdcDraw, GetStockObject(BLACK_PEN));
+        MoveToEx(hdcDraw, lprcBounds->left, lprcBounds->top, NULL);
+        LineTo(hdcDraw, lprcBounds->right, lprcBounds->bottom);
+        MoveToEx(hdcDraw, lprcBounds->left, lprcBounds->bottom, NULL);
+        LineTo(hdcDraw, lprcBounds->right, lprcBounds->top);
+        MoveToEx(hdcDraw, lprcBounds->left + 5, lprcBounds->top + 5, NULL);
+        LineTo(hdcDraw, lprcBounds->right - 5, lprcBounds->top + 5);
+        LineTo(hdcDraw, lprcBounds->right - 5, lprcBounds->bottom - 5);
+        LineTo(hdcDraw, lprcBounds->left + 5, lprcBounds->bottom - 5);
+        LineTo(hdcDraw, lprcBounds->left + 5, lprcBounds->top + 5);
+#endif
+
+        Gdiplus::GdiplusShutdown(gdiplusToken);
+
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetColorSet(DWORD dwDrawAspect, LONG lindex, void *pvAspect, DVTARGETDEVICE *ptd,
+                                          HDC hicTargetDev, LOGPALETTE **ppColorSet) override
+    {
+        return mpWrappedViewObject->GetColorSet(dwDrawAspect, lindex, pvAspect, ptd, hicTargetDev, ppColorSet);
+    }
+
+    HRESULT STDMETHODCALLTYPE Freeze(DWORD dwDrawAspect, LONG lindex, void *pvAspect, DWORD *pdwFreeze) override
+    {
+        return mpWrappedViewObject->Freeze(dwDrawAspect, lindex, pvAspect, pdwFreeze);
+    }
+
+    HRESULT STDMETHODCALLTYPE Unfreeze(DWORD dwFreeze) override
+    {
+        return mpWrappedViewObject->Unfreeze(dwFreeze);
+    }
+
+    HRESULT STDMETHODCALLTYPE SetAdvise(DWORD aspects, DWORD advf, IAdviseSink *pAdvSink) override
+    {
+        return mpWrappedViewObject->SetAdvise(aspects, advf, pAdvSink);
+    }
+
+    HRESULT STDMETHODCALLTYPE GetAdvise(DWORD *pAspects, DWORD *pAdvf, IAdviseSink **ppAdvSink) override
+    {
+        return mpWrappedViewObject->GetAdvise(pAspects, pAdvf, ppAdvSink);
+    }
+};
+
+class myOleObjectWrapper : IOleObject
+{
+private:
+    IOleObject* const mpWrappedOleObject;
+    const std::wstring* const msEmptyDocument;
+    const std::wstring* const msImageFile;
+
+public:
+    myOleObjectWrapper(IOleObject* pOleObject, const std::wstring* const sEmptyDocument, const std::wstring* const sImageFile) :
+        mpWrappedOleObject(pOleObject),
+        msEmptyDocument(sEmptyDocument),
+        msImageFile(sImageFile)
+    {
+    }
+
+    // IUnknown
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
+    {
+        HRESULT nResult = mpWrappedOleObject->QueryInterface(riid, ppvObject);
+
+        if (nResult == S_OK && IsEqualIID(riid, IID_IViewObject))
+        {
+            *ppvObject = new myViewObjectWrapper(static_cast<IViewObject*>(*ppvObject), msImageFile);
+        }
+        return nResult;
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef() override
+    {
+        return mpWrappedOleObject->AddRef();
+    }
+
+    ULONG STDMETHODCALLTYPE Release() override
+    {
+        ULONG nRetval = mpWrappedOleObject->Release();
+        if (nRetval == 0)
+        {
+            _wremove(msEmptyDocument->data());
+            delete msEmptyDocument;
+            delete this;
+        }
+        return nRetval;
+    }
+
+    // IOleObject
+    HRESULT STDMETHODCALLTYPE SetClientSite(IOleClientSite *pClientSite) override
+    {
+        return mpWrappedOleObject->SetClientSite(pClientSite);
+    }
+
+    HRESULT STDMETHODCALLTYPE GetClientSite(IOleClientSite **ppClientSite) override
+    {
+        return mpWrappedOleObject->GetClientSite(ppClientSite);
+    }
+
+    HRESULT STDMETHODCALLTYPE SetHostNames(LPCOLESTR szContainerApp, LPCOLESTR szContainerObj) override
+    {
+        return mpWrappedOleObject->SetHostNames(szContainerApp, szContainerObj);
+    }
+
+    HRESULT STDMETHODCALLTYPE Close(DWORD dwSaveOption) override
+    {
+        return mpWrappedOleObject->Close(dwSaveOption);
+    }
+
+    HRESULT STDMETHODCALLTYPE SetMoniker(DWORD dwWhichMoniker, IMoniker *pmk) override
+    {
+        return mpWrappedOleObject->SetMoniker(dwWhichMoniker, pmk);
+    }
+
+    HRESULT STDMETHODCALLTYPE GetMoniker(DWORD dwAssign, DWORD dwWhichMoniker, IMoniker **ppmk) override
+    {
+        return mpWrappedOleObject->GetMoniker(dwAssign, dwWhichMoniker, ppmk);
+    }
+
+    HRESULT STDMETHODCALLTYPE InitFromData(IDataObject *pDataObject, BOOL fCreation, DWORD dwReserved) override
+    {
+        return mpWrappedOleObject->InitFromData(pDataObject, fCreation, dwReserved);
+    }
+
+    HRESULT STDMETHODCALLTYPE GetClipboardData(DWORD dwReserved, IDataObject **ppDataObject) override
+    {
+        return mpWrappedOleObject->GetClipboardData(dwReserved, ppDataObject);
+    }
+
+    HRESULT STDMETHODCALLTYPE DoVerb(LONG iVerb, LPMSG lpmsg, IOleClientSite *pActiveSite, LONG lindex,
+                                     HWND hwndParent, LPCRECT lprcPosRect) override
+    {
+        return mpWrappedOleObject->DoVerb(iVerb, lpmsg, pActiveSite, lindex, hwndParent, lprcPosRect);
+    }
+
+    HRESULT STDMETHODCALLTYPE EnumVerbs(IEnumOLEVERB **ppEnumOleVerb) override
+    {
+        return mpWrappedOleObject->EnumVerbs(ppEnumOleVerb);
+    }
+
+    HRESULT STDMETHODCALLTYPE Update(void) override
+    {
+        return mpWrappedOleObject->Update();
+    }
+
+    HRESULT STDMETHODCALLTYPE IsUpToDate(void) override
+    {
+        return mpWrappedOleObject->IsUpToDate();
+    }
+
+    HRESULT STDMETHODCALLTYPE GetUserClassID(CLSID *pClsid) override
+    {
+        return mpWrappedOleObject->GetUserClassID(pClsid);
+    }
+
+    HRESULT STDMETHODCALLTYPE GetUserType(DWORD dwFormOfType, LPOLESTR *pszUserType) override
+    {
+        return mpWrappedOleObject->GetUserType(dwFormOfType, pszUserType);
+    }
+
+    HRESULT STDMETHODCALLTYPE SetExtent(DWORD dwDrawAspect, SIZEL *psizel) override
+    {
+        return mpWrappedOleObject->SetExtent(dwDrawAspect, psizel);
+    }
+
+    HRESULT STDMETHODCALLTYPE GetExtent(DWORD dwDrawAspect, SIZEL *psizel) override
+    {
+        return mpWrappedOleObject->GetExtent(dwDrawAspect, psizel);
+    }
+
+    HRESULT STDMETHODCALLTYPE Advise(IAdviseSink *pAdvSink, DWORD *pdwConnection) override
+    {
+        return mpWrappedOleObject->Advise(pAdvSink, pdwConnection);
+    }
+
+    HRESULT STDMETHODCALLTYPE Unadvise(DWORD dwConnection) override
+    {
+        return mpWrappedOleObject->Unadvise(dwConnection);
+    }
+
+    HRESULT STDMETHODCALLTYPE EnumAdvise(IEnumSTATDATA **ppenumAdvise) override
+    {
+        return mpWrappedOleObject->EnumAdvise(ppenumAdvise);
+    }
+
+    HRESULT STDMETHODCALLTYPE GetMiscStatus(DWORD dwAspect, DWORD *pdwStatus) override
+    {
+        return mpWrappedOleObject->GetMiscStatus(dwAspect, pdwStatus);
+    }
+
+    HRESULT STDMETHODCALLTYPE SetColorScheme(LOGPALETTE *pLogpal) override
+    {
+        return mpWrappedOleObject->SetColorScheme(pLogpal);
+    }
+};
+
+
+static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid, DWORD renderopt,
+                                              LPFORMATETC lpFormatEtc, LPOLECLIENTSITE pClientSite,
+                                              LPSTORAGE pStg, LPVOID *ppvObj)
+{
+    // Sanity check. Only attempt for the cae we are interested in.
+    if (!IsEqualIID(riid, IID_IOleObject) || renderopt != OLERENDER_DRAW || pClientSite == NULL || pStg == NULL)
+    {
+        std::cout << "Not the kind of call we want to replace\n";
+        return S_FALSE;
+    }
+
+    HRESULT nResult;
+
+    // Also check that it is a file moniker.
+    DWORD dwMksys;
+    nResult = pmkLinkSrc->IsSystemMoniker(&dwMksys);
+    if (nResult != S_OK || dwMksys != MKSYS_FILEMONIKER)
+    {
+        std::cout << "Not a file moniker\n";
+        return S_FALSE;
+    }
+
+    IMalloc *pMalloc;
+
+    nResult = CoGetMalloc(1, &pMalloc);
+    if (nResult != S_OK)
+    {
+        std::cout << "CoGetMalloc failed: " << HRESULT_to_string(nResult) << "\n";
+        return S_FALSE;
+    }
+
+    // We need a bit context. Sadly apparently there is no way to get the one that the calling code
+    // must have used to create the pmkLinkSrc IMoniker?
+    IBindCtx *pBindContext;
+    nResult = CreateBindCtx(0, &pBindContext);
+
+    if (nResult != S_OK)
+    {
+        std::cout << "CreateBindCtx failed: " << HRESULT_to_string(nResult) << "\n";
+        return S_FALSE;
+    }
+
+    // The display name of the IMoniker is the file pathname.
+    wchar_t *sDisplayName;
+    nResult = pmkLinkSrc->GetDisplayName(pBindContext, NULL, &sDisplayName);
+
+    if (nResult != S_OK)
+    {
+        std::cout << "IMoniker::GetDisplayName failed: " << HRESULT_to_string(nResult) << "\n";
+        pBindContext->Release();
+        return S_FALSE;
+    }
+
+    // Check if the display name is a pathname of a file with an extension we "know" that Collabora
+    // Office handles. Only check a few extensions, and in the actual customer case, it is .rtf.
+    wchar_t *pBasenameEnd = wcsrchr(sDisplayName, L'.');
+    if (pBasenameEnd == nullptr)
+    {
+        // No file name extension, let's not even try.
+        std::cout << "No file name extension in '" << convertUTF16ToUTF8(sDisplayName) << "'\n";
+        pMalloc->Free(sDisplayName);
+        pBindContext->Release();
+        return S_FALSE;
+    }
+
+    const wchar_t *pLastSlash = wcsrchr(sDisplayName, L'\\');
+    const std::wstring sBasename(pLastSlash + 1, static_cast<std::size_t>(pBasenameEnd - pLastSlash - 1));
+    const std::wstring sExtension(pBasenameEnd + 1);
+
+    if (!(sExtension == L"rtf" || sExtension == L"doc" || sExtension == L"docx" || sExtension == L"odt"))
+    {
+        std::cout << "Not a known file name extension in '" << convertUTF16ToUTF8(sDisplayName) << "'\n";
+        pMalloc->Free(sDisplayName);
+        pBindContext->Release();
+        return S_FALSE;
+    }
+
+#if 0
+    // Debugging code. Get the display name of the client side's moniker, if there, just out of interest.
+
+    IMoniker *pClientSiteMoniker;
+    nResult = pClientSite->GetMoniker(OLEGETMONIKER_ONLYIFTHERE, OLEWHICHMK_OBJFULL, &pClientSiteMoniker);
+
+    if (nResult == S_OK)
+    {
+        wchar_t *sClientSiteDisplayName;
+        nResult = pClientSiteMoniker->GetDisplayName(pBindContext, NULL, &sClientSiteDisplayName);
+
+        if (nResult != S_OK)
+        {
+            pMalloc->Free(sDisplayName);
+            pBindContext->Release();
+            return S_FALSE;
+        }
+
+        pMalloc->Free(sClientSiteDisplayName);
+    }
+#endif
+
+    // Use Collabora Office to create a png from the document.
+
+    wchar_t sTempPath[MAX_PATH+1];
+    if (GetTempPathW(MAX_PATH+1, sTempPath) == 0)
+    {
+        std::cout << "GetTempPathW failed!\n";
+        pMalloc->Free(sDisplayName);
+        pBindContext->Release();
+        return S_FALSE;
+    }
+    if (sTempPath[wcslen(sTempPath)-1] == L'\\')
+        sTempPath[wcslen(sTempPath)-1] = L'\0';
+
+    // Where is CO installed?
+
+    HKEY hUno;
+    nResult = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\LibreOffice\\UNO\\InstallPath", 0, KEY_READ | KEY_WOW64_32KEY , &hUno);
+    if (nResult == ERROR_FILE_NOT_FOUND)
+        nResult = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\LibreOffice\\UNO\\InstallPath", 0, KEY_READ | KEY_WOW64_64KEY , &hUno);
+
+    if (nResult != ERROR_SUCCESS)
+    {
+        std::cout << "Can not find Collabora Office installation, RegOpenKeyExW failed: " << HRESULT_to_string(nResult) << "\n";
+        pMalloc->Free(sDisplayName);
+        pBindContext->Release();
+        return S_FALSE;
+    }
+
+    wchar_t sLOPath[MAX_PATH+1];
+    LONG nLOPathSize = sizeof(sLOPath);
+    nResult = RegQueryValueW(hUno, NULL, sLOPath, &nLOPathSize);
+    if (nResult != ERROR_SUCCESS)
+    {
+        std::cout << "Can not find Collabora Office installation, RegQueryValueW failed: " << HRESULT_to_string(nResult) << "\n";
+        RegCloseKey(hUno);
+        pMalloc->Free(sDisplayName);
+        pBindContext->Release();
+        return S_FALSE;
+    }
+
+    RegCloseKey(hUno);
+
+    std::wstring sCommandLine = L"\"" + std::wstring(sLOPath) + L"\\soffice.exe\" --convert-to png --outdir \"" + sTempPath
+        + L"\" \"" + std::wstring(sDisplayName) + L"\"";
+
+    STARTUPINFOW aStartupInfo;
+    PROCESS_INFORMATION aProcessInformation;
+
+    memset(&aStartupInfo, 0, sizeof(aStartupInfo));
+    aStartupInfo.cb = sizeof(aStartupInfo);
+    aStartupInfo.lpDesktop = L"";
+
+    nResult = CreateProcessW(NULL, const_cast<wchar_t*>(sCommandLine.data()), NULL, NULL, FALSE, 0, NULL, NULL, &aStartupInfo, &aProcessInformation);
+    if (nResult == 0)
+    {
+        std::cout << "Can not run soffice, CreateProcessW failed: " << HRESULT_to_string(nResult) << "\n";
+        pMalloc->Free(sDisplayName);
+        pBindContext->Release();
+        return S_FALSE;
+    }
+
+    WaitForSingleObject(aProcessInformation.hProcess, INFINITE);
+
+    std::wstring sImageFile = std::wstring(sTempPath) + L"\\" + sBasename + L".png";
+
+    // Create an OLE link to a dummy (empty) document that we know WordPad will be able to handle
+    // just fine.
+
+    // First write the dummy RTF document.
+
+    const std::time_t nNow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    const std::wstring sEmptyDocument = std::wstring(sTempPath) + L"\\" + std::to_wstring(nNow) + L".rtf";
+
+    std::ofstream aEmptyDocument(sEmptyDocument);
+
+    aEmptyDocument << "{\\rtf1\\ansi\\ansicpg1252\\deff0\\nouicompat\\deflang1033{\\fonttbl{\\f0\\fnil\\fcharset0 Calibri;}}\n"
+        "{\\*\\generator Riched20 10.0.17763}\\viewkind4\\uc1\n"
+        "\\pard\\sa200\\sl276\\slmult1\\f0\\fs22\\lang9\\par\n"
+        "HAHAHA}\n";
+
+    aEmptyDocument.close();
+
+    ULONG nChEaten;
+    IMoniker *pEmptyDocumentMoniker;
+    nResult = MkParseDisplayName(pBindContext, sEmptyDocument.data(), &nChEaten, &pEmptyDocumentMoniker);
+    if (nResult != S_OK)
+    {
+        std::cout << "MkParseDisplayName failed: " << HRESULT_to_string(nResult) << "\n";
+        pMalloc->Free(sDisplayName);
+        pBindContext->Release();
+        return S_FALSE;
+    }
+
+    HRESULT nRetval = OleCreateLink(pEmptyDocumentMoniker, riid, renderopt, lpFormatEtc, pClientSite, pStg, ppvObj);
+    if (nRetval != S_OK)
+    {
+        std::cout << "OleCreateLink failed: " << HRESULT_to_string(nResult) << "\n";
+        pEmptyDocumentMoniker->Release();
+        pMalloc->Free(sDisplayName);
+        pBindContext->Release();
+        return S_FALSE;
+    }
+
+    // Replace the return value of the OleCreateLink() call for the dummy document with a wrapper
+    // for IOleObject that when queried for IViewObject will return a wrapper that will draw the PNG
+    // image that Collabora Office created.
+    *ppvObj = new myOleObjectWrapper(static_cast<IOleObject*>(*ppvObj),
+                                     new std::wstring(sEmptyDocument),
+                                     new std::wstring(sImageFile));
+
+    pEmptyDocumentMoniker->Release();
+    pMalloc->Free(sDisplayName);
+    pBindContext->Release();
+
+    return S_OK;
+}
+
+#endif
+
 static HRESULT WINAPI myOleCreateLink(LPMONIKER pmkLinkSrc, REFIID riid, DWORD renderopt,
                                       LPFORMATETC lpFormatEtc, LPOLECLIENTSITE pClientSite,
                                       LPSTORAGE pStg, LPVOID *ppvObj)
 {
     if (pGlobalParamPtr->mbVerbose)
-        std::cout << "OleCreateLink(" << riid << ")..." << std::endl;
+        std::cout << "OleCreateLink(" << pmkLinkSrc << "," << riid << ","
+                  << renderopt << "," << lpFormatEtc << "," << pClientSite << ","
+                  << pStg << "," << ppvObj << ")..." << std::endl;
 
-    HRESULT nRetval = OleCreateLink(pmkLinkSrc, riid, renderopt, lpFormatEtc, pClientSite, pStg, ppvObj);
+    HRESULT nRetval;
+
+#ifdef HARDCODE_MSO_TO_CO
+    nRetval = tryRenderDrawInCollaboraOffice(pmkLinkSrc, riid, renderopt, lpFormatEtc, pClientSite, pStg, ppvObj);
+
+    if (nRetval == S_OK)
+    {
+        if (pGlobalParamPtr->mbVerbose)
+        {
+            std::cout << "...OleCreateLink(" << pmkLinkSrc << "," << riid << ",...): "
+                      << HRESULT_to_string(nRetval) << std::endl;
+        }
+        return S_OK;
+    }
+#endif
+
+    nRetval = OleCreateLink(pmkLinkSrc, riid, renderopt, lpFormatEtc, pClientSite, pStg, ppvObj);
 
     if (pGlobalParamPtr->mbVerbose)
     {
-        std::cout << "...OleCreateLink(" << riid << "): " << HRESULT_to_string(nRetval) << std::endl;
+        std::cout << "...OleCreateLink(" << pmkLinkSrc << "," << riid << ",...): "
+                  << HRESULT_to_string(nRetval) << std::endl;
     }
 
     return nRetval;
