@@ -31,7 +31,7 @@ public:
     CProxiedPersist(IUnknown* pBaseClassUnknown, IPersist* pPersistToProxy, const char* sLibName);
 
     // IPersist
-    virtual HRESULT STDMETHODCALLTYPE GetClassID(CLSID *pClassID);
+    virtual HRESULT STDMETHODCALLTYPE GetClassID(CLSID* pClassID);
 };
 
 class CProxiedPersistStream : public CProxiedPersist
@@ -39,17 +39,17 @@ class CProxiedPersistStream : public CProxiedPersist
     IPersistStream* mpPersistStreamToProxy;
 
 public:
-    CProxiedPersistStream(IUnknown* pBaseClassUnknown, IPersistStream* pPersistStreamToProxy, const char* sLibName);
+    CProxiedPersistStream(IUnknown* pBaseClassUnknown, IPersistStream* pPersistStreamToProxy,
+                          const char* sLibName);
 
     // IPersistStream
     virtual HRESULT STDMETHODCALLTYPE IsDirty(void);
 
-    virtual HRESULT STDMETHODCALLTYPE Load(IStream *pStm);
+    virtual HRESULT STDMETHODCALLTYPE Load(IStream* pStm);
 
-    virtual HRESULT STDMETHODCALLTYPE Save(IStream *pStm,
-                                           BOOL fClearDirty);
+    virtual HRESULT STDMETHODCALLTYPE Save(IStream* pStm, BOOL fClearDirty);
 
-    virtual HRESULT STDMETHODCALLTYPE GetSizeMax(ULARGE_INTEGER *pcbSize);
+    virtual HRESULT STDMETHODCALLTYPE GetSizeMax(ULARGE_INTEGER* pcbSize);
 };
 
 class CProxiedMoniker : public CProxiedPersistStream
@@ -61,59 +61,44 @@ public:
     CProxiedMoniker(IUnknown* pBaseClassUnknown, IMoniker* pMonikerToProxy, const char* sLibName);
 
     // IMoniker
-    virtual HRESULT STDMETHODCALLTYPE BindToObject(IBindCtx *pbc,
-                                                   IMoniker *pmkToLeft,
-                                                   REFIID riidResult,
-                                                   void **ppvResult);
+    virtual HRESULT STDMETHODCALLTYPE BindToObject(IBindCtx* pbc, IMoniker* pmkToLeft,
+                                                   REFIID riidResult, void** ppvResult);
 
-    virtual HRESULT STDMETHODCALLTYPE BindToStorage(IBindCtx *pbc,
-                                                    IMoniker *pmkToLeft,
-                                                    REFIID riid,
-                                                    void **ppvObj);
+    virtual HRESULT STDMETHODCALLTYPE BindToStorage(IBindCtx* pbc, IMoniker* pmkToLeft, REFIID riid,
+                                                    void** ppvObj);
 
-    virtual HRESULT STDMETHODCALLTYPE Reduce(IBindCtx *pbc,
-                                             DWORD dwReduceHowFar,
-                                             IMoniker **ppmkToLeft,
-                                             IMoniker **ppmkReduced);
+    virtual HRESULT STDMETHODCALLTYPE Reduce(IBindCtx* pbc, DWORD dwReduceHowFar,
+                                             IMoniker** ppmkToLeft, IMoniker** ppmkReduced);
 
-    virtual HRESULT STDMETHODCALLTYPE ComposeWith(IMoniker *pmkRight,
-                                                  BOOL fOnlyIfNotGeneric,
-                                                  IMoniker **ppmkComposite);
+    virtual HRESULT STDMETHODCALLTYPE ComposeWith(IMoniker* pmkRight, BOOL fOnlyIfNotGeneric,
+                                                  IMoniker** ppmkComposite);
 
-    virtual HRESULT STDMETHODCALLTYPE Enum(BOOL fForward,
-                                           IEnumMoniker **ppenumMoniker);
+    virtual HRESULT STDMETHODCALLTYPE Enum(BOOL fForward, IEnumMoniker** ppenumMoniker);
 
-    virtual HRESULT STDMETHODCALLTYPE IsEqual(IMoniker *pmkOtherMoniker);
-        
-    virtual HRESULT STDMETHODCALLTYPE Hash(DWORD *pdwHash);
+    virtual HRESULT STDMETHODCALLTYPE IsEqual(IMoniker* pmkOtherMoniker);
 
-    virtual HRESULT STDMETHODCALLTYPE IsRunning(IBindCtx *pbc,
-                                                IMoniker *pmkToLeft,
-                                                IMoniker *pmkNewlyRunning);
+    virtual HRESULT STDMETHODCALLTYPE Hash(DWORD* pdwHash);
 
-    virtual HRESULT STDMETHODCALLTYPE GetTimeOfLastChange(IBindCtx *pbc,
-                                                          IMoniker *pmkToLeft,
-                                                          FILETIME *pFileTime);
+    virtual HRESULT STDMETHODCALLTYPE IsRunning(IBindCtx* pbc, IMoniker* pmkToLeft,
+                                                IMoniker* pmkNewlyRunning);
 
-    virtual HRESULT STDMETHODCALLTYPE Inverse(IMoniker **ppmk);
+    virtual HRESULT STDMETHODCALLTYPE GetTimeOfLastChange(IBindCtx* pbc, IMoniker* pmkToLeft,
+                                                          FILETIME* pFileTime);
 
-    virtual HRESULT STDMETHODCALLTYPE CommonPrefixWith(IMoniker *pmkOther,
-                                                       IMoniker **ppmkPrefix);
+    virtual HRESULT STDMETHODCALLTYPE Inverse(IMoniker** ppmk);
 
-    virtual HRESULT STDMETHODCALLTYPE RelativePathTo(IMoniker *pmkOther,
-                                                     IMoniker **ppmkRelPath);
+    virtual HRESULT STDMETHODCALLTYPE CommonPrefixWith(IMoniker* pmkOther, IMoniker** ppmkPrefix);
 
-    virtual HRESULT STDMETHODCALLTYPE GetDisplayName(IBindCtx *pbc,
-                                                     IMoniker *pmkToLeft,
-                                                     LPOLESTR *ppszDisplayName);
+    virtual HRESULT STDMETHODCALLTYPE RelativePathTo(IMoniker* pmkOther, IMoniker** ppmkRelPath);
 
-    virtual HRESULT STDMETHODCALLTYPE ParseDisplayName(IBindCtx *pbc,
-                                                       IMoniker *pmkToLeft,
-                                                       LPOLESTR pszDisplayName,
-                                                       ULONG *pchEaten,
-                                                       IMoniker **ppmkOut);
+    virtual HRESULT STDMETHODCALLTYPE GetDisplayName(IBindCtx* pbc, IMoniker* pmkToLeft,
+                                                     LPOLESTR* ppszDisplayName);
 
-    virtual HRESULT STDMETHODCALLTYPE IsSystemMoniker(DWORD *pdwMksys);
+    virtual HRESULT STDMETHODCALLTYPE ParseDisplayName(IBindCtx* pbc, IMoniker* pmkToLeft,
+                                                       LPOLESTR pszDisplayName, ULONG* pchEaten,
+                                                       IMoniker** ppmkOut);
+
+    virtual HRESULT STDMETHODCALLTYPE IsSystemMoniker(DWORD* pdwMksys);
 };
 
 #endif // INCLUDED_CProxiedMoniker_hpp

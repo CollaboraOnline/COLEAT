@@ -23,7 +23,8 @@
 
 #include "CProxiedMoniker.hpp"
 
-CProxiedPersist::CProxiedPersist(IUnknown* pBaseClassUnknown, IPersist* pPersistToProxy, const char* sLibName)
+CProxiedPersist::CProxiedPersist(IUnknown* pBaseClassUnknown, IPersist* pPersistToProxy,
+                                 const char* sLibName)
     : CProxiedUnknown(pBaseClassUnknown, pPersistToProxy, IID_IPersist, IID_IMoniker, sLibName)
     , mpPersistToProxy(pPersistToProxy)
 {
@@ -31,7 +32,7 @@ CProxiedPersist::CProxiedPersist(IUnknown* pBaseClassUnknown, IPersist* pPersist
         std::cout << this << "@CProxiedPersist::CTOR" << std::endl;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedPersist::GetClassID(CLSID *pClassID)
+HRESULT STDMETHODCALLTYPE CProxiedPersist::GetClassID(CLSID* pClassID)
 {
     HRESULT nResult;
 
@@ -39,14 +40,17 @@ HRESULT STDMETHODCALLTYPE CProxiedPersist::GetClassID(CLSID *pClassID)
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedPersist::GetClassId: " << HRESULT_to_string(nResult) << std::endl;
+            std::cout << this << "@CProxiedPersist::GetClassId: " << HRESULT_to_string(nResult)
+                      << std::endl;
         else
             std::cout << this << "@CProxiedPersist::GetClassId: " << *pClassID << std::endl;
 
     return nResult;
 }
 
-CProxiedPersistStream::CProxiedPersistStream(IUnknown* pBaseClassUnknown, IPersistStream* pPersistStreamToProxy, const char* sLibName)
+CProxiedPersistStream::CProxiedPersistStream(IUnknown* pBaseClassUnknown,
+                                             IPersistStream* pPersistStreamToProxy,
+                                             const char* sLibName)
     : CProxiedPersist(pBaseClassUnknown, pPersistStreamToProxy, sLibName)
     , mpPersistStreamToProxy(pPersistStreamToProxy)
 {
@@ -61,38 +65,40 @@ HRESULT STDMETHODCALLTYPE CProxiedPersistStream::IsDirty(void)
     nResult = mpPersistStreamToProxy->IsDirty();
 
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedPersistStream::IsDirty: " << HRESULT_to_string(nResult) << std::endl;
+        std::cout << this << "@CProxiedPersistStream::IsDirty: " << HRESULT_to_string(nResult)
+                  << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedPersistStream::Load(IStream *pStm)
+HRESULT STDMETHODCALLTYPE CProxiedPersistStream::Load(IStream* pStm)
 {
     HRESULT nResult;
 
     nResult = mpPersistStreamToProxy->Load(pStm);
 
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedPersistStream::Load(" << pStm << "): " << HRESULT_to_string(nResult) << std::endl;
+        std::cout << this << "@CProxiedPersistStream::Load(" << pStm
+                  << "): " << HRESULT_to_string(nResult) << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedPersistStream::Save(IStream *pStm,
-                                                      BOOL fClearDirty)
+HRESULT STDMETHODCALLTYPE CProxiedPersistStream::Save(IStream* pStm, BOOL fClearDirty)
 {
     HRESULT nResult;
 
     nResult = mpPersistStreamToProxy->Save(pStm, fClearDirty);
 
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedPersistStream::Save(" << pStm << "," << (fClearDirty?"YES":"NO") << "): "
-                  << HRESULT_to_string(nResult) << std::endl;
+        std::cout << this << "@CProxiedPersistStream::Save(" << pStm << ","
+                  << (fClearDirty ? "YES" : "NO") << "): " << HRESULT_to_string(nResult)
+                  << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedPersistStream::GetSizeMax(ULARGE_INTEGER *pcbSize)
+HRESULT STDMETHODCALLTYPE CProxiedPersistStream::GetSizeMax(ULARGE_INTEGER* pcbSize)
 {
     HRESULT nResult;
 
@@ -100,16 +106,18 @@ HRESULT STDMETHODCALLTYPE CProxiedPersistStream::GetSizeMax(ULARGE_INTEGER *pcbS
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedPersistStream::GetSizeMax: "
-                      << HRESULT_to_string(nResult) << std::endl;
+            std::cout << this
+                      << "@CProxiedPersistStream::GetSizeMax: " << HRESULT_to_string(nResult)
+                      << std::endl;
         else
-            std::cout << this << "@CProxiedPersistStream::GetSizeMax: "
-                      << pcbSize->QuadPart << std::endl;
+            std::cout << this << "@CProxiedPersistStream::GetSizeMax: " << pcbSize->QuadPart
+                      << std::endl;
 
     return nResult;
 }
 
-CProxiedMoniker::CProxiedMoniker(IUnknown* pBaseClassUnknown, IMoniker* pMonikerToProxy, const char* sLibName)
+CProxiedMoniker::CProxiedMoniker(IUnknown* pBaseClassUnknown, IMoniker* pMonikerToProxy,
+                                 const char* sLibName)
     : CProxiedPersistStream(pBaseClassUnknown, pMonikerToProxy, sLibName)
     , mpMonikerToProxy(pMonikerToProxy)
 {
@@ -117,10 +125,8 @@ CProxiedMoniker::CProxiedMoniker(IUnknown* pBaseClassUnknown, IMoniker* pMoniker
         std::cout << this << "@CProxiedMoniker::CTOR" << std::endl;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::BindToObject(IBindCtx *pbc,
-                                                        IMoniker *pmkToLeft,
-                                                        REFIID riidResult,
-                                                        void **ppvResult)
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::BindToObject(IBindCtx* pbc, IMoniker* pmkToLeft,
+                                                        REFIID riidResult, void** ppvResult)
 {
     HRESULT nResult;
 
@@ -128,19 +134,17 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::BindToObject(IBindCtx *pbc,
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedMoniker::BindToObject(" << riidResult << "): "
-                      << HRESULT_to_string(nResult) << std::endl;
+            std::cout << this << "@CProxiedMoniker::BindToObject(" << riidResult
+                      << "): " << HRESULT_to_string(nResult) << std::endl;
         else
-            std::cout << this << "@CProxiedMoniker::BindToObject(" << riidResult << "): "
-                      << *ppvResult << std::endl;
+            std::cout << this << "@CProxiedMoniker::BindToObject(" << riidResult
+                      << "): " << *ppvResult << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::BindToStorage(IBindCtx *pbc,
-                                                         IMoniker *pmkToLeft,
-                                                         REFIID riid,
-                                                         void **ppvObj)
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::BindToStorage(IBindCtx* pbc, IMoniker* pmkToLeft,
+                                                         REFIID riid, void** ppvObj)
 {
     HRESULT nResult;
 
@@ -148,19 +152,16 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::BindToStorage(IBindCtx *pbc,
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedMoniker::BindToStorage: "
-                      << HRESULT_to_string(nResult) << std::endl;
+            std::cout << this << "@CProxiedMoniker::BindToStorage: " << HRESULT_to_string(nResult)
+                      << std::endl;
         else
-            std::cout << this << "@CProxiedMoniker::BindToStorage: "
-                      << *ppvObj << std::endl;
+            std::cout << this << "@CProxiedMoniker::BindToStorage: " << *ppvObj << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::Reduce(IBindCtx *pbc,
-                                                  DWORD dwReduceHowFar,
-                                                  IMoniker **ppmkToLeft,
-                                                  IMoniker **ppmkReduced)
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::Reduce(IBindCtx* pbc, DWORD dwReduceHowFar,
+                                                  IMoniker** ppmkToLeft, IMoniker** ppmkReduced)
 {
     HRESULT nResult;
 
@@ -168,18 +169,16 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::Reduce(IBindCtx *pbc,
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedMoniker:Reduce: "
-                      << HRESULT_to_string(nResult) << std::endl;
+            std::cout << this << "@CProxiedMoniker:Reduce: " << HRESULT_to_string(nResult)
+                      << std::endl;
         else
-            std::cout << this << "@CProxiedMoniker::Reduce: "
-                      << *ppmkReduced << std::endl;
+            std::cout << this << "@CProxiedMoniker::Reduce: " << *ppmkReduced << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::ComposeWith(IMoniker *pmkRight,
-                                                       BOOL fOnlyIfNotGeneric,
-                                                       IMoniker **ppmkComposite)
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::ComposeWith(IMoniker* pmkRight, BOOL fOnlyIfNotGeneric,
+                                                       IMoniker** ppmkComposite)
 {
     HRESULT nResult;
 
@@ -187,16 +186,14 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::ComposeWith(IMoniker *pmkRight,
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedMoniker:ComposeWith: "
-                      << HRESULT_to_string(nResult) << std::endl;
+            std::cout << this << "@CProxiedMoniker:ComposeWith: " << HRESULT_to_string(nResult)
+                      << std::endl;
         else
-            std::cout << this << "@CProxiedMoniker::ComposeWith: "
-                      << *ppmkComposite << std::endl;
+            std::cout << this << "@CProxiedMoniker::ComposeWith: " << *ppmkComposite << std::endl;
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::Enum(BOOL fForward,
-                                                IEnumMoniker **ppenumMoniker)
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::Enum(BOOL fForward, IEnumMoniker** ppenumMoniker)
 {
     HRESULT nResult;
 
@@ -204,28 +201,27 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::Enum(BOOL fForward,
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedMoniker:Enum: "
-                      << HRESULT_to_string(nResult) << std::endl;
+            std::cout << this << "@CProxiedMoniker:Enum: " << HRESULT_to_string(nResult)
+                      << std::endl;
         else
-            std::cout << this << "@CProxiedMoniker::Enum: "
-                      << *ppenumMoniker << std::endl;
+            std::cout << this << "@CProxiedMoniker::Enum: " << *ppenumMoniker << std::endl;
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::IsEqual(IMoniker *pmkOtherMoniker)
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::IsEqual(IMoniker* pmkOtherMoniker)
 {
     HRESULT nResult;
 
     nResult = mpMonikerToProxy->IsEqual(pmkOtherMoniker);
 
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedMoniker:IsEqual(" << pmkOtherMoniker << "): "
-                  << HRESULT_to_string(nResult) << std::endl;
+        std::cout << this << "@CProxiedMoniker:IsEqual(" << pmkOtherMoniker
+                  << "): " << HRESULT_to_string(nResult) << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::Hash(DWORD *pdwHash)
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::Hash(DWORD* pdwHash)
 {
     HRESULT nResult;
 
@@ -233,33 +229,30 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::Hash(DWORD *pdwHash)
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedMoniker:Hash: "
-                      << HRESULT_to_string(nResult) << std::endl;
+            std::cout << this << "@CProxiedMoniker:Hash: " << HRESULT_to_string(nResult)
+                      << std::endl;
         else
-            std::cout << this << "@CProxiedMoniker::Hash: "
-                      << *pdwHash << std::endl;
+            std::cout << this << "@CProxiedMoniker::Hash: " << *pdwHash << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::IsRunning(IBindCtx *pbc,
-                                                     IMoniker *pmkToLeft,
-                                                     IMoniker *pmkNewlyRunning)
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::IsRunning(IBindCtx* pbc, IMoniker* pmkToLeft,
+                                                     IMoniker* pmkNewlyRunning)
 {
     HRESULT nResult;
 
     nResult = mpMonikerToProxy->IsRunning(pbc, pmkToLeft, pmkNewlyRunning);
 
     if (getParam()->mbVerbose)
-        std::cout << this << "@CProxiedMoniker:IsRunning: "
-                  << HRESULT_to_string(nResult) << std::endl;
+        std::cout << this << "@CProxiedMoniker:IsRunning: " << HRESULT_to_string(nResult)
+                  << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::GetTimeOfLastChange(IBindCtx *pbc,
-                                                               IMoniker *pmkToLeft,
-                                                               FILETIME *pFileTime)
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::GetTimeOfLastChange(IBindCtx* pbc, IMoniker* pmkToLeft,
+                                                               FILETIME* pFileTime)
 {
     HRESULT nResult;
 
@@ -267,16 +260,19 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::GetTimeOfLastChange(IBindCtx *pbc,
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedMoniker:GetTimeOfLastChange: "
-                      << HRESULT_to_string(nResult) << std::endl;
+            std::cout << this
+                      << "@CProxiedMoniker:GetTimeOfLastChange: " << HRESULT_to_string(nResult)
+                      << std::endl;
         else
             std::cout << this << "@CProxiedMoniker::GetTimeOfLastChange: "
-                      << ((uint64_t)pFileTime->dwHighDateTime * 0x100000000 + pFileTime->dwLowDateTime) << std::endl;
+                      << ((uint64_t)pFileTime->dwHighDateTime * 0x100000000
+                          + pFileTime->dwLowDateTime)
+                      << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::Inverse(IMoniker **ppmk)
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::Inverse(IMoniker** ppmk)
 {
     HRESULT nResult;
 
@@ -284,16 +280,15 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::Inverse(IMoniker **ppmk)
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedMoniker:Inverse: "
-                      << HRESULT_to_string(nResult) << std::endl;
+            std::cout << this << "@CProxiedMoniker:Inverse: " << HRESULT_to_string(nResult)
+                      << std::endl;
         else
-            std::cout << this << "@CProxiedMoniker::Inverse: "
-                      << *ppmk << std::endl;
+            std::cout << this << "@CProxiedMoniker::Inverse: " << *ppmk << std::endl;
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::CommonPrefixWith(IMoniker *pmkOther,
-                                                            IMoniker **ppmkPrefix)
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::CommonPrefixWith(IMoniker* pmkOther,
+                                                            IMoniker** ppmkPrefix)
 {
     HRESULT nResult;
 
@@ -301,17 +296,16 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::CommonPrefixWith(IMoniker *pmkOther,
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedMoniker:CommonPrefixWith: "
-                      << HRESULT_to_string(nResult) << std::endl;
+            std::cout << this << "@CProxiedMoniker:CommonPrefixWith: " << HRESULT_to_string(nResult)
+                      << std::endl;
         else
-            std::cout << this << "@CProxiedMoniker::CommonPrefixWith: "
-                      << *ppmkPrefix << std::endl;
+            std::cout << this << "@CProxiedMoniker::CommonPrefixWith: " << *ppmkPrefix << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::RelativePathTo(IMoniker *pmkOther,
-                                                          IMoniker **ppmkRelPath)
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::RelativePathTo(IMoniker* pmkOther,
+                                                          IMoniker** ppmkRelPath)
 {
     HRESULT nResult;
 
@@ -319,18 +313,16 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::RelativePathTo(IMoniker *pmkOther,
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedMoniker:RelativePathTo: "
-                      << HRESULT_to_string(nResult) << std::endl;
+            std::cout << this << "@CProxiedMoniker:RelativePathTo: " << HRESULT_to_string(nResult)
+                      << std::endl;
         else
-            std::cout << this << "@CProxiedMoniker::RelativePathTo: "
-                      << *ppmkRelPath << std::endl;
+            std::cout << this << "@CProxiedMoniker::RelativePathTo: " << *ppmkRelPath << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::GetDisplayName(IBindCtx *pbc,
-                                                          IMoniker *pmkToLeft,
-                                                          LPOLESTR *ppszDisplayName)
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::GetDisplayName(IBindCtx* pbc, IMoniker* pmkToLeft,
+                                                          LPOLESTR* ppszDisplayName)
 {
     HRESULT nResult;
 
@@ -338,8 +330,8 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::GetDisplayName(IBindCtx *pbc,
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedMoniker:GetDisplayName: "
-                      << HRESULT_to_string(nResult) << std::endl;
+            std::cout << this << "@CProxiedMoniker:GetDisplayName: " << HRESULT_to_string(nResult)
+                      << std::endl;
         else
             std::cout << this << "@CProxiedMoniker::GetDisplayName: "
                       << convertUTF16ToUTF8(*ppszDisplayName) << std::endl;
@@ -347,11 +339,9 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::GetDisplayName(IBindCtx *pbc,
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::ParseDisplayName(IBindCtx *pbc,
-                                                            IMoniker *pmkToLeft,
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::ParseDisplayName(IBindCtx* pbc, IMoniker* pmkToLeft,
                                                             LPOLESTR pszDisplayName,
-                                                            ULONG *pchEaten,
-                                                            IMoniker **ppmkOut)
+                                                            ULONG* pchEaten, IMoniker** ppmkOut)
 {
     HRESULT nResult;
 
@@ -359,16 +349,15 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::ParseDisplayName(IBindCtx *pbc,
 
     if (getParam()->mbVerbose)
         if (nResult != S_OK)
-            std::cout << this << "@CProxiedMoniker:ParseDisplayName: "
-                      << HRESULT_to_string(nResult) << std::endl;
+            std::cout << this << "@CProxiedMoniker:ParseDisplayName: " << HRESULT_to_string(nResult)
+                      << std::endl;
         else
-            std::cout << this << "@CProxiedMoniker::ParseDisplayName: "
-                      << *ppmkOut << std::endl;
+            std::cout << this << "@CProxiedMoniker::ParseDisplayName: " << *ppmkOut << std::endl;
 
     return nResult;
 }
 
-HRESULT STDMETHODCALLTYPE CProxiedMoniker::IsSystemMoniker(DWORD *pdwMksys)
+HRESULT STDMETHODCALLTYPE CProxiedMoniker::IsSystemMoniker(DWORD* pdwMksys)
 {
     HRESULT nResult;
 
@@ -376,8 +365,7 @@ HRESULT STDMETHODCALLTYPE CProxiedMoniker::IsSystemMoniker(DWORD *pdwMksys)
 
     if (getParam()->mbVerbose)
     {
-        std::cout << this << "@CProxiedMoniker:GetDisplayName: "
-                      << HRESULT_to_string(nResult);
+        std::cout << this << "@CProxiedMoniker:GetDisplayName: " << HRESULT_to_string(nResult);
         if (nResult == S_OK)
             std::cout << *pdwMksys;
         std::cout << std::endl;

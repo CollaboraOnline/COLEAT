@@ -292,7 +292,6 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::GetIDsOfNames(REFIID riid, LPOLESTR*
         }
     }
 
-
     return nResult;
 }
 
@@ -408,9 +407,11 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
                 if (n > 0)
                     std::cout << ",";
                 if (n < pDispParams->cNamedArgs && pTI == NULL)
-                    if (mpDispIdToName->count(dispIdMember) &&
-                        (*mpDispIdToName)[dispIdMember].count(pDispParams->rgdispidNamedArgs[n]))
-                        std::cout << (*mpDispIdToName)[dispIdMember][pDispParams->rgdispidNamedArgs[n]] << ":=";
+                    if (mpDispIdToName->count(dispIdMember)
+                        && (*mpDispIdToName)[dispIdMember].count(pDispParams->rgdispidNamedArgs[n]))
+                        std::cout
+                            << (*mpDispIdToName)[dispIdMember][pDispParams->rgdispidNamedArgs[n]]
+                            << ":=";
 
                 std::cout << pDispParams->rgvarg[n];
             }

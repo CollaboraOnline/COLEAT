@@ -528,12 +528,12 @@ private:
     IAdviseSink* mpAdviseSink;
 
 public:
-    myViewObject(IUnknown* pUnk, HBITMAP hBitmap) :
-        mpUnk(pUnk),
-        mhBitmap(hBitmap),
-        mnAdviseAspects(0),
-        mnAdviseFlags(0),
-        mpAdviseSink(NULL)
+    myViewObject(IUnknown* pUnk, HBITMAP hBitmap)
+        : mpUnk(pUnk)
+        , mhBitmap(hBitmap)
+        , mnAdviseAspects(0)
+        , mnAdviseFlags(0)
+        , mpAdviseSink(NULL)
     {
     }
 
@@ -543,10 +543,7 @@ public:
         return mpUnk->QueryInterface(riid, ppvObject);
     }
 
-    ULONG STDMETHODCALLTYPE AddRef() override
-    {
-        return mpUnk->AddRef();
-    }
+    ULONG STDMETHODCALLTYPE AddRef() override { return mpUnk->AddRef(); }
 
     ULONG STDMETHODCALLTYPE Release() override
     {
@@ -559,12 +556,14 @@ public:
     }
 
     // IViewObject
-    HRESULT STDMETHODCALLTYPE Draw(DWORD dwDrawAspect, LONG lindex, void *pvAspect, DVTARGETDEVICE *ptd,
-                                   HDC hdcTargetDev, HDC hdcDraw, LPCRECTL lprcBounds, LPCRECTL lprcWBounds,
-                                   BOOL (STDMETHODCALLTYPE *pfnContinue)(ULONG_PTR dwContinue),
+    HRESULT STDMETHODCALLTYPE Draw(DWORD dwDrawAspect, LONG lindex, void* pvAspect,
+                                   DVTARGETDEVICE* ptd, HDC hdcTargetDev, HDC hdcDraw,
+                                   LPCRECTL lprcBounds, LPCRECTL lprcWBounds,
+                                   BOOL(STDMETHODCALLTYPE* pfnContinue)(ULONG_PTR dwContinue),
                                    ULONG_PTR dwContinue) override
     {
-        (void) dwDrawAspect, lindex, pvAspect, ptd, hdcTargetDev,  lprcWBounds, pfnContinue, dwContinue;
+        (void)dwDrawAspect, lindex, pvAspect, ptd, hdcTargetDev, lprcWBounds, pfnContinue,
+            dwContinue;
 
         HDC hdcMem = CreateCompatibleDC(hdcDraw);
         HGDIOBJ hBitmapOld = SelectObject(hdcMem, mhBitmap);
@@ -572,7 +571,8 @@ public:
         BITMAP aBitmap;
         GetObject(mhBitmap, sizeof(aBitmap), &aBitmap);
 
-        BitBlt(hdcDraw, lprcBounds->left, lprcBounds->top, aBitmap.bmWidth, aBitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
+        BitBlt(hdcDraw, lprcBounds->left, lprcBounds->top, aBitmap.bmWidth, aBitmap.bmHeight,
+               hdcMem, 0, 0, SRCCOPY);
 
         SelectObject(hdcMem, hBitmapOld);
         DeleteDC(hdcMem);
@@ -600,39 +600,41 @@ public:
         return S_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE GetColorSet(DWORD dwDrawAspect, LONG lindex, void *pvAspect, DVTARGETDEVICE *ptd,
-                                          HDC hicTargetDev, LOGPALETTE **ppColorSet) override
+    HRESULT STDMETHODCALLTYPE GetColorSet(DWORD dwDrawAspect, LONG lindex, void* pvAspect,
+                                          DVTARGETDEVICE* ptd, HDC hicTargetDev,
+                                          LOGPALETTE** ppColorSet) override
     {
-        (void) dwDrawAspect, lindex, pvAspect, ptd, hicTargetDev, ppColorSet;
+        (void)dwDrawAspect, lindex, pvAspect, ptd, hicTargetDev, ppColorSet;
 
         return E_NOTIMPL;
     }
 
-    HRESULT STDMETHODCALLTYPE Freeze(DWORD dwDrawAspect, LONG lindex, void *pvAspect, DWORD *pdwFreeze) override
+    HRESULT STDMETHODCALLTYPE Freeze(DWORD dwDrawAspect, LONG lindex, void* pvAspect,
+                                     DWORD* pdwFreeze) override
     {
-        (void) dwDrawAspect, lindex, pvAspect, pdwFreeze;
+        (void)dwDrawAspect, lindex, pvAspect, pdwFreeze;
 
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE Unfreeze(DWORD dwFreeze) override
     {
-        (void) dwFreeze;
+        (void)dwFreeze;
 
         return S_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE SetAdvise(DWORD aspects, DWORD advf, IAdviseSink *pAdvSink) override
+    HRESULT STDMETHODCALLTYPE SetAdvise(DWORD aspects, DWORD advf, IAdviseSink* pAdvSink) override
     {
         mnAdviseAspects = aspects;
         mnAdviseFlags = advf;
         mpAdviseSink = pAdvSink;
 
         return S_OK;
-
     }
 
-    HRESULT STDMETHODCALLTYPE GetAdvise(DWORD *pAspects, DWORD *pAdvf, IAdviseSink **ppAdvSink) override
+    HRESULT STDMETHODCALLTYPE GetAdvise(DWORD* pAspects, DWORD* pAdvf,
+                                        IAdviseSink** ppAdvSink) override
     {
         if (pAspects)
             *pAspects = mnAdviseAspects;
@@ -653,9 +655,9 @@ private:
     SIZEL maExtent;
 
 public:
-    myOleObject(HBITMAP hbitmap) :
-        mnRefCount(1),
-        mhBitmap(hbitmap)
+    myOleObject(HBITMAP hbitmap)
+        : mnRefCount(1)
+        , mhBitmap(hbitmap)
     {
         BITMAP aBitmap;
         GetObject(mhBitmap, sizeof(aBitmap), &aBitmap);
@@ -696,164 +698,162 @@ public:
     }
 
     // IOleObject
-    HRESULT STDMETHODCALLTYPE SetClientSite(IOleClientSite *pClientSite) override
+    HRESULT STDMETHODCALLTYPE SetClientSite(IOleClientSite* pClientSite) override
     {
-        (void) pClientSite;
+        (void)pClientSite;
 
         return S_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE GetClientSite(IOleClientSite **ppClientSite) override
+    HRESULT STDMETHODCALLTYPE GetClientSite(IOleClientSite** ppClientSite) override
     {
-        (void) ppClientSite;
+        (void)ppClientSite;
 
         return E_NOTIMPL;
     }
 
-    HRESULT STDMETHODCALLTYPE SetHostNames(LPCOLESTR szContainerApp, LPCOLESTR szContainerObj) override
+    HRESULT STDMETHODCALLTYPE SetHostNames(LPCOLESTR szContainerApp,
+                                           LPCOLESTR szContainerObj) override
     {
-        (void) szContainerApp, szContainerObj;
+        (void)szContainerApp, szContainerObj;
 
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE Close(DWORD dwSaveOption) override
     {
-        (void) dwSaveOption;
+        (void)dwSaveOption;
 
         return S_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE SetMoniker(DWORD dwWhichMoniker, IMoniker *pmk) override
+    HRESULT STDMETHODCALLTYPE SetMoniker(DWORD dwWhichMoniker, IMoniker* pmk) override
     {
-        (void) dwWhichMoniker, pmk;
+        (void)dwWhichMoniker, pmk;
 
         return S_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE GetMoniker(DWORD dwAssign, DWORD dwWhichMoniker, IMoniker **ppmk) override
+    HRESULT STDMETHODCALLTYPE GetMoniker(DWORD dwAssign, DWORD dwWhichMoniker,
+                                         IMoniker** ppmk) override
     {
-        (void) dwAssign, dwWhichMoniker, ppmk;
+        (void)dwAssign, dwWhichMoniker, ppmk;
 
         return E_NOTIMPL;
     }
 
-    HRESULT STDMETHODCALLTYPE InitFromData(IDataObject *pDataObject, BOOL fCreation, DWORD dwReserved) override
+    HRESULT STDMETHODCALLTYPE InitFromData(IDataObject* pDataObject, BOOL fCreation,
+                                           DWORD dwReserved) override
     {
-        (void) pDataObject, fCreation, dwReserved;
+        (void)pDataObject, fCreation, dwReserved;
 
         return E_NOTIMPL;
     }
 
-    HRESULT STDMETHODCALLTYPE GetClipboardData(DWORD dwReserved, IDataObject **ppDataObject) override
+    HRESULT STDMETHODCALLTYPE GetClipboardData(DWORD dwReserved,
+                                               IDataObject** ppDataObject) override
     {
-        (void) dwReserved, ppDataObject;
+        (void)dwReserved, ppDataObject;
 
         return E_NOTIMPL;
     }
 
-    HRESULT STDMETHODCALLTYPE DoVerb(LONG iVerb, LPMSG lpmsg, IOleClientSite *pActiveSite, LONG lindex,
-                                     HWND hwndParent, LPCRECT lprcPosRect) override
+    HRESULT STDMETHODCALLTYPE DoVerb(LONG iVerb, LPMSG lpmsg, IOleClientSite* pActiveSite,
+                                     LONG lindex, HWND hwndParent, LPCRECT lprcPosRect) override
     {
-        (void) iVerb, lpmsg, pActiveSite, lindex, hwndParent, lprcPosRect;
+        (void)iVerb, lpmsg, pActiveSite, lindex, hwndParent, lprcPosRect;
 
         return E_NOTIMPL;
     }
 
-    HRESULT STDMETHODCALLTYPE EnumVerbs(IEnumOLEVERB **ppEnumOleVerb) override
+    HRESULT STDMETHODCALLTYPE EnumVerbs(IEnumOLEVERB** ppEnumOleVerb) override
     {
-        (void) ppEnumOleVerb;
+        (void)ppEnumOleVerb;
 
         return E_NOTIMPL;
     }
 
-    HRESULT STDMETHODCALLTYPE Update(void) override
-    {
-        return S_OK;
-    }
+    HRESULT STDMETHODCALLTYPE Update(void) override { return S_OK; }
 
-    HRESULT STDMETHODCALLTYPE IsUpToDate(void) override
-    {
-        return S_OK;
-    }
+    HRESULT STDMETHODCALLTYPE IsUpToDate(void) override { return S_OK; }
 
-    HRESULT STDMETHODCALLTYPE GetUserClassID(CLSID *pClsid) override
+    HRESULT STDMETHODCALLTYPE GetUserClassID(CLSID* pClsid) override
     {
-        (void) pClsid;
+        (void)pClsid;
 
         return E_NOTIMPL;
     }
 
-    HRESULT STDMETHODCALLTYPE GetUserType(DWORD dwFormOfType, LPOLESTR *pszUserType) override
+    HRESULT STDMETHODCALLTYPE GetUserType(DWORD dwFormOfType, LPOLESTR* pszUserType) override
     {
-        (void) dwFormOfType, pszUserType;
+        (void)dwFormOfType, pszUserType;
 
         return E_NOTIMPL;
     }
 
-    HRESULT STDMETHODCALLTYPE SetExtent(DWORD dwDrawAspect, SIZEL *psizel) override
+    HRESULT STDMETHODCALLTYPE SetExtent(DWORD dwDrawAspect, SIZEL* psizel) override
     {
-        (void) dwDrawAspect;
+        (void)dwDrawAspect;
 
         maExtent = *psizel;
 
         return S_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE GetExtent(DWORD dwDrawAspect, SIZEL *psizel) override
+    HRESULT STDMETHODCALLTYPE GetExtent(DWORD dwDrawAspect, SIZEL* psizel) override
     {
-        (void) dwDrawAspect;
+        (void)dwDrawAspect;
 
         *psizel = maExtent;
 
         return S_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE Advise(IAdviseSink *pAdvSink, DWORD *pdwConnection) override
+    HRESULT STDMETHODCALLTYPE Advise(IAdviseSink* pAdvSink, DWORD* pdwConnection) override
     {
-        (void) pAdvSink, pdwConnection;
+        (void)pAdvSink, pdwConnection;
 
         return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE Unadvise(DWORD dwConnection) override
     {
-        (void) dwConnection;
+        (void)dwConnection;
 
         return E_NOTIMPL;
     }
 
-    HRESULT STDMETHODCALLTYPE EnumAdvise(IEnumSTATDATA **ppenumAdvise) override
+    HRESULT STDMETHODCALLTYPE EnumAdvise(IEnumSTATDATA** ppenumAdvise) override
     {
-        (void) ppenumAdvise;
+        (void)ppenumAdvise;
 
         return E_NOTIMPL;
     }
 
-    HRESULT STDMETHODCALLTYPE GetMiscStatus(DWORD dwAspect, DWORD *pdwStatus) override
+    HRESULT STDMETHODCALLTYPE GetMiscStatus(DWORD dwAspect, DWORD* pdwStatus) override
     {
-        (void) dwAspect;
+        (void)dwAspect;
 
         *pdwStatus = OLEMISC_STATIC;
 
         return S_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE SetColorScheme(LOGPALETTE *pLogpal) override
+    HRESULT STDMETHODCALLTYPE SetColorScheme(LOGPALETTE* pLogpal) override
     {
-        (void) pLogpal;
+        (void)pLogpal;
 
         return S_OK;
     }
 };
 
-
 static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid, DWORD renderopt,
                                               LPFORMATETC lpFormatEtc, LPOLECLIENTSITE pClientSite,
-                                              LPSTORAGE pStg, LPVOID *ppvObj)
+                                              LPSTORAGE pStg, LPVOID* ppvObj)
 {
     // Sanity check. Only attempt for the case we are interested in.
-    if (!IsEqualIID(riid, IID_IOleObject) || renderopt != OLERENDER_DRAW || lpFormatEtc != NULL || pClientSite == NULL || pStg == NULL)
+    if (!IsEqualIID(riid, IID_IOleObject) || renderopt != OLERENDER_DRAW || lpFormatEtc != NULL
+        || pClientSite == NULL || pStg == NULL)
     {
         std::cout << "Not the kind of call we want to replace\n";
         return S_FALSE;
@@ -870,7 +870,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
         return S_FALSE;
     }
 
-    IMalloc *pMalloc;
+    IMalloc* pMalloc;
 
     nResult = CoGetMalloc(1, &pMalloc);
     if (nResult != S_OK)
@@ -881,7 +881,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     // We need a bit context. Sadly apparently there is no way to get the one that the calling code
     // must have used to create the pmkLinkSrc IMoniker?
-    IBindCtx *pBindContext;
+    IBindCtx* pBindContext;
     nResult = CreateBindCtx(0, &pBindContext);
 
     if (nResult != S_OK)
@@ -891,19 +891,20 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
     }
 
     // The display name of the IMoniker is the file pathname.
-    wchar_t *sDisplayName;
+    wchar_t* sDisplayName;
     nResult = pmkLinkSrc->GetDisplayName(pBindContext, NULL, &sDisplayName);
 
     if (nResult != S_OK)
     {
-        std::cout << "IMoniker::GetDisplayName failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
+        std::cout << "IMoniker::GetDisplayName failed: " << WindowsErrorStringFromHRESULT(nResult)
+                  << "\n";
         pBindContext->Release();
         return S_FALSE;
     }
 
     // Check if the display name is a pathname of a file with an extension we "know" that Collabora
     // Office handles. Only check a few extensions, and in the actual customer case, it is .rtf.
-    wchar_t *pBasenameEnd = wcsrchr(sDisplayName, L'.');
+    wchar_t* pBasenameEnd = wcsrchr(sDisplayName, L'.');
     if (pBasenameEnd == nullptr)
     {
         // No file name extension, let's not even try.
@@ -913,13 +914,16 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
         return S_FALSE;
     }
 
-    const wchar_t *pLastSlash = wcsrchr(sDisplayName, L'\\');
-    const std::wstring sBasename(pLastSlash + 1, static_cast<std::size_t>(pBasenameEnd - pLastSlash - 1));
+    const wchar_t* pLastSlash = wcsrchr(sDisplayName, L'\\');
+    const std::wstring sBasename(pLastSlash + 1,
+                                 static_cast<std::size_t>(pBasenameEnd - pLastSlash - 1));
     const std::wstring sExtension(pBasenameEnd + 1);
 
-    if (!(sExtension == L"rtf" || sExtension == L"doc" || sExtension == L"docx" || sExtension == L"odt"))
+    if (!(sExtension == L"rtf" || sExtension == L"doc" || sExtension == L"docx"
+          || sExtension == L"odt"))
     {
-        std::cout << "Not a known file name extension in '" << convertUTF16ToUTF8(sDisplayName) << "'\n";
+        std::cout << "Not a known file name extension in '" << convertUTF16ToUTF8(sDisplayName)
+                  << "'\n";
         pMalloc->Free(sDisplayName);
         pBindContext->Release();
         return S_FALSE;
@@ -949,38 +953,42 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     // Use Collabora Office to create a png from the document.
 
-    wchar_t sTempPath[MAX_PATH+1];
-    if (GetTempPathW(MAX_PATH+1, sTempPath) == 0)
+    wchar_t sTempPath[MAX_PATH + 1];
+    if (GetTempPathW(MAX_PATH + 1, sTempPath) == 0)
     {
         std::cout << "GetTempPathW failed!\n";
         pMalloc->Free(sDisplayName);
         pBindContext->Release();
         return S_FALSE;
     }
-    if (sTempPath[wcslen(sTempPath)-1] == L'\\')
-        sTempPath[wcslen(sTempPath)-1] = L'\0';
+    if (sTempPath[wcslen(sTempPath) - 1] == L'\\')
+        sTempPath[wcslen(sTempPath) - 1] = L'\0';
 
     // Where is CO installed?
 
     HKEY hUno;
-    nResult = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\LibreOffice\\UNO\\InstallPath", 0, KEY_READ | KEY_WOW64_32KEY , &hUno);
+    nResult = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\LibreOffice\\UNO\\InstallPath", 0,
+                            KEY_READ | KEY_WOW64_32KEY, &hUno);
     if (nResult == ERROR_FILE_NOT_FOUND)
-        nResult = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\LibreOffice\\UNO\\InstallPath", 0, KEY_READ | KEY_WOW64_64KEY , &hUno);
+        nResult = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\LibreOffice\\UNO\\InstallPath", 0,
+                                KEY_READ | KEY_WOW64_64KEY, &hUno);
 
     if (nResult != ERROR_SUCCESS)
     {
-        std::cout << "Can not find Collabora Office installation, RegOpenKeyExW failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
+        std::cout << "Can not find Collabora Office installation, RegOpenKeyExW failed: "
+                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
         pMalloc->Free(sDisplayName);
         pBindContext->Release();
         return S_FALSE;
     }
 
-    wchar_t sLOPath[MAX_PATH+1];
+    wchar_t sLOPath[MAX_PATH + 1];
     LONG nLOPathSize = sizeof(sLOPath);
     nResult = RegQueryValueW(hUno, NULL, sLOPath, &nLOPathSize);
     if (nResult != ERROR_SUCCESS)
     {
-        std::cout << "Can not find Collabora Office installation, RegQueryValueW failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
+        std::cout << "Can not find Collabora Office installation, RegQueryValueW failed: "
+                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
         RegCloseKey(hUno);
         pMalloc->Free(sDisplayName);
         pBindContext->Release();
@@ -989,8 +997,9 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     RegCloseKey(hUno);
 
-    std::wstring sCommandLine = L"\"" + std::wstring(sLOPath) + L"\\soffice.exe\" --convert-to png --outdir \"" + sTempPath
-        + L"\" \"" + std::wstring(sDisplayName) + L"\"";
+    std::wstring sCommandLine = L"\"" + std::wstring(sLOPath)
+                                + L"\\soffice.exe\" --convert-to png --outdir \"" + sTempPath
+                                + L"\" \"" + std::wstring(sDisplayName) + L"\"";
 
     STARTUPINFOW aStartupInfo;
     PROCESS_INFORMATION aProcessInformation;
@@ -999,10 +1008,12 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
     aStartupInfo.cb = sizeof(aStartupInfo);
     aStartupInfo.lpDesktop = L"";
 
-    nResult = CreateProcessW(NULL, const_cast<wchar_t*>(sCommandLine.data()), NULL, NULL, FALSE, 0, NULL, NULL, &aStartupInfo, &aProcessInformation);
+    nResult = CreateProcessW(NULL, const_cast<wchar_t*>(sCommandLine.data()), NULL, NULL, FALSE, 0,
+                             NULL, NULL, &aStartupInfo, &aProcessInformation);
     if (nResult == 0)
     {
-        std::cout << "Can not run soffice, CreateProcessW failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
+        std::cout << "Can not run soffice, CreateProcessW failed: "
+                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
         pMalloc->Free(sDisplayName);
         pBindContext->Release();
         return S_FALSE;
@@ -1037,24 +1048,25 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
 static HRESULT WINAPI myOleCreateLink(LPMONIKER pmkLinkSrc, REFIID riid, DWORD renderopt,
                                       LPFORMATETC lpFormatEtc, LPOLECLIENTSITE pClientSite,
-                                      LPSTORAGE pStg, LPVOID *ppvObj)
+                                      LPSTORAGE pStg, LPVOID* ppvObj)
 {
     if (pGlobalParamPtr->mbVerbose)
-        std::cout << "OleCreateLink(" << pmkLinkSrc << "," << riid << ","
-                  << renderopt << "," << lpFormatEtc << "," << pClientSite << ","
-                  << pStg << "," << ppvObj << ")..." << std::endl;
+        std::cout << "OleCreateLink(" << pmkLinkSrc << "," << riid << "," << renderopt << ","
+                  << lpFormatEtc << "," << pClientSite << "," << pStg << "," << ppvObj << ")..."
+                  << std::endl;
 
     HRESULT nRetval;
 
 #ifdef HARDCODE_MSO_TO_CO
-    nRetval = tryRenderDrawInCollaboraOffice(pmkLinkSrc, riid, renderopt, lpFormatEtc, pClientSite, pStg, ppvObj);
+    nRetval = tryRenderDrawInCollaboraOffice(pmkLinkSrc, riid, renderopt, lpFormatEtc, pClientSite,
+                                             pStg, ppvObj);
 
     if (nRetval == S_OK)
     {
         if (pGlobalParamPtr->mbVerbose)
         {
-            std::cout << "...OleCreateLink(" << pmkLinkSrc << "," << riid << ",...): "
-                      << WindowsErrorStringFromHRESULT(nRetval) << std::endl;
+            std::cout << "...OleCreateLink(" << pmkLinkSrc << "," << riid
+                      << ",...): " << WindowsErrorStringFromHRESULT(nRetval) << std::endl;
         }
         return S_OK;
     }
@@ -1064,8 +1076,8 @@ static HRESULT WINAPI myOleCreateLink(LPMONIKER pmkLinkSrc, REFIID riid, DWORD r
 
     if (pGlobalParamPtr->mbVerbose)
     {
-        std::cout << "...OleCreateLink(" << pmkLinkSrc << "," << riid << ",...): "
-                  << WindowsErrorStringFromHRESULT(nRetval) << std::endl;
+        std::cout << "...OleCreateLink(" << pmkLinkSrc << "," << riid
+                  << ",...): " << WindowsErrorStringFromHRESULT(nRetval) << std::endl;
     }
 
     return nRetval;
@@ -1075,14 +1087,17 @@ static HINSTANCE myShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, L
                                  LPCSTR lpDirectory, INT nShowCmd)
 {
     if (pGlobalParamPtr->mbVerbose)
-        std::cout << "ShellExecuteA(" << hwnd << ","
-                  << (lpOperation ? lpOperation : "NULL") << ","
+        std::cout << "ShellExecuteA(" << hwnd << "," << (lpOperation ? lpOperation : "NULL") << ","
                   << convertUTF16ToUTF8(convertACPToUTF16(lpFile).data()) << ","
-                  << (lpParameters ? convertUTF16ToUTF8(convertACPToUTF16(lpParameters).data()) : "NULL") << ","
-                  << (lpDirectory ? convertUTF16ToUTF8(convertACPToUTF16(lpDirectory).data()) : "NULL") << ","
-                  << nShowCmd << ")..." << std::endl;
+                  << (lpParameters ? convertUTF16ToUTF8(convertACPToUTF16(lpParameters).data())
+                                   : "NULL")
+                  << ","
+                  << (lpDirectory ? convertUTF16ToUTF8(convertACPToUTF16(lpDirectory).data())
+                                  : "NULL")
+                  << "," << nShowCmd << ")..." << std::endl;
 
-    HINSTANCE hInstance = ShellExecuteA(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, nShowCmd);
+    HINSTANCE hInstance
+        = ShellExecuteA(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, nShowCmd);
     DWORD nLastError = GetLastError();
 
     if (pGlobalParamPtr->mbVerbose)
@@ -1099,18 +1114,19 @@ static HINSTANCE myShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, L
     return hInstance;
 }
 
-static HINSTANCE myShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile, LPCWSTR lpParameters,
-                                 LPCWSTR lpDirectory, INT nShowCmd)
+static HINSTANCE myShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile,
+                                 LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd)
 {
     if (pGlobalParamPtr->mbVerbose)
         std::cout << "ShellExecuteW(" << hwnd << ","
                   << (lpOperation ? convertUTF16ToUTF8(lpOperation) : "NULL") << ","
                   << convertUTF16ToUTF8(lpFile) << ","
                   << (lpParameters ? convertUTF16ToUTF8(lpParameters) : "NULL") << ","
-                  << (lpDirectory ? convertUTF16ToUTF8(lpDirectory) : "NULL") << ","
-                  << nShowCmd << ")..." << std::endl;
+                  << (lpDirectory ? convertUTF16ToUTF8(lpDirectory) : "NULL") << "," << nShowCmd
+                  << ")..." << std::endl;
 
-    HINSTANCE hInstance = ShellExecuteW(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, nShowCmd);
+    HINSTANCE hInstance
+        = ShellExecuteW(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, nShowCmd);
     DWORD nLastError = GetLastError();
 
     if (pGlobalParamPtr->mbVerbose)
@@ -1127,16 +1143,23 @@ static HINSTANCE myShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile,
     return hInstance;
 }
 
-static BOOL myShellExecuteExA(SHELLEXECUTEINFOA *pExecInfo)
+static BOOL myShellExecuteExA(SHELLEXECUTEINFOA* pExecInfo)
 {
     if (pGlobalParamPtr->mbVerbose)
-        std::cout << "ShellExecuteExA({hwnd=" << pExecInfo->hwnd
-                  << ",verb="
-                  << (pExecInfo->lpVerb ? convertUTF16ToUTF8(convertACPToUTF16(pExecInfo->lpVerb).data()) : "NULL") << ",file="
-                  << convertUTF16ToUTF8(convertACPToUTF16(pExecInfo->lpFile).data()) << ",parameters="
-                  << (pExecInfo->lpParameters ? convertUTF16ToUTF8(convertACPToUTF16(pExecInfo->lpParameters).data()) : "NULL") << ",directory="
-                  << (pExecInfo->lpDirectory ? convertUTF16ToUTF8(convertACPToUTF16(pExecInfo->lpDirectory).data()) : "NULL") << ",show="
-                  << pExecInfo->nShow << "})..." << std::endl;
+        std::cout << "ShellExecuteExA({hwnd=" << pExecInfo->hwnd << ",verb="
+                  << (pExecInfo->lpVerb
+                          ? convertUTF16ToUTF8(convertACPToUTF16(pExecInfo->lpVerb).data())
+                          : "NULL")
+                  << ",file=" << convertUTF16ToUTF8(convertACPToUTF16(pExecInfo->lpFile).data())
+                  << ",parameters="
+                  << (pExecInfo->lpParameters
+                          ? convertUTF16ToUTF8(convertACPToUTF16(pExecInfo->lpParameters).data())
+                          : "NULL")
+                  << ",directory="
+                  << (pExecInfo->lpDirectory
+                          ? convertUTF16ToUTF8(convertACPToUTF16(pExecInfo->lpDirectory).data())
+                          : "NULL")
+                  << ",show=" << pExecInfo->nShow << "})..." << std::endl;
 
     BOOL nResult = ShellExecuteExA(pExecInfo);
     DWORD nLastError = GetLastError();
@@ -1155,16 +1178,17 @@ static BOOL myShellExecuteExA(SHELLEXECUTEINFOA *pExecInfo)
     return nResult;
 }
 
-static BOOL myShellExecuteExW(SHELLEXECUTEINFOW *pExecInfo)
+static BOOL myShellExecuteExW(SHELLEXECUTEINFOW* pExecInfo)
 {
     if (pGlobalParamPtr->mbVerbose)
-        std::cout << "ShellExecuteExW({hwnd=" << pExecInfo->hwnd
-                  << ",verb="
-                  << (pExecInfo->lpVerb ? convertUTF16ToUTF8(pExecInfo->lpVerb) : "NULL") << ",file="
-                  << convertUTF16ToUTF8(pExecInfo->lpFile) << ",parameters="
-                  << (pExecInfo->lpParameters ? convertUTF16ToUTF8(pExecInfo->lpParameters) : "NULL") << ",directory="
-                  << (pExecInfo->lpDirectory ? convertUTF16ToUTF8(pExecInfo->lpDirectory) : "NULL") << ",show="
-                  << pExecInfo->nShow << "})..." << std::endl;
+        std::cout << "ShellExecuteExW({hwnd=" << pExecInfo->hwnd << ",verb="
+                  << (pExecInfo->lpVerb ? convertUTF16ToUTF8(pExecInfo->lpVerb) : "NULL")
+                  << ",file=" << convertUTF16ToUTF8(pExecInfo->lpFile) << ",parameters="
+                  << (pExecInfo->lpParameters ? convertUTF16ToUTF8(pExecInfo->lpParameters)
+                                              : "NULL")
+                  << ",directory="
+                  << (pExecInfo->lpDirectory ? convertUTF16ToUTF8(pExecInfo->lpDirectory) : "NULL")
+                  << ",show=" << pExecInfo->nShow << "})..." << std::endl;
 
     BOOL nResult = ShellExecuteExW(pExecInfo);
     DWORD nLastError = GetLastError();
@@ -1628,16 +1652,16 @@ static HMODULE WINAPI myLoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWORD dw
                  "CoCreateInstance", myCoCreateInstance);
             hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll",
                  "CoCreateInstanceEx", myCoCreateInstanceEx);
-            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll",
-                 "OleCreateLink", myOleCreateLink);
-            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll", "ShellExecuteA",
-                 myShellExecuteA);
-            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll", "ShellExecuteW",
-                 myShellExecuteW);
-            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll", "ShellExecuteExA",
-                 myShellExecuteExA);
-            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll", "ShellExecuteExW",
-                 myShellExecuteExW);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll", "OleCreateLink",
+                 myOleCreateLink);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll",
+                 "ShellExecuteA", myShellExecuteA);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll",
+                 "ShellExecuteW", myShellExecuteW);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll",
+                 "ShellExecuteExA", myShellExecuteExA);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll",
+                 "ShellExecuteExW", myShellExecuteExW);
         }
     }
 
@@ -1854,8 +1878,7 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "CoCreateInstanceEx",
              myCoCreateInstanceEx);
 
-        hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "OleCreateLink",
-             myOleCreateLink);
+        hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "OleCreateLink", myOleCreateLink);
 
         hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "CoGetClassObject", myCoGetClassObject);
 

@@ -59,7 +59,9 @@ CProxiedUnknown::CProxiedUnknown(IUnknown* pBaseClassUnknown, IUnknown* pUnknown
     // understand what is going on.
     if (!(pBaseClassUnknown != NULL || mpLookupMap->maMap.count(pUnknownToProxy) == 0))
     {
-        std::cout << "ASSERTION FAILURE! pBaseClassUnknown=" << pBaseClassUnknown << ", mpLookupMap->maMap.count(" << pUnknownToProxy << ")=" << mpLookupMap->maMap.count(pUnknownToProxy) << std::endl;
+        std::cout << "ASSERTION FAILURE! pBaseClassUnknown=" << pBaseClassUnknown
+                  << ", mpLookupMap->maMap.count(" << pUnknownToProxy
+                  << ")=" << mpLookupMap->maMap.count(pUnknownToProxy) << std::endl;
     }
 
     if (pBaseClassUnknown == NULL)

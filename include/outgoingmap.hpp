@@ -40,7 +40,7 @@ struct OutgoingInterfaceMapping
     // Array terminated by entry with null mpName
     const NameToMemberIdMapping* maNameToId;
 };
-    
+
 #endif // INCLUDED_OUTGOINGMAP_HPP
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab cinoptions=b1,g0,N-s cinkeys+=0=break: */
