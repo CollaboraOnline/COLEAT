@@ -518,37 +518,41 @@ static HRESULT __stdcall myCoGetClassObject(REFCLSID rclsid, DWORD dwClsContext,
 
 #ifdef HARDCODE_MSO_TO_CO
 
-class myViewObjectWrapper : IViewObject
+class myViewObject : IViewObject
 {
 private:
-    IViewObject* const mpWrappedViewObject;
-    const std::wstring* const msImageFile;
+    IUnknown* const mpUnk;
+    HBITMAP mhBitmap;
+    DWORD mnAdviseAspects;
+    DWORD mnAdviseFlags;
+    IAdviseSink* mpAdviseSink;
 
 public:
-    myViewObjectWrapper(IViewObject* pViewObject, const std::wstring* const sImageFile) :
-        mpWrappedViewObject(pViewObject),
-        msImageFile(sImageFile)
+    myViewObject(IUnknown* pUnk, HBITMAP hBitmap) :
+        mpUnk(pUnk),
+        mhBitmap(hBitmap),
+        mnAdviseAspects(0),
+        mnAdviseFlags(0),
+        mpAdviseSink(NULL)
     {
     }
 
     // IUnknown
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
     {
-        return mpWrappedViewObject->QueryInterface(riid, ppvObject);
+        return mpUnk->QueryInterface(riid, ppvObject);
     }
 
     ULONG STDMETHODCALLTYPE AddRef() override
     {
-        return mpWrappedViewObject->AddRef();
+        return mpUnk->AddRef();
     }
 
     ULONG STDMETHODCALLTYPE Release() override
     {
-        ULONG nRetval = mpWrappedViewObject->Release();
+        ULONG nRetval = mpUnk->Release();
         if (nRetval == 0)
         {
-            _wremove(msImageFile->data());
-            delete msImageFile;
             delete this;
         }
         return nRetval;
@@ -562,20 +566,11 @@ public:
     {
         (void) dwDrawAspect, lindex, pvAspect, ptd, hdcTargetDev,  lprcWBounds, pfnContinue, dwContinue;
 
-        Gdiplus::GdiplusStartupInput gdiplusStartupInput;
-        ULONG_PTR gdiplusToken;
-        Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
-
-        Gdiplus::Bitmap* pBitmap = Gdiplus::Bitmap::FromFile( msImageFile->data() );
-
-        HBITMAP hBitmap;
-        pBitmap->GetHBITMAP(Gdiplus::Color(), &hBitmap);
-
         HDC hdcMem = CreateCompatibleDC(hdcDraw);
-        HGDIOBJ hBitmapOld = SelectObject(hdcMem, hBitmap);
+        HGDIOBJ hBitmapOld = SelectObject(hdcMem, mhBitmap);
 
         BITMAP aBitmap;
-        GetObject(hBitmap, sizeof(aBitmap), &aBitmap);
+        GetObject(mhBitmap, sizeof(aBitmap), &aBitmap);
 
         BitBlt(hdcDraw, lprcBounds->left, lprcBounds->top, aBitmap.bmWidth, aBitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
 
@@ -602,77 +597,99 @@ public:
         LineTo(hdcDraw, lprcBounds->left + 5, lprcBounds->top + 5);
 #endif
 
-        Gdiplus::GdiplusShutdown(gdiplusToken);
-
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE GetColorSet(DWORD dwDrawAspect, LONG lindex, void *pvAspect, DVTARGETDEVICE *ptd,
                                           HDC hicTargetDev, LOGPALETTE **ppColorSet) override
     {
-        return mpWrappedViewObject->GetColorSet(dwDrawAspect, lindex, pvAspect, ptd, hicTargetDev, ppColorSet);
+        (void) dwDrawAspect, lindex, pvAspect, ptd, hicTargetDev, ppColorSet;
+
+        return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE Freeze(DWORD dwDrawAspect, LONG lindex, void *pvAspect, DWORD *pdwFreeze) override
     {
-        return mpWrappedViewObject->Freeze(dwDrawAspect, lindex, pvAspect, pdwFreeze);
+        (void) dwDrawAspect, lindex, pvAspect, pdwFreeze;
+
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE Unfreeze(DWORD dwFreeze) override
     {
-        return mpWrappedViewObject->Unfreeze(dwFreeze);
+        (void) dwFreeze;
+
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE SetAdvise(DWORD aspects, DWORD advf, IAdviseSink *pAdvSink) override
     {
-        return mpWrappedViewObject->SetAdvise(aspects, advf, pAdvSink);
+        mnAdviseAspects = aspects;
+        mnAdviseFlags = advf;
+        mpAdviseSink = pAdvSink;
+
+        return S_OK;
+
     }
 
     HRESULT STDMETHODCALLTYPE GetAdvise(DWORD *pAspects, DWORD *pAdvf, IAdviseSink **ppAdvSink) override
     {
-        return mpWrappedViewObject->GetAdvise(pAspects, pAdvf, ppAdvSink);
+        if (pAspects)
+            *pAspects = mnAdviseAspects;
+        if (pAdvf)
+            *pAdvf = mnAdviseFlags;
+        if (ppAdvSink)
+            *ppAdvSink = mpAdviseSink;
+
+        return S_OK;
     }
 };
 
-class myOleObjectWrapper : IOleObject
+class myOleObject : IOleObject
 {
 private:
-    IOleObject* const mpWrappedOleObject;
-    const std::wstring* const msEmptyDocument;
-    const std::wstring* const msImageFile;
+    ULONG mnRefCount;
+    HBITMAP mhBitmap;
+    SIZEL maExtent;
 
 public:
-    myOleObjectWrapper(IOleObject* pOleObject, const std::wstring* const sEmptyDocument, const std::wstring* const sImageFile) :
-        mpWrappedOleObject(pOleObject),
-        msEmptyDocument(sEmptyDocument),
-        msImageFile(sImageFile)
+    myOleObject(HBITMAP hbitmap) :
+        mnRefCount(1),
+        mhBitmap(hbitmap)
     {
+        BITMAP aBitmap;
+        GetObject(mhBitmap, sizeof(aBitmap), &aBitmap);
+        maExtent.cx = aBitmap.bmWidth;
+        maExtent.cy = aBitmap.bmHeight;
     }
 
     // IUnknown
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
     {
-        HRESULT nResult = mpWrappedOleObject->QueryInterface(riid, ppvObject);
-
-        if (nResult == S_OK && IsEqualIID(riid, IID_IViewObject))
-        {
-            *ppvObject = new myViewObjectWrapper(static_cast<IViewObject*>(*ppvObject), msImageFile);
-        }
-        return nResult;
+        if (IsEqualIID(riid, IID_IUnknown))
+            *ppvObject = this;
+        else if (IsEqualIID(riid, IID_IOleObject))
+            *ppvObject = this;
+        else if (IsEqualIID(riid, IID_IViewObject))
+            *ppvObject = new myViewObject(this, mhBitmap);
+        else
+            return E_NOINTERFACE;
+        AddRef();
+        return S_OK;
     }
 
     ULONG STDMETHODCALLTYPE AddRef() override
     {
-        return mpWrappedOleObject->AddRef();
+        mnRefCount++;
+        return mnRefCount;
     }
 
     ULONG STDMETHODCALLTYPE Release() override
     {
-        ULONG nRetval = mpWrappedOleObject->Release();
+        mnRefCount--;
+        ULONG nRetval = mnRefCount;
         if (nRetval == 0)
         {
-            _wremove(msEmptyDocument->data());
-            delete msEmptyDocument;
             delete this;
         }
         return nRetval;
@@ -681,108 +698,152 @@ public:
     // IOleObject
     HRESULT STDMETHODCALLTYPE SetClientSite(IOleClientSite *pClientSite) override
     {
-        return mpWrappedOleObject->SetClientSite(pClientSite);
+        (void) pClientSite;
+
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE GetClientSite(IOleClientSite **ppClientSite) override
     {
-        return mpWrappedOleObject->GetClientSite(ppClientSite);
+        (void) ppClientSite;
+
+        return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE SetHostNames(LPCOLESTR szContainerApp, LPCOLESTR szContainerObj) override
     {
-        return mpWrappedOleObject->SetHostNames(szContainerApp, szContainerObj);
+        (void) szContainerApp, szContainerObj;
+
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE Close(DWORD dwSaveOption) override
     {
-        return mpWrappedOleObject->Close(dwSaveOption);
+        (void) dwSaveOption;
+
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE SetMoniker(DWORD dwWhichMoniker, IMoniker *pmk) override
     {
-        return mpWrappedOleObject->SetMoniker(dwWhichMoniker, pmk);
+        (void) dwWhichMoniker, pmk;
+
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE GetMoniker(DWORD dwAssign, DWORD dwWhichMoniker, IMoniker **ppmk) override
     {
-        return mpWrappedOleObject->GetMoniker(dwAssign, dwWhichMoniker, ppmk);
+        (void) dwAssign, dwWhichMoniker, ppmk;
+
+        return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE InitFromData(IDataObject *pDataObject, BOOL fCreation, DWORD dwReserved) override
     {
-        return mpWrappedOleObject->InitFromData(pDataObject, fCreation, dwReserved);
+        (void) pDataObject, fCreation, dwReserved;
+
+        return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE GetClipboardData(DWORD dwReserved, IDataObject **ppDataObject) override
     {
-        return mpWrappedOleObject->GetClipboardData(dwReserved, ppDataObject);
+        (void) dwReserved, ppDataObject;
+
+        return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE DoVerb(LONG iVerb, LPMSG lpmsg, IOleClientSite *pActiveSite, LONG lindex,
                                      HWND hwndParent, LPCRECT lprcPosRect) override
     {
-        return mpWrappedOleObject->DoVerb(iVerb, lpmsg, pActiveSite, lindex, hwndParent, lprcPosRect);
+        (void) iVerb, lpmsg, pActiveSite, lindex, hwndParent, lprcPosRect;
+
+        return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE EnumVerbs(IEnumOLEVERB **ppEnumOleVerb) override
     {
-        return mpWrappedOleObject->EnumVerbs(ppEnumOleVerb);
+        (void) ppEnumOleVerb;
+
+        return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE Update(void) override
     {
-        return mpWrappedOleObject->Update();
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE IsUpToDate(void) override
     {
-        return mpWrappedOleObject->IsUpToDate();
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE GetUserClassID(CLSID *pClsid) override
     {
-        return mpWrappedOleObject->GetUserClassID(pClsid);
+        (void) pClsid;
+
+        return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE GetUserType(DWORD dwFormOfType, LPOLESTR *pszUserType) override
     {
-        return mpWrappedOleObject->GetUserType(dwFormOfType, pszUserType);
+        (void) dwFormOfType, pszUserType;
+
+        return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE SetExtent(DWORD dwDrawAspect, SIZEL *psizel) override
     {
-        return mpWrappedOleObject->SetExtent(dwDrawAspect, psizel);
+        (void) dwDrawAspect;
+
+        maExtent = *psizel;
+
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE GetExtent(DWORD dwDrawAspect, SIZEL *psizel) override
     {
-        return mpWrappedOleObject->GetExtent(dwDrawAspect, psizel);
+        (void) dwDrawAspect;
+
+        *psizel = maExtent;
+
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE Advise(IAdviseSink *pAdvSink, DWORD *pdwConnection) override
     {
-        return mpWrappedOleObject->Advise(pAdvSink, pdwConnection);
+        (void) pAdvSink, pdwConnection;
+
+        return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE Unadvise(DWORD dwConnection) override
     {
-        return mpWrappedOleObject->Unadvise(dwConnection);
+        (void) dwConnection;
+
+        return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE EnumAdvise(IEnumSTATDATA **ppenumAdvise) override
     {
-        return mpWrappedOleObject->EnumAdvise(ppenumAdvise);
+        (void) ppenumAdvise;
+
+        return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE GetMiscStatus(DWORD dwAspect, DWORD *pdwStatus) override
     {
-        return mpWrappedOleObject->GetMiscStatus(dwAspect, pdwStatus);
+        (void) dwAspect;
+
+        *pdwStatus = OLEMISC_STATIC;
+
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE SetColorScheme(LOGPALETTE *pLogpal) override
     {
-        return mpWrappedOleObject->SetColorScheme(pLogpal);
+        (void) pLogpal;
+
+        return S_OK;
     }
 };
 
@@ -791,8 +852,8 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
                                               LPFORMATETC lpFormatEtc, LPOLECLIENTSITE pClientSite,
                                               LPSTORAGE pStg, LPVOID *ppvObj)
 {
-    // Sanity check. Only attempt for the cae we are interested in.
-    if (!IsEqualIID(riid, IID_IOleObject) || renderopt != OLERENDER_DRAW || pClientSite == NULL || pStg == NULL)
+    // Sanity check. Only attempt for the case we are interested in.
+    if (!IsEqualIID(riid, IID_IOleObject) || renderopt != OLERENDER_DRAW || lpFormatEtc != NULL || pClientSite == NULL || pStg == NULL)
     {
         std::cout << "Not the kind of call we want to replace\n";
         return S_FALSE;
@@ -951,52 +1012,21 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     std::wstring sImageFile = std::wstring(sTempPath) + L"\\" + sBasename + L".png";
 
-    // Create an OLE link to a dummy (empty) document that we know WordPad will be able to handle
-    // just fine.
+    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+    ULONG_PTR gdiplusToken;
+    Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-    // First write the dummy RTF document.
+    Gdiplus::Bitmap* pBitmap = Gdiplus::Bitmap::FromFile(sImageFile.data());
 
-    const std::time_t nNow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    const std::wstring sEmptyDocument = std::wstring(sTempPath) + L"\\" + std::to_wstring(nNow) + L".rtf";
+    _wremove(sImageFile.data());
 
-    std::ofstream aEmptyDocument(sEmptyDocument);
+    HBITMAP hBitmap;
+    pBitmap->GetHBITMAP(Gdiplus::Color(), &hBitmap);
 
-    aEmptyDocument << "{\\rtf1\\ansi\\ansicpg1252\\deff0\\nouicompat\\deflang1033{\\fonttbl{\\f0\\fnil\\fcharset0 Calibri;}}\n"
-        "{\\*\\generator Riched20 10.0.17763}\\viewkind4\\uc1\n"
-        "\\pard\\sa200\\sl276\\slmult1\\f0\\fs22\\lang9\\par\n"
-        "HAHAHA}\n";
+    Gdiplus::GdiplusShutdown(gdiplusToken);
 
-    aEmptyDocument.close();
+    *ppvObj = new myOleObject(hBitmap);
 
-    ULONG nChEaten;
-    IMoniker *pEmptyDocumentMoniker;
-    nResult = MkParseDisplayName(pBindContext, sEmptyDocument.data(), &nChEaten, &pEmptyDocumentMoniker);
-    if (nResult != S_OK)
-    {
-        std::cout << "MkParseDisplayName failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
-        pMalloc->Free(sDisplayName);
-        pBindContext->Release();
-        return S_FALSE;
-    }
-
-    HRESULT nRetval = OleCreateLink(pEmptyDocumentMoniker, riid, renderopt, lpFormatEtc, pClientSite, pStg, ppvObj);
-    if (nRetval != S_OK)
-    {
-        std::cout << "OleCreateLink failed: " << WindowsErrorStringFromHRESULT(nRetval) << "\n";
-        pEmptyDocumentMoniker->Release();
-        pMalloc->Free(sDisplayName);
-        pBindContext->Release();
-        return S_FALSE;
-    }
-
-    // Replace the return value of the OleCreateLink() call for the dummy document with a wrapper
-    // for IOleObject that when queried for IViewObject will return a wrapper that will draw the PNG
-    // image that Collabora Office created.
-    *ppvObj = new myOleObjectWrapper(static_cast<IOleObject*>(*ppvObj),
-                                     new std::wstring(sEmptyDocument),
-                                     new std::wstring(sImageFile));
-
-    pEmptyDocumentMoniker->Release();
     pMalloc->Free(sDisplayName);
     pBindContext->Release();
 
