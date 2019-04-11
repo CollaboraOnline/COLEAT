@@ -1016,10 +1016,12 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     memset(&aStartupInfo, 0, sizeof(aStartupInfo));
     aStartupInfo.cb = sizeof(aStartupInfo);
-    aStartupInfo.lpDesktop = L"";
 
-    nResult = CreateProcessW(NULL, const_cast<wchar_t*>(sCommandLine.data()), NULL, NULL, FALSE, 0,
+    wchar_t* pCommandLine = _wcsdup(sCommandLine.data());
+    nResult = CreateProcessW(NULL, pCommandLine, NULL, NULL, TRUE, 0,
                              NULL, NULL, &aStartupInfo, &aProcessInformation);
+    free(pCommandLine);
+
     if (nResult == 0)
     {
         std::cout << "Can not run soffice, CreateProcessW failed: "
@@ -1686,7 +1688,7 @@ static NTSTATUS NTAPI myLdrLoadDll(PWCHAR PathToFile, ULONG Flags, UNICODE_STRIN
     fileName[ModuleFileName->Length] = L'\0';
 
     if (pGlobalParamPtr->mbVerbose)
-        std::cout << "LdrLoadDll(" << convertUTF16ToUTF8(PathToFile) << ", 0x" << to_uhex(Flags)
+        std::cout << "LdrLoadDll(" << (PathToFile ? convertUTF16ToUTF8(PathToFile) : "(null)") << ", 0x" << to_uhex(Flags)
                   << "," << convertUTF16ToUTF8(fileName.data()) << ") from "
                   << prettyCodeAddress(_ReturnAddress()) << "..." << std::endl;
 
