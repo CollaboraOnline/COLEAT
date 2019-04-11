@@ -767,6 +767,10 @@ inline std::basic_ostream<char, traits>& operator<<(std::basic_ostream<char, tra
 
     switch (rVariant.vt & VT_TYPEMASK)
     {
+        case VT_EMPTY:
+        case VT_NULL:
+            // The VARTYPE_to_string is all that is needed.
+            break;
         case VT_I2:
             stream << rVariant.iVal;
             break;
