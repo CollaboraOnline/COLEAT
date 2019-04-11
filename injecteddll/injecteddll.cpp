@@ -521,20 +521,32 @@ static HRESULT __stdcall myCoGetClassObject(REFCLSID rclsid, DWORD dwClsContext,
 class myViewObject : IViewObject
 {
 private:
-    IUnknown* const mpUnk;
+    // Pointer to the myOleObject that manages this object
+    IUnknown* mpUnk;
+
     HBITMAP mhBitmap;
     DWORD mnAdviseAspects;
     DWORD mnAdviseFlags;
     IAdviseSink* mpAdviseSink;
 
 public:
-    myViewObject(IUnknown* pUnk, HBITMAP hBitmap)
-        : mpUnk(pUnk)
+    myViewObject(HBITMAP hBitmap)
+        : mpUnk(NULL)
         , mhBitmap(hBitmap)
         , mnAdviseAspects(0)
         , mnAdviseFlags(0)
         , mpAdviseSink(NULL)
     {
+    }
+
+    // Can't pass the 'this' of myOleObject when constructing the myViewObject, so have to set it
+    // separately, hmm.
+    void setUnk(IUnknown* pUnk) { mpUnk = pUnk; }
+
+    void deleteThis()
+    {
+        DeleteObject(mhBitmap);
+        delete this;
     }
 
     // IUnknown
@@ -548,10 +560,6 @@ public:
     ULONG STDMETHODCALLTYPE Release() override
     {
         ULONG nRetval = mpUnk->Release();
-        if (nRetval == 0)
-        {
-            delete this;
-        }
         return nRetval;
     }
 
@@ -647,20 +655,21 @@ public:
     }
 };
 
-class myOleObject : IOleObject
+class myOleObject : public IOleObject
 {
 private:
     ULONG mnRefCount;
-    HBITMAP mhBitmap;
     SIZEL maExtent;
+    myViewObject* mpViewObject;
 
 public:
-    myOleObject(HBITMAP hbitmap)
+    myOleObject(HBITMAP hBitmap)
         : mnRefCount(1)
-        , mhBitmap(hbitmap)
+        , mpViewObject(new myViewObject(hBitmap))
     {
+        mpViewObject->setUnk(this);
         BITMAP aBitmap;
-        GetObject(mhBitmap, sizeof(aBitmap), &aBitmap);
+        GetObject(hBitmap, sizeof(aBitmap), &aBitmap);
         maExtent.cx = aBitmap.bmWidth;
         maExtent.cy = aBitmap.bmHeight;
     }
@@ -673,7 +682,7 @@ public:
         else if (IsEqualIID(riid, IID_IOleObject))
             *ppvObject = this;
         else if (IsEqualIID(riid, IID_IViewObject))
-            *ppvObject = new myViewObject(this, mhBitmap);
+            *ppvObject = mpViewObject;
         else
             return E_NOINTERFACE;
         AddRef();
@@ -692,6 +701,7 @@ public:
         ULONG nRetval = mnRefCount;
         if (nRetval == 0)
         {
+            mpViewObject->deleteThis();
             delete this;
         }
         return nRetval;
