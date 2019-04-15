@@ -1203,9 +1203,9 @@ static void myOutputDebugStringA(char* lpOutputString)
         std::wstring s = convertACPToUTF16(lpOutputString);
         if (s.length() > 1 && s[s.length() - 1] == L'\n')
         {
-            s.pop_back();
-            if (s[s.length() - 1] == L'\r')
-                s.pop_back();
+            s[s.length() - 1] = L'\0';
+            if (s[s.length() - 2] == L'\r')
+                s[s.length() - 2] = L'\0';
         }
 
         std::cout << "OutputDebugStringA(" << convertUTF16ToUTF8(s.data()) << ")" << std::endl;
@@ -1220,9 +1220,9 @@ static void myOutputDebugStringW(wchar_t* lpOutputString)
         std::wstring s = std::wstring(lpOutputString);
         if (s.length() > 1 && s[s.length() - 1] == L'\n')
         {
-            s.pop_back();
-            if (s[s.length() - 1] == L'\r')
-                s.pop_back();
+            s[s.length() - 1] = L'\0';
+            if (s[s.length() - 2] == L'\r')
+                s[s.length() - 2] = L'\0';
         }
 
         std::cout << "OutputDebugStringW(" << convertUTF16ToUTF8(s.data()) << ")" << std::endl;
