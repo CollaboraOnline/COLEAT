@@ -1196,6 +1196,27 @@ static HRESULT WINAPI myOleCreateLink(LPMONIKER pmkLinkSrc, REFIID riid, DWORD r
     return nRetval;
 }
 
+static void myOutputDebugStringA(char* lpOutputString)
+{
+    if (pGlobalParamPtr->mbVerbose)
+    {
+        std::cout << "OutputDebugStringA("
+                  << convertUTF16ToUTF8(convertACPToUTF16(lpOutputString).data()) << ")"
+                  << std::endl;
+    }
+    OutputDebugStringA(lpOutputString);
+}
+
+static void myOutputDebugStringW(wchar_t* lpOutputString)
+{
+    if (pGlobalParamPtr->mbVerbose)
+    {
+        std::cout << "OutputDebugStringW(" << convertUTF16ToUTF8(lpOutputString) << ")"
+                  << std::endl;
+    }
+    OutputDebugStringW(lpOutputString);
+}
+
 static HINSTANCE myShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters,
                                  LPCSTR lpDirectory, INT nShowCmd)
 {
@@ -1368,7 +1389,26 @@ static PROC WINAPI myGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
 {
     HMODULE hOle32 = GetModuleHandleW(L"ole32.dll");
     HMODULE hShell32 = GetModuleHandleW(L"shell32.dll");
+    HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");
     FunPtr pFun;
+
+    if (hModule == hKernel32 && std::strcmp(lpProcName, "OutputDebugStringA") == 0)
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << "GetProcAddress(kernel32.dll, OutputDebugStringA) from "
+                      << prettyCodeAddress(_ReturnAddress()) << std::endl;
+        pFun.pVoid = myOutputDebugStringA;
+        return pFun.pProc;
+    }
+
+    if (hModule == hKernel32 && std::strcmp(lpProcName, "OutputDebugStringW") == 0)
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << "GetProcAddress(kernel32.dll, OutputDebugStringW) from "
+                      << prettyCodeAddress(_ReturnAddress()) << std::endl;
+        pFun.pVoid = myOutputDebugStringW;
+        return pFun.pProc;
+    }
 
     if (hModule == hShell32 && std::strcmp(lpProcName, "ShellExecuteA") == 0)
     {
@@ -1559,6 +1599,10 @@ static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
              myCoCreateInstanceEx);
         hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "OleCreateLink",
              myOleCreateLink);
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", "OutputDebugStringA",
+             myOutputDebugStringA);
+        hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", "OutputDebugStringW",
+             myOutputDebugStringW);
         hook(false, pGlobalParamPtr, hModule, lpFileName, L"shell32.dll", "ShellExecuteA",
              myShellExecuteA);
         hook(false, pGlobalParamPtr, hModule, lpFileName, L"shell32.dll", "ShellExecuteW",
@@ -1624,6 +1668,10 @@ static HMODULE WINAPI myLoadLibraryA(LPCSTR lpFileName)
              myCoCreateInstanceEx);
         hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll", "OleCreateLink",
              myOleCreateLink);
+        hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"kernel32.dll",
+             "OutputDebugStringA", myOutputDebugStringA);
+        hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"kernel32.dll",
+             "OutputDebugStringW", myOutputDebugStringW);
         hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll", "ShellExecuteA",
              myShellExecuteA);
         hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll", "ShellExecuteW",
@@ -1685,6 +1733,10 @@ static HMODULE WINAPI innerMyLoadLibraryExW(const std::string& caller, LPCWSTR l
                  myCoCreateInstanceEx);
             hook(false, pGlobalParamPtr, hModule, lpFileName, L"ole32.dll", "OleCreateLink",
                  myOleCreateLink);
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", "OutputDebugStringA",
+                 myOutputDebugStringA);
+            hook(false, pGlobalParamPtr, hModule, lpFileName, L"kernel32.dll", "OutputDebugStringW",
+                 myOutputDebugStringW);
             hook(false, pGlobalParamPtr, hModule, lpFileName, L"shell32.dll", "ShellExecuteA",
                  myShellExecuteA);
             hook(false, pGlobalParamPtr, hModule, lpFileName, L"shell32.dll", "ShellExecuteW",
@@ -1767,6 +1819,10 @@ static HMODULE WINAPI myLoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWORD dw
                  "CoCreateInstanceEx", myCoCreateInstanceEx);
             hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"ole32.dll", "OleCreateLink",
                  myOleCreateLink);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"kernel32.dll",
+                 "OutputDebugStringA", myOutputDebugStringA);
+            hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"kernel32.dll",
+                 "OutputDebugStringW", myOutputDebugStringW);
             hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll",
                  "ShellExecuteA", myShellExecuteA);
             hook(false, pGlobalParamPtr, hModule, sWFileName.data(), L"shell32.dll",
@@ -1993,6 +2049,12 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
 
         hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "OleCreateLink", myOleCreateLink);
 
+        hook(false, pParam, L"msvbvm60.dll", L"kernel32.dll", "OutputDebugStringA",
+             myOutputDebugStringA);
+
+        hook(false, pParam, L"msvbvm60.dll", L"kernel32.dll", "OutputDebugStringW",
+             myOutputDebugStringW);
+
         hook(false, pParam, L"msvbvm60.dll", L"ole32.dll", "CoGetClassObject", myCoGetClassObject);
 
         if (!hook(true, pParam, L"msvbvm60.dll", L"kernel32.dll", "GetProcAddress",
@@ -2033,6 +2095,8 @@ extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
         hook(false, pParam, nullptr, L"ole32.dll", "CoCreateInstance", myCoCreateInstance);
         hook(false, pParam, nullptr, L"ole32.dll", "CoCreateInstanceEx", myCoCreateInstanceEx);
         hook(false, pParam, nullptr, L"ole32.dll", "OleCreateLink", myOleCreateLink);
+        hook(false, pParam, nullptr, L"kernel32.dll", "OutputDebugStringA", myOutputDebugStringA);
+        hook(false, pParam, nullptr, L"kernel32.dll", "OutputDebugStringW", myOutputDebugStringW);
         hook(false, pParam, nullptr, L"ole32.dll", "CoGetClassObject", myCoGetClassObject);
         if (nHookedFunctions == 0)
         {
