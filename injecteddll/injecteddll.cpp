@@ -537,6 +537,8 @@ public:
         , mnAdviseFlags(0)
         , mpAdviseSink(NULL)
     {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myViewObject::CTOR()" << std::endl;
     }
 
     // Can't pass the 'this' of myOleObject when constructing the myViewObject, so have to set it
@@ -545,6 +547,9 @@ public:
 
     void deleteThis()
     {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myViewObject::deleteThis()" << std::endl;
+
         DeleteObject(mhBitmap);
         delete this;
     }
@@ -572,6 +577,9 @@ public:
     {
         (void)dwDrawAspect, lindex, pvAspect, ptd, hdcTargetDev, lprcWBounds, pfnContinue,
             dwContinue;
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myViewObject::Draw()" << std::endl;
 
         HDC hdcMem = CreateCompatibleDC(hdcDraw);
         HGDIOBJ hBitmapOld = SelectObject(hdcMem, mhBitmap);
@@ -614,6 +622,9 @@ public:
     {
         (void)dwDrawAspect, lindex, pvAspect, ptd, hicTargetDev, ppColorSet;
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myViewObject::GetColorSet()" << std::endl;
+
         return E_NOTIMPL;
     }
 
@@ -622,6 +633,9 @@ public:
     {
         (void)dwDrawAspect, lindex, pvAspect, pdwFreeze;
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myViewObject::Freeze()" << std::endl;
+
         return S_OK;
     }
 
@@ -629,11 +643,17 @@ public:
     {
         (void)dwFreeze;
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myViewObject::Unfreeze()" << std::endl;
+
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE SetAdvise(DWORD aspects, DWORD advf, IAdviseSink* pAdvSink) override
     {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myViewObject::SetAdvise()" << std::endl;
+
         mnAdviseAspects = aspects;
         mnAdviseFlags = advf;
         mpAdviseSink = pAdvSink;
@@ -644,6 +664,9 @@ public:
     HRESULT STDMETHODCALLTYPE GetAdvise(DWORD* pAspects, DWORD* pAdvf,
                                         IAdviseSink** ppAdvSink) override
     {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myViewObject::GetAdvise()" << std::endl;
+
         if (pAspects)
             *pAspects = mnAdviseAspects;
         if (pAdvf)
@@ -667,6 +690,9 @@ public:
         : mnRefCount(1)
         , mpViewObject(new myViewObject(hBitmap))
     {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::CTOR()" << std::endl;
+
         mpViewObject->setUnk(this);
         BITMAP aBitmap;
         GetObject(hBitmap, sizeof(aBitmap), &aBitmap);
@@ -677,6 +703,8 @@ public:
     // IUnknown
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
     {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::QueryInterface(" << riid << ")" << std::endl;
         if (IsEqualIID(riid, IID_IUnknown))
             *ppvObject = this;
         else if (IsEqualIID(riid, IID_IOleObject))
@@ -692,12 +720,16 @@ public:
     ULONG STDMETHODCALLTYPE AddRef() override
     {
         mnRefCount++;
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOlewObject::AddRef(): " << mnRefCount << std::endl;
         return mnRefCount;
     }
 
     ULONG STDMETHODCALLTYPE Release() override
     {
         mnRefCount--;
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOlewObject::Release(): " << mnRefCount << std::endl;
         ULONG nRetval = mnRefCount;
         if (nRetval == 0)
         {
@@ -712,12 +744,18 @@ public:
     {
         (void)pClientSite;
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::SetClientSize()" << std::endl;
+
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE GetClientSite(IOleClientSite** ppClientSite) override
     {
         (void)ppClientSite;
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::GetClientSize()" << std::endl;
 
         return E_NOTIMPL;
     }
@@ -727,6 +765,9 @@ public:
     {
         (void)szContainerApp, szContainerObj;
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::SetHostNames()" << std::endl;
+
         return S_OK;
     }
 
@@ -734,12 +775,18 @@ public:
     {
         (void)dwSaveOption;
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::Close(" << dwSaveOption << ")" << std::endl;
+
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE SetMoniker(DWORD dwWhichMoniker, IMoniker* pmk) override
     {
         (void)dwWhichMoniker, pmk;
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::SetMoniker()" << std::endl;
 
         return S_OK;
     }
@@ -749,6 +796,9 @@ public:
     {
         (void)dwAssign, dwWhichMoniker, ppmk;
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::GetMoniker()" << std::endl;
+
         return E_NOTIMPL;
     }
 
@@ -756,6 +806,9 @@ public:
                                            DWORD dwReserved) override
     {
         (void)pDataObject, fCreation, dwReserved;
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::InitFromData()" << std::endl;
 
         return E_NOTIMPL;
     }
@@ -765,6 +818,9 @@ public:
     {
         (void)dwReserved, ppDataObject;
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::GetClipboardData()" << std::endl;
+
         return E_NOTIMPL;
     }
 
@@ -773,6 +829,9 @@ public:
     {
         (void)iVerb, lpmsg, pActiveSite, lindex, hwndParent, lprcPosRect;
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::DoVerb(" << iVerb << ")" << std::endl;
+
         return E_NOTIMPL;
     }
 
@@ -780,16 +839,34 @@ public:
     {
         (void)ppEnumOleVerb;
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::EnumVerbs()" << std::endl;
+
         return E_NOTIMPL;
     }
 
-    HRESULT STDMETHODCALLTYPE Update(void) override { return S_OK; }
+    HRESULT STDMETHODCALLTYPE Update(void) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::Update()" << std::endl;
 
-    HRESULT STDMETHODCALLTYPE IsUpToDate(void) override { return S_OK; }
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE IsUpToDate(void) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::IsUpToDate()" << std::endl;
+
+        return S_OK;
+    }
 
     HRESULT STDMETHODCALLTYPE GetUserClassID(CLSID* pClsid) override
     {
         (void)pClsid;
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::GetUserClassID()" << std::endl;
 
         return E_NOTIMPL;
     }
@@ -798,12 +875,18 @@ public:
     {
         (void)dwFormOfType, pszUserType;
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::GetUserType()" << std::endl;
+
         return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE SetExtent(DWORD dwDrawAspect, SIZEL* psizel) override
     {
         (void)dwDrawAspect;
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::SetExtent()" << std::endl;
 
         maExtent = *psizel;
 
@@ -814,6 +897,9 @@ public:
     {
         (void)dwDrawAspect;
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::GetExtent()" << std::endl;
+
         *psizel = maExtent;
 
         return S_OK;
@@ -823,12 +909,18 @@ public:
     {
         (void)pAdvSink, pdwConnection;
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::Advise()" << std::endl;
+
         return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE Unadvise(DWORD dwConnection) override
     {
         (void)dwConnection;
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::Unadvise()" << std::endl;
 
         return E_NOTIMPL;
     }
@@ -837,12 +929,18 @@ public:
     {
         (void)ppenumAdvise;
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::EnumAdvise()" << std::endl;
+
         return E_NOTIMPL;
     }
 
     HRESULT STDMETHODCALLTYPE GetMiscStatus(DWORD dwAspect, DWORD* pdwStatus) override
     {
         (void)dwAspect;
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::GetMiscStatus(" << dwAspect << ")" << std::endl;
 
         *pdwStatus = OLEMISC_STATIC;
 
@@ -852,6 +950,9 @@ public:
     HRESULT STDMETHODCALLTYPE SetColorScheme(LOGPALETTE* pLogpal) override
     {
         (void)pLogpal;
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleObject::SetColorScheme()" << std::endl;
 
         return S_OK;
     }
@@ -1018,8 +1119,8 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
     aStartupInfo.cb = sizeof(aStartupInfo);
 
     wchar_t* pCommandLine = _wcsdup(sCommandLine.data());
-    nResult = CreateProcessW(NULL, pCommandLine, NULL, NULL, TRUE, 0,
-                             NULL, NULL, &aStartupInfo, &aProcessInformation);
+    nResult = CreateProcessW(NULL, pCommandLine, NULL, NULL, TRUE, 0, NULL, NULL, &aStartupInfo,
+                             &aProcessInformation);
     free(pCommandLine);
 
     if (nResult == 0)
@@ -1688,9 +1789,9 @@ static NTSTATUS NTAPI myLdrLoadDll(PWCHAR PathToFile, ULONG Flags, UNICODE_STRIN
     fileName[ModuleFileName->Length] = L'\0';
 
     if (pGlobalParamPtr->mbVerbose)
-        std::cout << "LdrLoadDll(" << (PathToFile ? convertUTF16ToUTF8(PathToFile) : "(null)") << ", 0x" << to_uhex(Flags)
-                  << "," << convertUTF16ToUTF8(fileName.data()) << ") from "
-                  << prettyCodeAddress(_ReturnAddress()) << "..." << std::endl;
+        std::cout << "LdrLoadDll(" << (PathToFile ? convertUTF16ToUTF8(PathToFile) : "(null)")
+                  << ", 0x" << to_uhex(Flags) << "," << convertUTF16ToUTF8(fileName.data())
+                  << ") from " << prettyCodeAddress(_ReturnAddress()) << "..." << std::endl;
 
     HMODULE handle = innerMyLoadLibraryExW("LdrLoadDll", fileName.data(), NULL, Flags);
 
