@@ -1200,9 +1200,15 @@ static void myOutputDebugStringA(char* lpOutputString)
 {
     if (pGlobalParamPtr->mbVerbose)
     {
-        std::cout << "OutputDebugStringA("
-                  << convertUTF16ToUTF8(convertACPToUTF16(lpOutputString).data()) << ")"
-                  << std::endl;
+        std::wstring s = convertACPToUTF16(lpOutputString);
+        if (s.length() > 1 && s[s.length() - 1] == L'\n')
+        {
+            s.pop_back();
+            if (s[s.length() - 1] == L'\r')
+                s.pop_back();
+        }
+
+        std::cout << "OutputDebugStringA(" << convertUTF16ToUTF8(s.data()) << ")" << std::endl;
     }
     OutputDebugStringA(lpOutputString);
 }
@@ -1211,8 +1217,15 @@ static void myOutputDebugStringW(wchar_t* lpOutputString)
 {
     if (pGlobalParamPtr->mbVerbose)
     {
-        std::cout << "OutputDebugStringW(" << convertUTF16ToUTF8(lpOutputString) << ")"
-                  << std::endl;
+        std::wstring s = std::wstring(lpOutputString);
+        if (s.length() > 1 && s[s.length() - 1] == L'\n')
+        {
+            s.pop_back();
+            if (s[s.length() - 1] == L'\r')
+                s.pop_back();
+        }
+
+        std::cout << "OutputDebugStringW(" << convertUTF16ToUTF8(s.data()) << ")" << std::endl;
     }
     OutputDebugStringW(lpOutputString);
 }
