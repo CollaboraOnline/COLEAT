@@ -721,7 +721,7 @@ public:
     {
         mnRefCount++;
         if (pGlobalParamPtr->mbVerbose)
-            std::cout << this << "@myOlewObject::AddRef(): " << mnRefCount << std::endl;
+            std::cout << this << "@myOleObject::AddRef(): " << mnRefCount << std::endl;
         return mnRefCount;
     }
 
@@ -729,7 +729,7 @@ public:
     {
         mnRefCount--;
         if (pGlobalParamPtr->mbVerbose)
-            std::cout << this << "@myOlewObject::Release(): " << mnRefCount << std::endl;
+            std::cout << this << "@myOleObject::Release(): " << mnRefCount << std::endl;
         ULONG nRetval = mnRefCount;
         if (nRetval == 0)
         {
