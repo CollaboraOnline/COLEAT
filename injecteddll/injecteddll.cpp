@@ -518,6 +518,118 @@ static HRESULT __stdcall myCoGetClassObject(REFCLSID rclsid, DWORD dwClsContext,
 
 #ifdef HARDCODE_MSO_TO_CO
 
+class myEnumOLEVERB : public IEnumOLEVERB
+{
+private:
+    ULONG mnRefCount;
+    ULONG mnIndex;
+
+public:
+    myEnumOLEVERB()
+        : mnRefCount(1)
+        , mnIndex(0)
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myEnumOLEVERB::CTOR()" << std::endl;
+    }
+
+    // IUnknown
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myEnumOLEVERB::QueryInterface(" << riid << ")" << std::endl;
+        if (IsEqualIID(riid, IID_IUnknown))
+            *ppvObject = this;
+        else if (IsEqualIID(riid, IID_IEnumOLEVERB))
+            *ppvObject = this;
+        else
+            return E_NOINTERFACE;
+        AddRef();
+        return S_OK;
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef() override
+    {
+        mnRefCount++;
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myEnumOLEVERB::AddRef(): " << mnRefCount << std::endl;
+        return mnRefCount;
+    }
+
+    ULONG STDMETHODCALLTYPE Release() override
+    {
+        mnRefCount--;
+        ULONG nRetval = mnRefCount;
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myEnumOLEVERB::Release(): " << mnRefCount << std::endl;
+        if (nRetval == 0)
+            delete this;
+        return nRetval;
+    }
+
+    // IEnumOLEVERB
+    HRESULT STDMETHODCALLTYPE Next(ULONG celt, LPOLEVERB rgelt, ULONG* pceltFetched) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myEnumOLEVERB::Next(" << celt << ")" << std::endl;
+        if (mnIndex > 1)
+            return S_FALSE;
+        ULONG nIndexFirst = mnIndex;
+        ULONG nLeft = celt;
+        while (nLeft > 0)
+        {
+            if (mnIndex == 0)
+            {
+                rgelt->lVerb = 0;
+                rgelt->lpszVerbName = L"&Edit";
+                rgelt->fuFlags = 0;
+                rgelt->grfAttribs = OLEVERBATTRIB_ONCONTAINERMENU;
+                rgelt++;
+                mnIndex++;
+            }
+            else if (mnIndex == 1)
+            {
+                rgelt->lVerb = 1;
+                rgelt->lpszVerbName = L"&Open";
+                rgelt->fuFlags = 0;
+                rgelt->grfAttribs = OLEVERBATTRIB_ONCONTAINERMENU;
+                rgelt++;
+                mnIndex++;
+            }
+            nLeft--;
+        }
+        *pceltFetched = mnIndex - nIndexFirst;
+        if (*pceltFetched == celt)
+            return S_OK;
+        else
+            return S_FALSE;
+    }
+
+    HRESULT STDMETHODCALLTYPE Skip(ULONG celt) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myEnumOLEVERB::Skip(" << celt << ")" << std::endl;
+        mnIndex += celt;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE Reset() override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myEnumOLEVERB::Reset()" << std::endl;
+        mnIndex = 0;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE Clone(IEnumOLEVERB** ppenum) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myEnumOLEVERB::Clone()" << std::endl;
+        *ppenum = new myEnumOLEVERB();
+        return S_OK;
+    }
+};
+
 class myViewObject : IViewObject
 {
 private:
@@ -842,7 +954,9 @@ public:
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myOleObject::EnumVerbs()" << std::endl;
 
-        return E_NOTIMPL;
+        *ppEnumOleVerb = new myEnumOLEVERB();
+
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE Update(void) override
