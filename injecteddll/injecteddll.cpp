@@ -790,22 +790,118 @@ public:
     }
 };
 
+class myRunnableObject : IRunnableObject
+{
+private:
+    // Pointer to the myOleObject that manages this object
+    IUnknown* mpUnk;
+
+public:
+    myRunnableObject()
+        : mpUnk(NULL)
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myRunnableObject::CTOR()" << std::endl;
+    }
+
+    // Can't pass the 'this' of myOleObject when constructing the myViewObject, so have to set it
+    // separately, hmm.
+    void setUnk(IUnknown* pUnk) { mpUnk = pUnk; }
+
+    void deleteThis()
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myRunnableObject::deleteThis()" << std::endl;
+
+        delete this;
+    }
+
+    // IUnknown
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
+    {
+        return mpUnk->QueryInterface(riid, ppvObject);
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef() override { return mpUnk->AddRef(); }
+
+    ULONG STDMETHODCALLTYPE Release() override
+    {
+        ULONG nRetval = mpUnk->Release();
+
+        return nRetval;
+    }
+
+    // IRunnableObject
+    HRESULT STDMETHODCALLTYPE GetRunningClass(LPCLSID lpClsid) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myRunnableObject::GetRunningClass()" << std::endl;
+
+        IID aIID_WriterApplication{ 0x82154421, 0x0FBF, 0x11D4, 0x83, 0x13, 0x00,
+                                    0x50,       0x04,   0x52,   0x6A, 0xB4 };
+        *lpClsid = aIID_WriterApplication;
+
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE Run(LPBINDCTX pbc) override
+    {
+        (void)pbc;
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myRunnableObject::Run()" << std::endl;
+
+        return S_OK;
+    }
+
+    BOOL STDMETHODCALLTYPE IsRunning() override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myRunnableObject::IsRunning()" << std::endl;
+
+        return TRUE;
+    }
+
+    HRESULT STDMETHODCALLTYPE LockRunning(BOOL fLock, BOOL fLastUnlockCloses) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myRunnableObject::LockRunning(" << (fLock ? "YES" : "NO") << ","
+                      << (fLastUnlockCloses ? "YES" : "NO") << ")" << std::endl;
+
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE SetContainedObject(BOOL fContained) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myRunnableObject::SetContainedObject("
+                      << (fContained ? "YES" : "NO") << ")" << std::endl;
+
+        return S_OK;
+    }
+};
+
 class myOleObject : public IOleObject
 {
 private:
     ULONG mnRefCount;
     SIZEL maExtent;
+    std::wstring* mpDocumentPathname;
     myViewObject* mpViewObject;
+    myRunnableObject* mpRunnableObject;
 
 public:
-    myOleObject(HBITMAP hBitmap)
+    myOleObject(HBITMAP hBitmap, const std::wstring& sDocumentPathname)
         : mnRefCount(1)
+        , mpDocumentPathname(new std::wstring(sDocumentPathname))
         , mpViewObject(new myViewObject(hBitmap))
+        , mpRunnableObject(new myRunnableObject())
     {
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myOleObject::CTOR()" << std::endl;
 
         mpViewObject->setUnk(this);
+        mpRunnableObject->setUnk(this);
         BITMAP aBitmap;
         GetObject(hBitmap, sizeof(aBitmap), &aBitmap);
         maExtent.cx = aBitmap.bmWidth;
@@ -823,6 +919,8 @@ public:
             *ppvObject = this;
         else if (IsEqualIID(riid, IID_IViewObject))
             *ppvObject = mpViewObject;
+        else if (IsEqualIID(riid, IID_IRunnableObject))
+            *ppvObject = mpRunnableObject;
         else
             return E_NOINTERFACE;
         AddRef();
@@ -846,6 +944,8 @@ public:
         if (nRetval == 0)
         {
             mpViewObject->deleteThis();
+            mpRunnableObject->deleteThis();
+            delete mpDocumentPathname;
             delete this;
         }
         return nRetval;
@@ -943,6 +1043,8 @@ public:
 
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myOleObject::DoVerb(" << iVerb << ")" << std::endl;
+
+        // Create a Collabora Office Writer.Application editing the document
 
         return E_NOTIMPL;
     }
@@ -1263,7 +1365,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     Gdiplus::GdiplusShutdown(gdiplusToken);
 
-    *ppvObj = new myOleObject(hBitmap);
+    *ppvObj = new myOleObject(hBitmap, sDisplayName);
 
     pMalloc->Free(sDisplayName);
     pBindContext->Release();
