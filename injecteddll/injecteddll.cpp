@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cwchar>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -26,6 +27,7 @@
 
 #include <Windows.h>
 #include <gdiplus.h>
+#include <shlwapi.h>
 
 // DbgHelp.h has even more sloppier code than <Windows.h>
 #pragma warning(push)
@@ -1324,8 +1326,36 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     RegCloseKey(hUno);
 
+    // Create a fresh directory to use as the UserInstallation. We don't want this run of Collabora
+    // Office to interfere with any potentially already running Collabora Office.
+    std::error_code aError;
+    std::clock_t n = std::clock();
+    std::wstring sUserInstallation;
+    std::experimental::filesystem::path aUserInstallation;
+    while (true)
+    {
+        sUserInstallation = std::wstring(sTempPath) + L"\\coleat-convert-to." + std::to_wstring(n);
+        aUserInstallation = std::experimental::filesystem::path(sUserInstallation);
+        if (std::experimental::filesystem::create_directory(aUserInstallation, aError))
+            break;
+        n++;
+    }
+
+    wchar_t sUrl[200];
+    DWORD nUrl = sizeof(sUrl) / sizeof(sUrl[0]);
+    if (UrlCreateFromPathW(sUserInstallation.data(), sUrl, &nUrl, NULL) != S_OK)
+    {
+        std::cout << "Can not turn '" << convertUTF16ToUTF8(sUserInstallation.data()) << "' into a URL: "
+                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
+        pMalloc->Free(sDisplayName);
+        pBindContext->Release();
+        return S_FALSE;
+    }
+
     std::wstring sCommandLine = L"\"" + std::wstring(sLOPath)
-                                + L"\\soffice.exe\" --convert-to png --outdir \"" + sTempPath
+                                + L"\\soffice.exe\""
+                                + L" -env:UserInstallation=" + std::wstring(sUrl)
+                                + L" --convert-to png --outdir \"" + sUserInstallation
                                 + L"\" \"" + std::wstring(sDisplayName) + L"\"";
 
     STARTUPINFOW aStartupInfo;
@@ -1350,7 +1380,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     WaitForSingleObject(aProcessInformation.hProcess, INFINITE);
 
-    std::wstring sImageFile = std::wstring(sTempPath) + L"\\" + sBasename + L".png";
+    std::wstring sImageFile = sUserInstallation + L"\\" + sBasename + L".png";
 
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     ULONG_PTR gdiplusToken;
@@ -1358,12 +1388,13 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     Gdiplus::Bitmap* pBitmap = Gdiplus::Bitmap::FromFile(sImageFile.data());
 
-    _wremove(sImageFile.data());
-
     HBITMAP hBitmap;
     pBitmap->GetHBITMAP(Gdiplus::Color(), &hBitmap);
+    delete pBitmap;
 
     Gdiplus::GdiplusShutdown(gdiplusToken);
+
+    std::experimental::filesystem::remove_all(aUserInstallation);
 
     *ppvObj = new myOleObject(hBitmap, sDisplayName);
 
