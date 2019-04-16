@@ -60,6 +60,9 @@ static int nHookedFunctions = 0;
 
 static bool bDidAllocConsole;
 
+static IID aIID_WriterApplication{ 0x82154421, 0x0FBF, 0x11D4, 0x83, 0x13, 0x00,
+                                   0x50,       0x04,   0x52,   0x6A, 0xB4 };
+
 static DLL_DIRECTORY_COOKIE(WINAPI* pAddDllDirectory)(PCWSTR) = NULL;
 static BOOL(WINAPI* pSetDllDirectoryW)(LPCWSTR) = NULL;
 static BOOL(WINAPI* pSetDllDirectoryA)(LPCSTR) = NULL;
@@ -839,8 +842,6 @@ public:
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myRunnableObject::GetRunningClass()" << std::endl;
 
-        IID aIID_WriterApplication{ 0x82154421, 0x0FBF, 0x11D4, 0x83, 0x13, 0x00,
-                                    0x50,       0x04,   0x52,   0x6A, 0xB4 };
         *lpClsid = aIID_WriterApplication;
 
         return S_OK;
@@ -1046,9 +1047,106 @@ public:
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myOleObject::DoVerb(" << iVerb << ")" << std::endl;
 
+        // We have two verbs, Edit(0) and Open(1), but both do the same thing.
+
+        if (iVerb != 0 && iVerb != 1)
+            return E_NOTIMPL;
+
         // Create a Collabora Office Writer.Application editing the document
 
-        return E_NOTIMPL;
+        IUnknown* pWriter;
+        HRESULT nResult;
+
+        nResult = CoCreateInstance(aIID_WriterApplication, NULL, CLSCTX_LOCAL_SERVER, IID_IUnknown,
+                                   (LPVOID*)&pWriter);
+        if (nResult != S_OK)
+        {
+            std::cout << "Could not create Writer.Application object: "
+                      << WindowsErrorStringFromHRESULT(nResult) << "\n";
+            return nResult;
+        }
+
+        IDispatch* pApplication;
+        nResult = pWriter->QueryInterface(IID_IDispatch, (void**)&pApplication);
+        if (nResult != S_OK)
+        {
+            std::cout << "Could not get IDispatch from Writer.Application object: "
+                      << WindowsErrorStringFromHRESULT(nResult) << "\n";
+            pWriter->Release();
+            return nResult;
+        }
+
+        wchar_t* sDocuments = L"Documents";
+        DISPID nDocuments;
+        nResult = pApplication->GetIDsOfNames(IID_NULL, &sDocuments, 1, GetUserDefaultLCID(),
+                                              &nDocuments);
+        if (nResult != S_OK)
+        {
+            std::cout << "Could not get DISPID of 'Documents' from Writer.Application object: "
+                      << WindowsErrorStringFromHRESULT(nResult) << "\n";
+            pApplication->Release();
+            pWriter->Release();
+            return nResult;
+        }
+
+        DISPPARAMS aDocumentsArguments[] = { NULL, NULL, 0, 0 };
+        VARIANT aDocumentsResult;
+        pApplication->Invoke(nDocuments, IID_NULL, GetUserDefaultLCID(), DISPATCH_METHOD,
+                             aDocumentsArguments, &aDocumentsResult, NULL, NULL);
+        if (nResult != S_OK)
+        {
+            std::cout << "Could not create invoke 'Documents' of Writer.Application object: "
+                      << WindowsErrorStringFromHRESULT(nResult) << "\n";
+            pApplication->Release();
+            pWriter->Release();
+            return nResult;
+        }
+
+        if (aDocumentsResult.vt != VT_DISPATCH)
+        {
+            std::cout << "The 'Documents' function of Writer.Application object did not return an "
+                         "IDispatch object\n";
+            pApplication->Release();
+            pWriter->Release();
+            return E_NOTIMPL;
+        }
+
+        wchar_t* sOpen = L"Open";
+        DISPID nOpen;
+        nResult = aDocumentsResult.pdispVal->GetIDsOfNames(IID_NULL, &sOpen, 1,
+                                                           GetUserDefaultLCID(), &nOpen);
+        if (nResult != S_OK)
+        {
+            std::cout << "Could not create get DISPID of 'Open' from Writer.Documents object: "
+                      << WindowsErrorStringFromHRESULT(nResult) << "\n";
+            aDocumentsResult.pdispVal->Release();
+            pApplication->Release();
+            pWriter->Release();
+            return E_NOTIMPL;
+        }
+
+        VARIANTARG aFileName;
+        aFileName.vt = VT_BSTR;
+        aFileName.bstrVal = SysAllocString(mpDocumentPathname->data());
+        DISPPARAMS aOpenArguments[] = { &aFileName, NULL, 1, 0 };
+        VARIANT aOpenResult;
+        aDocumentsResult.pdispVal->Invoke(nOpen, IID_NULL, GetUserDefaultLCID(), DISPATCH_METHOD,
+                                          aOpenArguments, &aOpenResult, NULL, NULL);
+        if (nResult != S_OK)
+        {
+            std::cout << "Could not invoke 'Open' of Writer.Documents object: "
+                      << WindowsErrorStringFromHRESULT(nResult) << "\n";
+            aDocumentsResult.pdispVal->Release();
+            pApplication->Release();
+            pWriter->Release();
+            return nResult;
+        }
+
+        aDocumentsResult.pdispVal->Release();
+        pApplication->Release();
+        pWriter->Release();
+
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE EnumVerbs(IEnumOLEVERB** ppEnumOleVerb) override
@@ -1345,18 +1443,17 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
     DWORD nUrl = sizeof(sUrl) / sizeof(sUrl[0]);
     if (UrlCreateFromPathW(sUserInstallation.data(), sUrl, &nUrl, NULL) != S_OK)
     {
-        std::cout << "Can not turn '" << convertUTF16ToUTF8(sUserInstallation.data()) << "' into a URL: "
-                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
+        std::cout << "Can not turn '" << convertUTF16ToUTF8(sUserInstallation.data())
+                  << "' into a URL: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
         pMalloc->Free(sDisplayName);
         pBindContext->Release();
         return S_FALSE;
     }
 
-    std::wstring sCommandLine = L"\"" + std::wstring(sLOPath)
-                                + L"\\soffice.exe\""
+    std::wstring sCommandLine = L"\"" + std::wstring(sLOPath) + L"\\soffice.exe\""
                                 + L" -env:UserInstallation=" + std::wstring(sUrl)
-                                + L" --convert-to png --outdir \"" + sUserInstallation
-                                + L"\" \"" + std::wstring(sDisplayName) + L"\"";
+                                + L" --convert-to png --outdir \"" + sUserInstallation + L"\" \""
+                                + std::wstring(sDisplayName) + L"\"";
 
     STARTUPINFOW aStartupInfo;
     PROCESS_INFORMATION aProcessInformation;
