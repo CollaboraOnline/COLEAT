@@ -730,9 +730,6 @@ public:
         LineTo(hdcDraw, lprcBounds->left + 5, lprcBounds->top + 5);
 #endif
 
-        if (mpAdviseSink != NULL && (mnAdviseAspects & DVASPECT_CONTENT))
-            mpAdviseSink->OnViewChange(DVASPECT_CONTENT, -1);
-
         return S_OK;
     }
 
