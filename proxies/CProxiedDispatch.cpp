@@ -100,8 +100,9 @@ HRESULT CProxiedDispatch::genericInvoke(const std::string& rFuncName, int nInvKi
     if (rFuncName == "Open" && rParameters.size() == 1 && rParameters[0].vt == VT_BSTR
         && rParameters[0].bstrVal == NULL)
     {
-        std::cout << "HACK HACK, replacing NULL FileName with '"
-                  << convertUTF16ToUTF8(HACK_documentToOpen.data()) << "'" << std::endl;
+        if (getParam()->mbVerbose)
+            std::cout << "HACK HACK, replacing NULL FileName with '"
+                      << convertUTF16ToUTF8(HACK_documentToOpen.data()) << "'" << std::endl;
         rParameters[0].bstrVal = SysAllocString(HACK_documentToOpen.data());
         bDidHack = true;
     }
