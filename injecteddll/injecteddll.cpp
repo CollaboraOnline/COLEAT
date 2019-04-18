@@ -892,6 +892,7 @@ private:
     std::wstring* mpDocumentPathname;
     myViewObject* mpViewObject;
     myRunnableObject* mpRunnableObject;
+    std::vector<IAdviseSink*>* mpAdvises;
 
 public:
     myOleObject(HBITMAP hBitmap, const std::wstring& sDocumentPathname)
@@ -899,6 +900,7 @@ public:
         , mpDocumentPathname(new std::wstring(sDocumentPathname))
         , mpViewObject(new myViewObject(hBitmap))
         , mpRunnableObject(new myRunnableObject())
+        , mpAdvises(new std::vector<IAdviseSink*>)
     {
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myOleObject::CTOR()" << std::endl;
@@ -949,6 +951,7 @@ public:
             mpViewObject->deleteThis();
             mpRunnableObject->deleteThis();
             delete mpDocumentPathname;
+            delete mpAdvises;
             delete this;
         }
         return nRetval;
@@ -1223,22 +1226,26 @@ public:
 
     HRESULT STDMETHODCALLTYPE Advise(IAdviseSink* pAdvSink, DWORD* pdwConnection) override
     {
-        (void)pAdvSink, pdwConnection;
+        mpAdvises->push_back(pAdvSink);
+        *pdwConnection = mpAdvises->size() - 1;
 
         if (pGlobalParamPtr->mbVerbose)
-            std::cout << this << "@myOleObject::Advise()" << std::endl;
+            std::cout << this << "@myOleObject::Advise(): " << *pdwConnection << std::endl;
 
-        return E_NOTIMPL;
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE Unadvise(DWORD dwConnection) override
     {
-        (void)dwConnection;
-
         if (pGlobalParamPtr->mbVerbose)
-            std::cout << this << "@myOleObject::Unadvise()" << std::endl;
+            std::cout << this << "@myOleObject::Unadvise(" << dwConnection << ")" << std::endl;
 
-        return E_NOTIMPL;
+        if (dwConnection >= mpAdvises->size() || (*mpAdvises)[dwConnection] == nullptr)
+            return OLE_E_NOCONNECTION;
+
+        (*mpAdvises)[dwConnection] = nullptr;
+
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE EnumAdvise(IEnumSTATDATA** ppenumAdvise) override
