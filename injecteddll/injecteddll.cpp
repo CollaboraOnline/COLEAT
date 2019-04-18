@@ -1282,6 +1282,8 @@ public:
     }
 };
 
+std::wstring HACK_documentToOpen;
+
 static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid, DWORD renderopt,
                                               LPFORMATETC lpFormatEtc, LPOLECLIENTSITE pClientSite,
                                               LPSTORAGE pStg, LPVOID* ppvObj)
@@ -1502,6 +1504,8 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
     std::experimental::filesystem::remove_all(aUserInstallation);
 
     *ppvObj = new myOleObject(hBitmap, sDisplayName);
+
+    HACK_documentToOpen = std::wstring(sDisplayName);
 
     pMalloc->Free(sDisplayName);
     pBindContext->Release();

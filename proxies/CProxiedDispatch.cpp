@@ -79,6 +79,10 @@ CProxiedDispatch* CProxiedDispatch::get(IUnknown* pBaseClassUnknown, IDispatch* 
                                 sPropName);
 }
 
+#ifdef HARDCODE_MSO_TO_CO
+extern std::wstring HACK_documentToOpen;
+#endif
+
 HRESULT CProxiedDispatch::genericInvoke(const std::string& rFuncName, int nInvKind,
                                         std::vector<VARIANT>& rParameters, void* pRetval)
 {
@@ -88,6 +92,20 @@ HRESULT CProxiedDispatch::genericInvoke(const std::string& rFuncName, int nInvKi
         std::cout << this << "@CProxiedDispatch::genericInvoke(" << rFuncName << ")..."
                   << std::endl;
     }
+
+#ifdef HARDCODE_MSO_TO_CO
+    // HACK HACK. Should be handled in the Collabora Office code of course but quicker now to do it
+    // here while iterating.
+    bool bDidHack = false;
+    if (rFuncName == "Open" && rParameters.size() == 1 && rParameters[0].vt == VT_BSTR
+        && rParameters[0].bstrVal == NULL)
+    {
+        std::cout << "HACK HACK, replacing NULL FileName with '"
+                  << convertUTF16ToUTF8(HACK_documentToOpen.data()) << "'" << std::endl;
+        rParameters[0].bstrVal = SysAllocString(HACK_documentToOpen.data());
+        bDidHack = true;
+    }
+#endif
 
     HRESULT nResult = S_OK;
 
@@ -196,6 +214,11 @@ HRESULT CProxiedDispatch::genericInvoke(const std::string& rFuncName, int nInvKi
     if (getParam()->mbVerbose)
         std::cout << "..." << this << "@CProxiedDispatch::genericInvoke(" << rFuncName << "): S_OK"
                   << std::endl;
+
+#ifdef HARDCODE_MSO_TO_CO
+    if (bDidHack)
+        rParameters[0].bstrVal = NULL;
+#endif
 
     return S_OK;
 }
