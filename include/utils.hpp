@@ -760,7 +760,96 @@ inline std::basic_ostream<char, traits>& operator<<(std::basic_ostream<char, tra
 {
     if (rVariant.vt & (VT_VECTOR | VT_ARRAY | VT_BYREF))
     {
-        return stream << "<" << VARTYPE_to_string(rVariant.vt) << ">";
+        stream << "<" << VARTYPE_to_string(rVariant.vt) << ">";
+
+        if (rVariant.vt & VT_BYREF && rVariant.byref != nullptr)
+        {
+            switch (rVariant.vt & VT_TYPEMASK)
+            {
+                case VT_EMPTY:
+                case VT_NULL:
+                    // The VARTYPE_to_string is all that is needed.
+                    break;
+                case VT_I2:
+                    stream << *rVariant.piVal;
+                    break;
+                case VT_I4:
+                    stream << *rVariant.plVal;
+                    break;
+                case VT_R4:
+                    stream << *rVariant.pfltVal;
+                    break;
+                case VT_R8:
+                    stream << *rVariant.pdblVal;
+                    break;
+                case VT_CY:
+                    stream << rVariant.pcyVal->int64;
+                    break;
+                case VT_DATE:
+                    stream << (double)(*rVariant.pdate);
+                    break; // FIXME
+                case VT_BSTR:
+                    stream << *rVariant.pbstrVal;
+                    break;
+                case VT_DISPATCH:
+                    stream << *rVariant.ppdispVal;
+                    break;
+                case VT_ERROR:
+                    stream << HRESULT_to_string(*rVariant.plVal);
+                    break;
+                case VT_BOOL:
+                    stream << (*rVariant.pboolVal ? "True" : "False");
+                    break;
+                case VT_UNKNOWN:
+                    stream << *rVariant.ppunkVal;
+                    break;
+                case VT_DECIMAL:
+                    stream << to_uhex(rVariant.pdecVal->Hi32, 8) << to_ullhex(rVariant.pdecVal->Lo64, 16);
+                    break;
+                case VT_I1:
+                    stream << (int)(*rVariant.pbVal);
+                    break;
+                case VT_UI1:
+                    stream << (unsigned int)(*rVariant.pbVal);
+                    break;
+                case VT_UI2:
+                    stream << (unsigned short)(*rVariant.piVal);
+                    break;
+                case VT_UI4:
+                    stream << (unsigned int)(*rVariant.plVal);
+                    break;
+                case VT_I8:
+                    stream << *rVariant.pllVal;
+                    break;
+                case VT_UI8:
+                    stream << (unsigned long long)(*rVariant.pllVal);
+                    break;
+                case VT_INT:
+                    stream << *rVariant.plVal;
+                    break;
+                case VT_UINT:
+                    stream << (unsigned int)(*rVariant.plVal);
+                    break;
+                case VT_HRESULT:
+                    stream << HRESULT_to_string(*rVariant.plVal);
+                    break;
+                case VT_PTR:
+                    stream << *(void**)rVariant.byref;
+                    break;
+                    // Do these make sense with VT_BYREF?
+                    // VT_CARRAY
+                    // VT_SAFEARRAY
+                    // VT_LPSTR
+                    // VT_LPWSTR
+                    // VT_INT_PTR
+                    // VT_UINT_PTR
+                default:
+                    stream << "?(" << (rVariant.vt & VT_TYPEMASK) << ")";
+                    break;
+            }
+        }
+
+        return stream;
     }
 
     stream << "<" << VARTYPE_to_string(rVariant.vt & VT_TYPEMASK) << ">";
