@@ -1227,7 +1227,7 @@ public:
     HRESULT STDMETHODCALLTYPE Advise(IAdviseSink* pAdvSink, DWORD* pdwConnection) override
     {
         mpAdvises->push_back(pAdvSink);
-        *pdwConnection = mpAdvises->size() - 1;
+        *pdwConnection = mpAdvises->size();
 
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myOleObject::Advise(): " << *pdwConnection << std::endl;
@@ -1240,10 +1240,11 @@ public:
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myOleObject::Unadvise(" << dwConnection << ")" << std::endl;
 
-        if (dwConnection >= mpAdvises->size() || (*mpAdvises)[dwConnection] == nullptr)
+        if (dwConnection == 0 || dwConnection > mpAdvises->size()
+            || (*mpAdvises)[dwConnection - 1] == nullptr)
             return OLE_E_NOCONNECTION;
 
-        (*mpAdvises)[dwConnection] = nullptr;
+        (*mpAdvises)[dwConnection - 1] = nullptr;
 
         return S_OK;
     }
