@@ -218,7 +218,10 @@ HRESULT CProxiedDispatch::genericInvoke(const std::string& rFuncName, int nInvKi
 
 #ifdef HARDCODE_MSO_TO_CO
     if (bDidHack)
+    {
+        SysFreeString(rParameters[0].bstrVal);
         rParameters[0].bstrVal = NULL;
+    }
 #endif
 
     return S_OK;
@@ -355,6 +358,10 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
         }
     }
 
+#ifdef HARDCODE_MSO_TO_CO
+    std::wstring sHACK_funcName;
+#endif
+
     if (getParam()->mbTrace)
     {
         std::cout << msLibName << "." << std::flush;
@@ -382,7 +389,12 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
 
         if (pTI == NULL)
             if (mpDispIdToName->count(dispIdMember))
+            {
                 std::cout << (*mpDispIdToName)[dispIdMember][0];
+#ifdef HARDCODE_MSO_TO_CO
+                sHACK_funcName = convertUTF8ToUTF16((*mpDispIdToName)[dispIdMember][0].data());
+#endif
+            }
             else
                 std::cout << dispIdMember;
         else
@@ -395,6 +407,9 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
             else
             {
                 std::cout << convertUTF16ToUTF8(sFuncName);
+#ifdef HARDCODE_MSO_TO_CO
+                sHACK_funcName = std::wstring(sFuncName);
+#endif
                 SysFreeString(sFuncName);
             }
         }
@@ -451,10 +466,33 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
         std::cout << this << "@CProxiedDispatch::Invoke(0x" << to_hex(dispIdMember) << ")..."
                   << std::endl;
 
+#ifdef HARDCODE_MSO_TO_CO
+    bool bDidHack = false;
+    if (strcmp(msLibName, "Word") == 0 && sHACK_funcName == L"FileOpen" && pDispParams->cArgs == 4
+        && pDispParams->rgvarg[3].vt == (VT_BYREF|VT_BSTR) && *(pDispParams->rgvarg[3].pbstrVal) == NULL)
+    {
+        if (getParam()->mbVerbose)
+            std::cout << "HACK HACK, replacing NULL Name with '"
+                      << convertUTF16ToUTF8(HACK_documentToOpen.data()) << "'" << std::endl;
+        pDispParams->rgvarg[3].vt = VT_BSTR;
+        pDispParams->rgvarg[3].bstrVal = SysAllocString(HACK_documentToOpen.data());
+        bDidHack = true;
+    }
+#endif
+
     increaseIndent();
     nResult = mpDispatchToProxy->Invoke(dispIdMember, riid, lcid, wFlags, pDispParams, pVarResult,
                                         pExcepInfo, puArgErr);
     decreaseIndent();
+
+#ifdef HARDCODE_MSO_TO_CO
+    if (bDidHack)
+    {
+        SysFreeString(pDispParams->rgvarg[3].bstrVal);
+        pDispParams->rgvarg[3].vt = (VT_BYREF|VT_BSTR);
+        *(pDispParams->rgvarg[3].pbstrVal) = NULL;
+    }
+#endif
 
     std::string sPrettyResultTypeName;
 
