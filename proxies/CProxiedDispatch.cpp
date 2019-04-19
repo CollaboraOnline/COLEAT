@@ -467,16 +467,29 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
                   << std::endl;
 
 #ifdef HARDCODE_MSO_TO_CO
-    bool bDidHack = false;
+    bool bDidHackFileOpen = false;
+    bool bDidHackFileSaveAs = false;
     if (strcmp(msLibName, "Word") == 0 && sHACK_funcName == L"FileOpen" && pDispParams->cArgs == 4
-        && pDispParams->rgvarg[3].vt == (VT_BYREF|VT_BSTR) && *(pDispParams->rgvarg[3].pbstrVal) == NULL)
+        && pDispParams->rgvarg[3].vt == (VT_BYREF | VT_BSTR)
+        && *(pDispParams->rgvarg[3].pbstrVal) == NULL)
     {
         if (getParam()->mbVerbose)
             std::cout << "HACK HACK, replacing NULL Name with '"
                       << convertUTF16ToUTF8(HACK_documentToOpen.data()) << "'" << std::endl;
         pDispParams->rgvarg[3].vt = VT_BSTR;
         pDispParams->rgvarg[3].bstrVal = SysAllocString(HACK_documentToOpen.data());
-        bDidHack = true;
+        bDidHackFileOpen = true;
+    }
+    else if (strcmp(msLibName, "Word") == 0 && sHACK_funcName == L"FileSaveAs"
+             && pDispParams->cArgs == 5 && pDispParams->rgvarg[4].vt == (VT_BYREF | VT_BSTR)
+             && *(pDispParams->rgvarg[4].pbstrVal) == NULL)
+    {
+        if (getParam()->mbVerbose)
+            std::cout << "HACK HACK, replacing NULL Name with '"
+                      << convertUTF16ToUTF8(HACK_documentToOpen.data()) << "'" << std::endl;
+        pDispParams->rgvarg[4].vt = VT_BSTR;
+        pDispParams->rgvarg[4].bstrVal = SysAllocString(HACK_documentToOpen.data());
+        bDidHackFileSaveAs = true;
     }
 #endif
 
@@ -486,11 +499,17 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
     decreaseIndent();
 
 #ifdef HARDCODE_MSO_TO_CO
-    if (bDidHack)
+    if (bDidHackFileOpen)
     {
         SysFreeString(pDispParams->rgvarg[3].bstrVal);
-        pDispParams->rgvarg[3].vt = (VT_BYREF|VT_BSTR);
+        pDispParams->rgvarg[3].vt = (VT_BYREF | VT_BSTR);
         *(pDispParams->rgvarg[3].pbstrVal) = NULL;
+    }
+    else if (bDidHackFileSaveAs)
+    {
+        SysFreeString(pDispParams->rgvarg[4].bstrVal);
+        pDispParams->rgvarg[4].vt = (VT_BYREF | VT_BSTR);
+        *(pDispParams->rgvarg[4].pbstrVal) = NULL;
     }
 #endif
 
