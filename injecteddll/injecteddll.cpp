@@ -756,7 +756,7 @@ public:
             return S_FALSE;
         }
 
-        const DWORD nBytes = (wcslen(msDisplayName) + 1) * 2;
+        const size_t nBytes = (wcslen(msDisplayName) + 1) * 2;
         *ppszDisplayName = (LPOLESTR)pMalloc->Alloc(nBytes);
         memcpy(*ppszDisplayName, msDisplayName, nBytes);
 
@@ -1540,7 +1540,7 @@ public:
     HRESULT STDMETHODCALLTYPE Advise(IAdviseSink* pAdvSink, DWORD* pdwConnection) override
     {
         mpAdvises->push_back(pAdvSink);
-        *pdwConnection = mpAdvises->size();
+        *pdwConnection = (DWORD) mpAdvises->size();
 
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myOleObject::Advise(): " << *pdwConnection << std::endl;
