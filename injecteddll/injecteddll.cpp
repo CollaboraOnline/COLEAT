@@ -635,6 +635,178 @@ public:
     }
 };
 
+class myOleLink : IOleLink
+{
+private:
+    // Pointer to the myOleObject that manages this object
+    IUnknown* mpUnk;
+    DWORD mnUpdateOptions;
+    LPMONIKER mpLinkSrc;
+    const wchar_t* msDisplayName;
+
+public:
+    myOleLink(LPMONIKER pmkLinkSrc)
+        : mpUnk(NULL)
+        , mnUpdateOptions(OLEUPDATE_ALWAYS)
+        , mpLinkSrc(pmkLinkSrc)
+        , msDisplayName(L"")
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleLink::CTOR(" << pmkLinkSrc << ")" << std::endl;
+
+        if (mpLinkSrc)
+            mpLinkSrc->AddRef();
+    }
+
+    // Can't pass the 'this' of myOleObject when constructing the myOleLink, so have to set it
+    // separately, hmm.
+    void setUnk(IUnknown* pUnk) { mpUnk = pUnk; }
+
+    void deleteThis()
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleLink::deleteThis()" << std::endl;
+
+        if (mpLinkSrc)
+            mpLinkSrc->Release();
+        delete this;
+    }
+
+    // IUnknown
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
+    {
+        return mpUnk->QueryInterface(riid, ppvObject);
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef() override { return mpUnk->AddRef(); }
+
+    ULONG STDMETHODCALLTYPE Release() override
+    {
+        ULONG nRetval = mpUnk->Release();
+        return nRetval;
+    }
+
+    // IOleLink
+    HRESULT STDMETHODCALLTYPE SetUpdateOptions(DWORD dwUpdateOpt) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleLink::SetUpdateOptions(" << std::hex << dwUpdateOpt << ")"
+                      << std::endl;
+        mnUpdateOptions = dwUpdateOpt;
+
+        return S_OK;
+    }
+
+    virtual HRESULT STDMETHODCALLTYPE GetUpdateOptions(DWORD* pdwUpdateOpt) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleLink::GetUpdateOptions(): " << std::hex << mnUpdateOptions
+                      << std::endl;
+        *pdwUpdateOpt = mnUpdateOptions;
+
+        return S_OK;
+    }
+
+    virtual HRESULT STDMETHODCALLTYPE SetSourceMoniker(IMoniker* pmk, REFCLSID rclsid) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleLink::SetSourceMoniker(" << pmk << "," << rclsid << ")"
+                      << std::endl;
+        if (mpLinkSrc)
+            mpLinkSrc->Release();
+        mpLinkSrc = pmk;
+        if (mpLinkSrc)
+            mpLinkSrc->AddRef();
+
+        return S_OK;
+    }
+
+    virtual HRESULT STDMETHODCALLTYPE GetSourceMoniker(IMoniker** ppmk) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleLink::GetSourceMoniker()" << std::endl;
+
+        *ppmk = mpLinkSrc;
+
+        return S_OK;
+    }
+
+    virtual HRESULT STDMETHODCALLTYPE SetSourceDisplayName(LPCOLESTR pszStatusText) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleLink::SetSourceDisplayName(" << pszStatusText << ")"
+                      << std::endl;
+
+        msDisplayName = pszStatusText;
+
+        return S_OK;
+    }
+
+    virtual HRESULT STDMETHODCALLTYPE GetSourceDisplayName(LPOLESTR* ppszDisplayName) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleLink::GetSourceDisplayName()" << std::endl;
+
+        HRESULT nResult;
+        IMalloc* pMalloc;
+        nResult = CoGetMalloc(1, &pMalloc);
+        if (nResult != S_OK)
+        {
+            std::cout << "CoGetMalloc failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
+            return S_FALSE;
+        }
+
+        const DWORD nBytes = (wcslen(msDisplayName) + 1) * 2;
+        *ppszDisplayName = (LPOLESTR)pMalloc->Alloc(nBytes);
+        memcpy(*ppszDisplayName, msDisplayName, nBytes);
+
+        return S_OK;
+    }
+
+    virtual HRESULT STDMETHODCALLTYPE BindToSource(DWORD bindflags, IBindCtx* pbc) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleLink::BindToSource(" << std::hex << bindflags << "," << pbc
+                      << ")" << std::endl;
+
+        return E_NOTIMPL;
+    }
+
+    virtual HRESULT STDMETHODCALLTYPE BindIfRunning() override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleLink::BindIfRunning()" << std::endl;
+
+        return E_NOTIMPL;
+    }
+
+    virtual HRESULT STDMETHODCALLTYPE GetBoundSource(IUnknown** ppunk) override
+    {
+        (void)ppunk;
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleLink::GetBoundSource()" << std::endl;
+
+        return E_NOTIMPL;
+    }
+
+    virtual HRESULT STDMETHODCALLTYPE UnbindSource() override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleLink::UnbindSource()" << std::endl;
+
+        return E_NOTIMPL;
+    }
+
+    virtual HRESULT STDMETHODCALLTYPE Update(IBindCtx* pbc) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myOleLink::Update(" << pbc << ")" << std::endl;
+
+        return E_NOTIMPL;
+    }
+};
+
 class myViewObject : IViewObject
 {
 private:
@@ -890,14 +1062,16 @@ private:
     ULONG mnRefCount;
     SIZEL maExtent;
     std::wstring* mpDocumentPathname;
+    myOleLink* mpOleLink;
     myViewObject* mpViewObject;
     myRunnableObject* mpRunnableObject;
     std::vector<IAdviseSink*>* mpAdvises;
 
 public:
-    myOleObject(HBITMAP hBitmap, const std::wstring& sDocumentPathname)
+    myOleObject(LPMONIKER pmkLinkSrc, HBITMAP hBitmap, const std::wstring& sDocumentPathname)
         : mnRefCount(1)
         , mpDocumentPathname(new std::wstring(sDocumentPathname))
+        , mpOleLink(new myOleLink(pmkLinkSrc))
         , mpViewObject(new myViewObject(hBitmap))
         , mpRunnableObject(new myRunnableObject())
         , mpAdvises(new std::vector<IAdviseSink*>)
@@ -905,6 +1079,7 @@ public:
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myOleObject::CTOR()" << std::endl;
 
+        mpOleLink->setUnk(this);
         mpViewObject->setUnk(this);
         mpRunnableObject->setUnk(this);
         BITMAP aBitmap;
@@ -922,6 +1097,8 @@ public:
             *ppvObject = this;
         else if (IsEqualIID(riid, IID_IOleObject))
             *ppvObject = this;
+        else if (IsEqualIID(riid, IID_IOleLink))
+            *ppvObject = mpOleLink;
         else if (IsEqualIID(riid, IID_IViewObject))
             *ppvObject = mpViewObject;
         else if (IsEqualIID(riid, IID_IRunnableObject))
@@ -948,6 +1125,7 @@ public:
         ULONG nRetval = mnRefCount;
         if (nRetval == 0)
         {
+            mpOleLink->deleteThis();
             mpViewObject->deleteThis();
             mpRunnableObject->deleteThis();
             delete mpDocumentPathname;
@@ -1503,7 +1681,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     std::experimental::filesystem::remove_all(aUserInstallation);
 
-    *ppvObj = new myOleObject(hBitmap, sDisplayName);
+    *ppvObj = new myOleObject(pmkLinkSrc, hBitmap, sDisplayName);
 
     HACK_documentToOpen = std::wstring(sDisplayName);
 
