@@ -807,6 +807,135 @@ public:
     }
 };
 
+class myDataObject : IDataObject
+{
+private:
+    // Pointer to the myOleObject that manages this object
+    IUnknown* mpUnk;
+
+public:
+    myDataObject()
+        : mpUnk(NULL)
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myDataObject::CTOR()" << std::endl;
+    }
+
+    // Can't pass the 'this' of myOleObject when constructing the myDataObject, so have to set it
+    // separately, hmm.
+    void setUnk(IUnknown* pUnk) { mpUnk = pUnk; }
+
+    void deleteThis()
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myDataObject::deleteThis()" << std::endl;
+
+        delete this;
+    }
+
+    // IUnknown
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
+    {
+        return mpUnk->QueryInterface(riid, ppvObject);
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef() override { return mpUnk->AddRef(); }
+
+    ULONG STDMETHODCALLTYPE Release() override
+    {
+        ULONG nRetval = mpUnk->Release();
+        return nRetval;
+    }
+
+    // IDataObject
+    HRESULT STDMETHODCALLTYPE GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myDataObject::GetData(" << pformatetcIn << "," << pmedium << ")"
+                      << std::endl;
+
+        return E_NOTIMPL;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetDataHere(FORMATETC* pformatetc, STGMEDIUM* pmedium) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myDataObject::GetDataHere(" << pformatetc << "," << pmedium
+                      << ")" << std::endl;
+
+        return E_NOTIMPL;
+    }
+
+    HRESULT STDMETHODCALLTYPE QueryGetData(FORMATETC* pformatetc) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myDataObject::QueryGetData(" << pformatetc << ")" << std::endl;
+
+        return E_NOTIMPL;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetCanonicalFormatEtc(FORMATETC* pformatetcIn,
+                                                    FORMATETC* pformatetcOut) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myDataObject::GetCanonicalFormatEtc(" << pformatetcIn << ","
+                      << pformatetcOut << ")" << std::endl;
+
+        return E_NOTIMPL;
+    }
+
+    HRESULT STDMETHODCALLTYPE SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium,
+                                      BOOL fRelease) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myDataObject::SetData(" << pformatetc << "," << pmedium
+                      << (fRelease ? "YES" : "NO") << ")" << std::endl;
+
+        return E_NOTIMPL;
+    }
+
+    HRESULT STDMETHODCALLTYPE EnumFormatEtc(DWORD dwDirection,
+                                            IEnumFORMATETC** ppenumFormatEtc) override
+    {
+        (void)dwDirection, ppenumFormatEtc;
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myDataObject::EnumFormatEtc()" << std::endl;
+
+        return E_NOTIMPL;
+    }
+
+    HRESULT STDMETHODCALLTYPE DAdvise(FORMATETC* pformatetc, DWORD advf, IAdviseSink* pAdvSink,
+                                      DWORD* pdwConnection) override
+    {
+        (void)pdwConnection;
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myDataObject::DAdvise(" << pformatetc << "," << std::hex << advf
+                      << "," << pAdvSink << ")" << std::endl;
+
+        return E_NOTIMPL;
+    }
+
+    HRESULT STDMETHODCALLTYPE DUnadvise(DWORD dwConnection) override
+    {
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myDataObject::DUnadvise(" << dwConnection << ")" << std::endl;
+
+        return E_NOTIMPL;
+    }
+
+    HRESULT STDMETHODCALLTYPE EnumDAdvise(IEnumSTATDATA** ppenumAdvise) override
+    {
+        (void)ppenumAdvise;
+
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << this << "@myDataObject::EnumDAdvise()" << std::endl;
+
+        return E_NOTIMPL;
+    }
+};
+
 class myViewObject : IViewObject
 {
 private:
@@ -1063,6 +1192,7 @@ private:
     SIZEL maExtent;
     std::wstring* mpDocumentPathname;
     myOleLink* mpOleLink;
+    myDataObject* mpDataObject;
     myViewObject* mpViewObject;
     myRunnableObject* mpRunnableObject;
     std::vector<IAdviseSink*>* mpAdvises;
@@ -1072,6 +1202,7 @@ public:
         : mnRefCount(1)
         , mpDocumentPathname(new std::wstring(sDocumentPathname))
         , mpOleLink(new myOleLink(pmkLinkSrc))
+        , mpDataObject(new myDataObject())
         , mpViewObject(new myViewObject(hBitmap))
         , mpRunnableObject(new myRunnableObject())
         , mpAdvises(new std::vector<IAdviseSink*>)
@@ -1080,6 +1211,7 @@ public:
             std::cout << this << "@myOleObject::CTOR()" << std::endl;
 
         mpOleLink->setUnk(this);
+        mpDataObject->setUnk(this);
         mpViewObject->setUnk(this);
         mpRunnableObject->setUnk(this);
         BITMAP aBitmap;
@@ -1099,6 +1231,8 @@ public:
             *ppvObject = this;
         else if (IsEqualIID(riid, IID_IOleLink))
             *ppvObject = mpOleLink;
+        else if (IsEqualIID(riid, IID_IDataObject))
+            *ppvObject = mpDataObject;
         else if (IsEqualIID(riid, IID_IViewObject))
             *ppvObject = mpViewObject;
         else if (IsEqualIID(riid, IID_IRunnableObject))
@@ -1126,6 +1260,7 @@ public:
         if (nRetval == 0)
         {
             mpOleLink->deleteThis();
+            mpDataObject->deleteThis();
             mpViewObject->deleteThis();
             mpRunnableObject->deleteThis();
             delete mpDocumentPathname;
