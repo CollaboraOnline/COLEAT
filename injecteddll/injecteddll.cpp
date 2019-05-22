@@ -521,6 +521,107 @@ static HRESULT __stdcall myCoGetClassObject(REFCLSID rclsid, DWORD dwClsContext,
     return nRetval;
 }
 
+static HRESULT createWriterEditing(const std::wstring* pDocumentPathname, IDispatch** ppDocument)
+{
+    // Create a Collabora Office Writer.Application editing the document
+
+    IUnknown* pWriter;
+    HRESULT nResult;
+
+    nResult = CoCreateInstance(aIID_WriterApplication, NULL, CLSCTX_LOCAL_SERVER, IID_IUnknown,
+                               (LPVOID*)&pWriter);
+    if (nResult != S_OK)
+    {
+        std::cout << "Could not create Writer.Application object: "
+                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
+        return nResult;
+    }
+
+    IDispatch* pApplication;
+    nResult = pWriter->QueryInterface(IID_IDispatch, (void**)&pApplication);
+    if (nResult != S_OK)
+    {
+        std::cout << "Could not get IDispatch from Writer.Application object: "
+                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
+        pWriter->Release();
+        return nResult;
+    }
+
+    wchar_t* sDocuments = L"Documents";
+    DISPID nDocuments;
+    nResult = pApplication->GetIDsOfNames(IID_NULL, &sDocuments, 1, GetUserDefaultLCID(),
+                                          &nDocuments);
+    if (nResult != S_OK)
+    {
+        std::cout << "Could not get DISPID of 'Documents' from Writer.Application object: "
+                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
+        pApplication->Release();
+        pWriter->Release();
+        return nResult;
+    }
+
+    DISPPARAMS aDocumentsArguments[] = { NULL, NULL, 0, 0 };
+    VARIANT aDocumentsResult;
+    pApplication->Invoke(nDocuments, IID_NULL, GetUserDefaultLCID(), DISPATCH_METHOD,
+                         aDocumentsArguments, &aDocumentsResult, NULL, NULL);
+    if (nResult != S_OK)
+    {
+        std::cout << "Could not create invoke 'Documents' of Writer.Application object: "
+                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
+        pApplication->Release();
+        pWriter->Release();
+        return nResult;
+    }
+
+    if (aDocumentsResult.vt != VT_DISPATCH)
+    {
+        std::cout << "The 'Documents' function of Writer.Application object did not return an "
+                     "IDispatch object\n";
+        pApplication->Release();
+        pWriter->Release();
+        return E_NOTIMPL;
+    }
+
+    wchar_t* sOpen = L"Open";
+    DISPID nOpen;
+    nResult = aDocumentsResult.pdispVal->GetIDsOfNames(IID_NULL, &sOpen, 1,
+                                                       GetUserDefaultLCID(), &nOpen);
+    if (nResult != S_OK)
+    {
+        std::cout << "Could not create get DISPID of 'Open' from Writer.Documents object: "
+                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
+        aDocumentsResult.pdispVal->Release();
+        pApplication->Release();
+        pWriter->Release();
+        return E_NOTIMPL;
+    }
+
+    VARIANTARG aFileName;
+    aFileName.vt = VT_BSTR;
+    aFileName.bstrVal = SysAllocString(pDocumentPathname->data());
+    DISPPARAMS aOpenArguments[] = { &aFileName, NULL, 1, 0 };
+    VARIANT aOpenResult;
+    aDocumentsResult.pdispVal->Invoke(nOpen, IID_NULL, GetUserDefaultLCID(), DISPATCH_METHOD,
+                                      aOpenArguments, &aOpenResult, NULL, NULL);
+    if (nResult != S_OK)
+    {
+        std::cout << "Could not invoke 'Open' of Writer.Documents object: "
+                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
+        aDocumentsResult.pdispVal->Release();
+        pApplication->Release();
+        pWriter->Release();
+        return nResult;
+    }
+
+    if (ppDocument != nullptr)
+        *ppDocument = aOpenResult.pdispVal;
+
+    pApplication->Release();
+    pWriter->Release();
+
+    return S_OK;
+}
+
 #ifdef HARDCODE_MSO_TO_CO
 
 class myEnumOLEVERB : public IEnumOLEVERB
@@ -1414,101 +1515,7 @@ public:
         if (iVerb != 0 && iVerb != 1)
             return E_NOTIMPL;
 
-        // Create a Collabora Office Writer.Application editing the document
-
-        IUnknown* pWriter;
-        HRESULT nResult;
-
-        nResult = CoCreateInstance(aIID_WriterApplication, NULL, CLSCTX_LOCAL_SERVER, IID_IUnknown,
-                                   (LPVOID*)&pWriter);
-        if (nResult != S_OK)
-        {
-            std::cout << "Could not create Writer.Application object: "
-                      << WindowsErrorStringFromHRESULT(nResult) << "\n";
-            return nResult;
-        }
-
-        IDispatch* pApplication;
-        nResult = pWriter->QueryInterface(IID_IDispatch, (void**)&pApplication);
-        if (nResult != S_OK)
-        {
-            std::cout << "Could not get IDispatch from Writer.Application object: "
-                      << WindowsErrorStringFromHRESULT(nResult) << "\n";
-            pWriter->Release();
-            return nResult;
-        }
-
-        wchar_t* sDocuments = L"Documents";
-        DISPID nDocuments;
-        nResult = pApplication->GetIDsOfNames(IID_NULL, &sDocuments, 1, GetUserDefaultLCID(),
-                                              &nDocuments);
-        if (nResult != S_OK)
-        {
-            std::cout << "Could not get DISPID of 'Documents' from Writer.Application object: "
-                      << WindowsErrorStringFromHRESULT(nResult) << "\n";
-            pApplication->Release();
-            pWriter->Release();
-            return nResult;
-        }
-
-        DISPPARAMS aDocumentsArguments[] = { NULL, NULL, 0, 0 };
-        VARIANT aDocumentsResult;
-        pApplication->Invoke(nDocuments, IID_NULL, GetUserDefaultLCID(), DISPATCH_METHOD,
-                             aDocumentsArguments, &aDocumentsResult, NULL, NULL);
-        if (nResult != S_OK)
-        {
-            std::cout << "Could not create invoke 'Documents' of Writer.Application object: "
-                      << WindowsErrorStringFromHRESULT(nResult) << "\n";
-            pApplication->Release();
-            pWriter->Release();
-            return nResult;
-        }
-
-        if (aDocumentsResult.vt != VT_DISPATCH)
-        {
-            std::cout << "The 'Documents' function of Writer.Application object did not return an "
-                         "IDispatch object\n";
-            pApplication->Release();
-            pWriter->Release();
-            return E_NOTIMPL;
-        }
-
-        wchar_t* sOpen = L"Open";
-        DISPID nOpen;
-        nResult = aDocumentsResult.pdispVal->GetIDsOfNames(IID_NULL, &sOpen, 1,
-                                                           GetUserDefaultLCID(), &nOpen);
-        if (nResult != S_OK)
-        {
-            std::cout << "Could not create get DISPID of 'Open' from Writer.Documents object: "
-                      << WindowsErrorStringFromHRESULT(nResult) << "\n";
-            aDocumentsResult.pdispVal->Release();
-            pApplication->Release();
-            pWriter->Release();
-            return E_NOTIMPL;
-        }
-
-        VARIANTARG aFileName;
-        aFileName.vt = VT_BSTR;
-        aFileName.bstrVal = SysAllocString(mpDocumentPathname->data());
-        DISPPARAMS aOpenArguments[] = { &aFileName, NULL, 1, 0 };
-        VARIANT aOpenResult;
-        aDocumentsResult.pdispVal->Invoke(nOpen, IID_NULL, GetUserDefaultLCID(), DISPATCH_METHOD,
-                                          aOpenArguments, &aOpenResult, NULL, NULL);
-        if (nResult != S_OK)
-        {
-            std::cout << "Could not invoke 'Open' of Writer.Documents object: "
-                      << WindowsErrorStringFromHRESULT(nResult) << "\n";
-            aDocumentsResult.pdispVal->Release();
-            pApplication->Release();
-            pWriter->Release();
-            return nResult;
-        }
-
-        aDocumentsResult.pdispVal->Release();
-        pApplication->Release();
-        pWriter->Release();
-
-        return S_OK;
+        return createWriterEditing(mpDocumentPathname, nullptr);
     }
 
     HRESULT STDMETHODCALLTYPE EnumVerbs(IEnumOLEVERB** ppEnumOleVerb) override
@@ -1758,93 +1765,56 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
     if (sTempPath[wcslen(sTempPath) - 1] == L'\\')
         sTempPath[wcslen(sTempPath) - 1] = L'\0';
 
-    // Where is CO installed?
 
-    HKEY hUno;
-    nResult = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\LibreOffice\\UNO\\InstallPath", 0,
-                            KEY_READ | KEY_WOW64_32KEY, &hUno);
-    if (nResult == ERROR_FILE_NOT_FOUND)
-        nResult = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\LibreOffice\\UNO\\InstallPath", 0,
-                                KEY_READ | KEY_WOW64_64KEY, &hUno);
-
-    if (nResult != ERROR_SUCCESS)
-    {
-        std::cout << "Can not find Collabora Office installation, RegOpenKeyExW failed: "
-                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
-        pMalloc->Free(sDisplayName);
-        pBindContext->Release();
-        return S_FALSE;
-    }
-
-    wchar_t sLOPath[MAX_PATH + 1];
-    LONG nLOPathSize = sizeof(sLOPath);
-    nResult = RegQueryValueW(hUno, NULL, sLOPath, &nLOPathSize);
-    if (nResult != ERROR_SUCCESS)
-    {
-        std::cout << "Can not find Collabora Office installation, RegQueryValueW failed: "
-                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
-        RegCloseKey(hUno);
-        pMalloc->Free(sDisplayName);
-        pBindContext->Release();
-        return S_FALSE;
-    }
-
-    RegCloseKey(hUno);
-
-    // Create a fresh directory to use as the UserInstallation. We don't want this run of Collabora
-    // Office to interfere with any potentially already running Collabora Office.
+    // Create a fresh directory to use for the PNG.
     std::error_code aError;
     std::clock_t n = std::clock();
-    std::wstring sUserInstallation;
-    std::experimental::filesystem::path aUserInstallation;
+    std::wstring sTempDirectory;
+    std::experimental::filesystem::path aTempDirectory;
     while (true)
     {
-        sUserInstallation = std::wstring(sTempPath) + L"\\coleat-convert-to." + std::to_wstring(n);
-        aUserInstallation = std::experimental::filesystem::path(sUserInstallation);
-        if (std::experimental::filesystem::create_directory(aUserInstallation, aError))
+        sTempDirectory = std::wstring(sTempPath) + L"\\x." + std::to_wstring(n);
+        aTempDirectory = std::experimental::filesystem::path(sTempDirectory);
+        if (std::experimental::filesystem::create_directory(aTempDirectory, aError))
             break;
         n++;
     }
 
-    wchar_t sUrl[200];
-    DWORD nUrl = sizeof(sUrl) / sizeof(sUrl[0]);
-    if (UrlCreateFromPathW(sUserInstallation.data(), sUrl, &nUrl, NULL) != S_OK)
+    std::wstring sImageFile = sTempDirectory + L"\\" + sBasename + L".png";
+
+    std::wstring sDocumentPathname(sDisplayName);
+    IDispatch* pDocument;
+    nResult = createWriterEditing(&sDocumentPathname, &pDocument);
+    if (nResult != S_OK)
+        return nResult;
+
+    wchar_t* sSavePreviewPngAs = L"SavePreviewPngAs";
+    DISPID nSavePreviewPngAs;
+    nResult = pDocument->GetIDsOfNames(IID_NULL, &sSavePreviewPngAs, 1, GetUserDefaultLCID(),
+                                       &nSavePreviewPngAs);
+    if (nResult != S_OK)
     {
-        std::cout << "Can not turn '" << convertUTF16ToUTF8(sUserInstallation.data())
-                  << "' into a URL: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
-        pMalloc->Free(sDisplayName);
-        pBindContext->Release();
-        return S_FALSE;
-    }
-
-    std::wstring sCommandLine = L"\"" + std::wstring(sLOPath) + L"\\soffice.exe\""
-                                + L" -env:UserInstallation=" + std::wstring(sUrl)
-                                + L" --convert-to png --outdir \"" + sUserInstallation + L"\" \""
-                                + std::wstring(sDisplayName) + L"\"";
-
-    STARTUPINFOW aStartupInfo;
-    PROCESS_INFORMATION aProcessInformation;
-
-    memset(&aStartupInfo, 0, sizeof(aStartupInfo));
-    aStartupInfo.cb = sizeof(aStartupInfo);
-
-    wchar_t* pCommandLine = _wcsdup(sCommandLine.data());
-    nResult = CreateProcessW(NULL, pCommandLine, NULL, NULL, TRUE, 0, NULL, NULL, &aStartupInfo,
-                             &aProcessInformation);
-    free(pCommandLine);
-
-    if (nResult == 0)
-    {
-        std::cout << "Can not run soffice, CreateProcessW failed: "
+        std::cout << "Could not get DISPID of 'SavePreviewPngAs' from Writer.Document object: "
                   << WindowsErrorStringFromHRESULT(nResult) << "\n";
-        pMalloc->Free(sDisplayName);
-        pBindContext->Release();
-        return S_FALSE;
+        pDocument->Release();
+        return nResult;
     }
 
-    WaitForSingleObject(aProcessInformation.hProcess, INFINITE);
-
-    std::wstring sImageFile = sUserInstallation + L"\\" + sBasename + L".png";
+    VARIANT aImageFileName;
+    aImageFileName.vt = VT_BSTR;
+    aImageFileName.bstrVal = SysAllocString(sImageFile.data());
+    DISPPARAMS aSavePreviewPngAsArguments[] = { &aImageFileName, NULL, 1, 0 };
+    VARIANT aSavePreviewPngAsResult;
+    nResult = pDocument->Invoke(nSavePreviewPngAs, IID_NULL, GetUserDefaultLCID(), DISPATCH_METHOD,
+                                aSavePreviewPngAsArguments, &aSavePreviewPngAsResult, NULL, NULL);
+    if (nResult != S_OK)
+    {
+        std::cout << "Could not invoke 'SavePreviewPngAs' of Writer.Document object: "
+                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
+        SysFreeString(aImageFileName.bstrVal);
+        pDocument->Release();
+        return nResult;
+    }
 
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     ULONG_PTR gdiplusToken;
@@ -1858,7 +1828,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     Gdiplus::GdiplusShutdown(gdiplusToken);
 
-    std::experimental::filesystem::remove_all(aUserInstallation);
+    std::experimental::filesystem::remove_all(aTempDirectory);
 
     *ppvObj = new myOleObject(pmkLinkSrc, hBitmap, sDisplayName);
 
