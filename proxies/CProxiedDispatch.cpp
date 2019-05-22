@@ -79,10 +79,6 @@ CProxiedDispatch* CProxiedDispatch::get(IUnknown* pBaseClassUnknown, IDispatch* 
                                 sPropName);
 }
 
-#ifdef HARDCODE_MSO_TO_CO
-extern std::wstring HACK_documentToOpen;
-#endif
-
 HRESULT CProxiedDispatch::genericInvoke(const std::string& rFuncName, int nInvKind,
                                         std::vector<VARIANT>& rParameters, void* pRetval)
 {
@@ -92,21 +88,6 @@ HRESULT CProxiedDispatch::genericInvoke(const std::string& rFuncName, int nInvKi
         std::cout << this << "@CProxiedDispatch::genericInvoke(" << rFuncName << ")..."
                   << std::endl;
     }
-
-#ifdef HARDCODE_MSO_TO_CO
-    // HACK HACK. Should be handled in the Collabora Office code of course but quicker now to do it
-    // here while iterating.
-    bool bDidHack = false;
-    if (rFuncName == "Open" && rParameters.size() == 1 && rParameters[0].vt == VT_BSTR
-        && rParameters[0].bstrVal == NULL)
-    {
-        if (getParam()->mbVerbose)
-            std::cout << "HACK HACK, replacing NULL FileName with '"
-                      << convertUTF16ToUTF8(HACK_documentToOpen.data()) << "'" << std::endl;
-        rParameters[0].bstrVal = SysAllocString(HACK_documentToOpen.data());
-        bDidHack = true;
-    }
-#endif
 
     HRESULT nResult = S_OK;
 
@@ -215,14 +196,6 @@ HRESULT CProxiedDispatch::genericInvoke(const std::string& rFuncName, int nInvKi
     if (getParam()->mbVerbose)
         std::cout << "..." << this << "@CProxiedDispatch::genericInvoke(" << rFuncName << "): S_OK"
                   << std::endl;
-
-#ifdef HARDCODE_MSO_TO_CO
-    if (bDidHack)
-    {
-        SysFreeString(rParameters[0].bstrVal);
-        rParameters[0].bstrVal = NULL;
-    }
-#endif
 
     return S_OK;
 }
@@ -358,10 +331,6 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
         }
     }
 
-#ifdef HARDCODE_MSO_TO_CO
-    std::wstring sHACK_funcName;
-#endif
-
     if (getParam()->mbTrace)
     {
         std::cout << msLibName << "." << std::flush;
@@ -391,9 +360,6 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
             if (mpDispIdToName->count(dispIdMember))
             {
                 std::cout << (*mpDispIdToName)[dispIdMember][0];
-#ifdef HARDCODE_MSO_TO_CO
-                sHACK_funcName = convertUTF8ToUTF16((*mpDispIdToName)[dispIdMember][0].data());
-#endif
             }
             else
                 std::cout << dispIdMember;
@@ -407,9 +373,6 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
             else
             {
                 std::cout << convertUTF16ToUTF8(sFuncName);
-#ifdef HARDCODE_MSO_TO_CO
-                sHACK_funcName = std::wstring(sFuncName);
-#endif
                 SysFreeString(sFuncName);
             }
         }
@@ -466,52 +429,10 @@ HRESULT STDMETHODCALLTYPE CProxiedDispatch::Invoke(DISPID dispIdMember, REFIID r
         std::cout << this << "@CProxiedDispatch::Invoke(0x" << to_hex(dispIdMember) << ")..."
                   << std::endl;
 
-#ifdef HARDCODE_MSO_TO_CO
-    bool bDidHackFileOpen = false;
-    bool bDidHackFileSaveAs = false;
-    if (strcmp(msLibName, "Word") == 0 && sHACK_funcName == L"FileOpen" && pDispParams->cArgs == 4
-        && pDispParams->rgvarg[3].vt == (VT_BYREF | VT_BSTR)
-        && *(pDispParams->rgvarg[3].pbstrVal) == NULL)
-    {
-        if (getParam()->mbVerbose)
-            std::cout << "HACK HACK, replacing NULL Name with '"
-                      << convertUTF16ToUTF8(HACK_documentToOpen.data()) << "'" << std::endl;
-        pDispParams->rgvarg[3].vt = VT_BSTR;
-        pDispParams->rgvarg[3].bstrVal = SysAllocString(HACK_documentToOpen.data());
-        bDidHackFileOpen = true;
-    }
-    else if (strcmp(msLibName, "Word") == 0 && sHACK_funcName == L"FileSaveAs"
-             && pDispParams->cArgs == 5 && pDispParams->rgvarg[4].vt == (VT_BYREF | VT_BSTR)
-             && *(pDispParams->rgvarg[4].pbstrVal) == NULL)
-    {
-        if (getParam()->mbVerbose)
-            std::cout << "HACK HACK, replacing NULL Name with '"
-                      << convertUTF16ToUTF8(HACK_documentToOpen.data()) << "'" << std::endl;
-        pDispParams->rgvarg[4].vt = VT_BSTR;
-        pDispParams->rgvarg[4].bstrVal = SysAllocString(HACK_documentToOpen.data());
-        bDidHackFileSaveAs = true;
-    }
-#endif
-
     increaseIndent();
     nResult = mpDispatchToProxy->Invoke(dispIdMember, riid, lcid, wFlags, pDispParams, pVarResult,
                                         pExcepInfo, puArgErr);
     decreaseIndent();
-
-#ifdef HARDCODE_MSO_TO_CO
-    if (bDidHackFileOpen)
-    {
-        SysFreeString(pDispParams->rgvarg[3].bstrVal);
-        pDispParams->rgvarg[3].vt = (VT_BYREF | VT_BSTR);
-        *(pDispParams->rgvarg[3].pbstrVal) = NULL;
-    }
-    else if (bDidHackFileSaveAs)
-    {
-        SysFreeString(pDispParams->rgvarg[4].bstrVal);
-        pDispParams->rgvarg[4].vt = (VT_BYREF | VT_BSTR);
-        *(pDispParams->rgvarg[4].pbstrVal) = NULL;
-    }
-#endif
 
     std::string sPrettyResultTypeName;
 
