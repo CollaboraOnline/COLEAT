@@ -815,10 +815,12 @@ class myDataObject : IDataObject
 private:
     // Pointer to the myOleObject that manages this object
     IUnknown* mpUnk;
+    std::vector<IAdviseSink*>* mpAdvises;
 
 public:
     myDataObject()
         : mpUnk(NULL)
+        , mpAdvises(new std::vector<IAdviseSink*>)
     {
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myDataObject::CTOR()" << std::endl;
@@ -833,6 +835,7 @@ public:
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myDataObject::deleteThis()" << std::endl;
 
+        delete mpAdvises;
         delete this;
     }
 
@@ -911,13 +914,14 @@ public:
     HRESULT STDMETHODCALLTYPE DAdvise(FORMATETC* pformatetc, DWORD advf, IAdviseSink* pAdvSink,
                                       DWORD* pdwConnection) override
     {
-        (void)pdwConnection;
+        mpAdvises->push_back(pAdvSink);
+        *pdwConnection = (DWORD) mpAdvises->size();
 
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myDataObject::DAdvise(" << pformatetc << "," << std::hex << advf
-                      << "," << pAdvSink << ")" << std::endl;
+                      << "," << pAdvSink << "): " << *pdwConnection << std::endl;
 
-        return E_NOTIMPL;
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE DUnadvise(DWORD dwConnection) override
@@ -925,7 +929,13 @@ public:
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myDataObject::DUnadvise(" << dwConnection << ")" << std::endl;
 
-        return E_NOTIMPL;
+        if (dwConnection == 0 || dwConnection > mpAdvises->size()
+            || (*mpAdvises)[dwConnection - 1] == nullptr)
+            return OLE_E_NOCONNECTION;
+
+        (*mpAdvises)[dwConnection - 1] = nullptr;
+
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE EnumDAdvise(IEnumSTATDATA** ppenumAdvise) override
