@@ -642,20 +642,50 @@ private:
     IUnknown* mpUnk;
     DWORD mnUpdateOptions;
     LPMONIKER mpLinkSrc;
-    const wchar_t* msDisplayName;
+    IMalloc* mpMalloc;
+    wchar_t* msDisplayName;
 
 public:
     myOleLink(LPMONIKER pmkLinkSrc)
         : mpUnk(NULL)
         , mnUpdateOptions(OLEUPDATE_ALWAYS)
         , mpLinkSrc(pmkLinkSrc)
-        , msDisplayName(L"")
+        , mpMalloc(NULL)
     {
+        HRESULT nResult;
+
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myOleLink::CTOR(" << pmkLinkSrc << ")" << std::endl;
 
+        nResult = CoGetMalloc(1, &mpMalloc);
+        if (nResult != S_OK)
+        {
+            std::cout << "CoGetMalloc failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
+            return;
+        }
+
+        msDisplayName = (wchar_t*)mpMalloc->Alloc(2);
+        msDisplayName[0] = L'\0';
+
         if (mpLinkSrc)
+        {
             mpLinkSrc->AddRef();
+
+            IBindCtx* pBindContext;
+            nResult = CreateBindCtx(0, &pBindContext);
+
+            if (nResult != S_OK)
+            {
+                std::cout << "CreateBindCtx failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
+                return;
+            }
+            mpMalloc->Free(msDisplayName);
+            mpLinkSrc->GetDisplayName(pBindContext, NULL, &msDisplayName);
+
+            // FIXME: Or should we keep it around until deleteThis()? Or use the one created over in
+            // tryRenderDrawInCollaboraOffice()? What *is* a bind context anyway?
+            pBindContext->Release();
+        }
     }
 
     // Can't pass the 'this' of myOleObject when constructing the myOleLink, so have to set it
@@ -669,6 +699,10 @@ public:
 
         if (mpLinkSrc)
             mpLinkSrc->Release();
+
+        if (mpMalloc)
+            mpMalloc->Free(msDisplayName);
+
         delete this;
     }
 
@@ -737,7 +771,12 @@ public:
             std::cout << this << "@myOleLink::SetSourceDisplayName(" << pszStatusText << ")"
                       << std::endl;
 
-        msDisplayName = pszStatusText;
+        if (mpMalloc)
+        {
+            const size_t nBytes = (wcslen(pszStatusText) + 1) * 2;
+            msDisplayName = (wchar_t*)mpMalloc->Alloc(nBytes);
+            memcpy(msDisplayName, pszStatusText, nBytes);
+        }
 
         return S_OK;
     }
@@ -747,17 +786,11 @@ public:
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myOleLink::GetSourceDisplayName()" << std::endl;
 
-        HRESULT nResult;
-        IMalloc* pMalloc;
-        nResult = CoGetMalloc(1, &pMalloc);
-        if (nResult != S_OK)
-        {
-            std::cout << "CoGetMalloc failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
-            return S_FALSE;
-        }
+        if (!mpMalloc)
+            return E_NOTIMPL;
 
         const size_t nBytes = (wcslen(msDisplayName) + 1) * 2;
-        *ppszDisplayName = (LPOLESTR)pMalloc->Alloc(nBytes);
+        *ppszDisplayName = (LPOLESTR)mpMalloc->Alloc(nBytes);
         memcpy(*ppszDisplayName, msDisplayName, nBytes);
 
         if (pGlobalParamPtr->mbVerbose)
