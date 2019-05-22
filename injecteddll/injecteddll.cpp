@@ -760,6 +760,9 @@ public:
         *ppszDisplayName = (LPOLESTR)pMalloc->Alloc(nBytes);
         memcpy(*ppszDisplayName, msDisplayName, nBytes);
 
+        if (pGlobalParamPtr->mbVerbose)
+            std::cout << "..." << this << "@myOleLink::GetSourceDisplayName(): '" << convertUTF16ToUTF8(*ppszDisplayName) << "'" << std::endl;
+
         return S_OK;
     }
 
