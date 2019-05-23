@@ -562,11 +562,11 @@ static HRESULT createWriterEditing(const std::wstring* pDocumentPathname, IDispa
 
     DISPPARAMS aDocumentsArguments[] = { NULL, NULL, 0, 0 };
     VARIANT aDocumentsResult;
-    pApplication->Invoke(nDocuments, IID_NULL, GetUserDefaultLCID(), DISPATCH_METHOD,
-                         aDocumentsArguments, &aDocumentsResult, NULL, NULL);
+    nResult = pApplication->Invoke(nDocuments, IID_NULL, GetUserDefaultLCID(), DISPATCH_METHOD,
+                                   aDocumentsArguments, &aDocumentsResult, NULL, NULL);
     if (nResult != S_OK)
     {
-        std::cout << "Could not create invoke 'Documents' of Writer.Application object: "
+        std::cout << "Could not invoke 'Documents' of Writer.Application object: "
                   << WindowsErrorStringFromHRESULT(nResult) << "\n";
         pApplication->Release();
         pWriter->Release();
@@ -588,7 +588,7 @@ static HRESULT createWriterEditing(const std::wstring* pDocumentPathname, IDispa
                                                        GetUserDefaultLCID(), &nOpen);
     if (nResult != S_OK)
     {
-        std::cout << "Could not create get DISPID of 'Open' from Writer.Documents object: "
+        std::cout << "Could not get DISPID of 'Open' from Writer.Documents object: "
                   << WindowsErrorStringFromHRESULT(nResult) << "\n";
         aDocumentsResult.pdispVal->Release();
         pApplication->Release();
@@ -601,8 +601,8 @@ static HRESULT createWriterEditing(const std::wstring* pDocumentPathname, IDispa
     aFileName.bstrVal = SysAllocString(pDocumentPathname->data());
     DISPPARAMS aOpenArguments[] = { &aFileName, NULL, 1, 0 };
     VARIANT aOpenResult;
-    aDocumentsResult.pdispVal->Invoke(nOpen, IID_NULL, GetUserDefaultLCID(), DISPATCH_METHOD,
-                                      aOpenArguments, &aOpenResult, NULL, NULL);
+    nResult = aDocumentsResult.pdispVal->Invoke(nOpen, IID_NULL, GetUserDefaultLCID(), DISPATCH_METHOD,
+                                                aOpenArguments, &aOpenResult, NULL, NULL);
     if (nResult != S_OK)
     {
         std::cout << "Could not invoke 'Open' of Writer.Documents object: "
