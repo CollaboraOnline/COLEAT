@@ -549,8 +549,8 @@ static HRESULT createWriterEditing(const std::wstring* pDocumentPathname, IDispa
 
     wchar_t* sDocuments = L"Documents";
     DISPID nDocuments;
-    nResult = pApplication->GetIDsOfNames(IID_NULL, &sDocuments, 1, GetUserDefaultLCID(),
-                                          &nDocuments);
+    nResult
+        = pApplication->GetIDsOfNames(IID_NULL, &sDocuments, 1, GetUserDefaultLCID(), &nDocuments);
     if (nResult != S_OK)
     {
         std::cout << "Could not get DISPID of 'Documents' from Writer.Application object: "
@@ -584,8 +584,8 @@ static HRESULT createWriterEditing(const std::wstring* pDocumentPathname, IDispa
 
     wchar_t* sOpen = L"Open";
     DISPID nOpen;
-    nResult = aDocumentsResult.pdispVal->GetIDsOfNames(IID_NULL, &sOpen, 1,
-                                                       GetUserDefaultLCID(), &nOpen);
+    nResult = aDocumentsResult.pdispVal->GetIDsOfNames(IID_NULL, &sOpen, 1, GetUserDefaultLCID(),
+                                                       &nOpen);
     if (nResult != S_OK)
     {
         std::cout << "Could not get DISPID of 'Open' from Writer.Documents object: "
@@ -601,8 +601,9 @@ static HRESULT createWriterEditing(const std::wstring* pDocumentPathname, IDispa
     aFileName.bstrVal = SysAllocString(pDocumentPathname->data());
     DISPPARAMS aOpenArguments[] = { &aFileName, NULL, 1, 0 };
     VARIANT aOpenResult;
-    nResult = aDocumentsResult.pdispVal->Invoke(nOpen, IID_NULL, GetUserDefaultLCID(), DISPATCH_METHOD,
-                                                aOpenArguments, &aOpenResult, NULL, NULL);
+    nResult
+        = aDocumentsResult.pdispVal->Invoke(nOpen, IID_NULL, GetUserDefaultLCID(), DISPATCH_METHOD,
+                                            aOpenArguments, &aOpenResult, NULL, NULL);
     if (nResult != S_OK)
     {
         std::cout << "Could not invoke 'Open' of Writer.Documents object: "
@@ -777,7 +778,8 @@ public:
 
             if (nResult != S_OK)
             {
-                std::cout << "CreateBindCtx failed: " << WindowsErrorStringFromHRESULT(nResult) << "\n";
+                std::cout << "CreateBindCtx failed: " << WindowsErrorStringFromHRESULT(nResult)
+                          << "\n";
                 return;
             }
             mpMalloc->Free(msDisplayName);
@@ -895,7 +897,8 @@ public:
         memcpy(*ppszDisplayName, msDisplayName, nBytes);
 
         if (pGlobalParamPtr->mbVerbose)
-            std::cout << "..." << this << "@myOleLink::GetSourceDisplayName(): '" << convertUTF16ToUTF8(*ppszDisplayName) << "'" << std::endl;
+            std::cout << "..." << this << "@myOleLink::GetSourceDisplayName(): '"
+                      << convertUTF16ToUTF8(*ppszDisplayName) << "'" << std::endl;
 
         return S_OK;
     }
@@ -1049,7 +1052,7 @@ public:
                                       DWORD* pdwConnection) override
     {
         mpAdvises->push_back(pAdvSink);
-        *pdwConnection = (DWORD) mpAdvises->size();
+        *pdwConnection = (DWORD)mpAdvises->size();
 
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myDataObject::DAdvise(" << pformatetc << "," << std::hex << advf
@@ -1593,7 +1596,7 @@ public:
     HRESULT STDMETHODCALLTYPE Advise(IAdviseSink* pAdvSink, DWORD* pdwConnection) override
     {
         mpAdvises->push_back(pAdvSink);
-        *pdwConnection = (DWORD) mpAdvises->size();
+        *pdwConnection = (DWORD)mpAdvises->size();
 
         if (pGlobalParamPtr->mbVerbose)
             std::cout << this << "@myOleObject::Advise(): " << *pdwConnection << std::endl;
@@ -1764,7 +1767,6 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
     }
     if (sTempPath[wcslen(sTempPath) - 1] == L'\\')
         sTempPath[wcslen(sTempPath) - 1] = L'\0';
-
 
     // Create a fresh directory to use for the PNG.
     std::error_code aError;
