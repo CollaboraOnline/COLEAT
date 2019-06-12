@@ -14,6 +14,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <cwchar>
 #include <filesystem>
 #include <fstream>
@@ -46,6 +47,60 @@
 #include "CProxiedMoniker.hpp"
 
 #include "InterfaceMapping.hxx"
+
+class AddTimeStamp : public std::streambuf
+{
+public:
+    AddTimeStamp( std::basic_ios< char >& out )
+        : out_( out )
+        , sink_()
+        , newline_( true )
+    {
+        sink_ = out_.rdbuf( this );
+        assert( sink_ );
+    }
+    ~AddTimeStamp()
+    {
+        out_.rdbuf( sink_ );
+    }
+protected:
+    int_type overflow( int_type m = traits_type::eof() )
+    {
+        if( traits_type::eq_int_type( m, traits_type::eof() ) )
+            return sink_->pubsync() == -1 ? m: traits_type::not_eof(m);
+        if( newline_ )
+        {
+            std::ostream str( sink_ );
+            if( !(str << getTimeStamp() << ":") )
+                return traits_type::eof();
+        }
+        newline_ = traits_type::to_char_type( m ) == '\n';
+        return sink_->sputc( (char) m );
+    }
+
+private:
+    AddTimeStamp( const AddTimeStamp& );
+    AddTimeStamp& operator=( const AddTimeStamp& ); // not copyable
+
+    std::string getTimeStamp()
+    {
+        std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+        std::time_t nowTimeT = std::chrono::system_clock::to_time_t(now);
+        std::stringstream s;
+
+#pragma warning(push)
+#pragma warning(disable:4996)
+        s << std::put_time(std::localtime(&nowTimeT), "%F:%T") << "."
+          << std::setw(3) << std::setfill('0') << (std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000);
+#pragma warning(pop)
+
+        return s.str();
+    }
+
+    std::basic_ios< char >& out_;
+    std::streambuf* sink_;
+    bool newline_;
+};
 
 struct UNICODE_STRING
 {
@@ -2686,6 +2741,9 @@ static bool hook(bool bMandatory, ThreadProcParam* pParam, const wchar_t* sModul
 
 extern "C" DWORD WINAPI InjectedDllMainFunction(ThreadProcParam* pParam)
 {
+    // Prepend a timestamp to all std::cout output lines.
+    new AddTimeStamp(std::cout);
+
 // Magic to export this function using a plain undecorated name despite it being WINAPI
 #ifdef _WIN64
 #pragma comment(linker, "/EXPORT:InjectedDllMainFunction=InjectedDllMainFunction")
