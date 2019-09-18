@@ -1889,6 +1889,7 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
 
     *ppvObj = new myOleObject(pmkLinkSrc, hBitmap, sDisplayName);
 
+    pDocument->Release();
     pMalloc->Free(sDisplayName);
     pBindContext->Release();
 
