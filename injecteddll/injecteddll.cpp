@@ -672,6 +672,7 @@ static HRESULT createWriterEditing(const std::wstring* pDocumentPathname, IDispa
     if (ppDocument != nullptr)
         *ppDocument = aOpenResult.pdispVal;
 
+    aDocumentsResult.pdispVal->Release();
     pApplication->Release();
     pWriter->Release();
 
