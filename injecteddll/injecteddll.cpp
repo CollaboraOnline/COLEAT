@@ -1858,6 +1858,18 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
         return nResult;
     }
 
+    wchar_t* sClose = L"Close";
+    DISPID nClose;
+    nResult = pDocument->GetIDsOfNames(IID_NULL, &sClose, 1, GetUserDefaultLCID(),
+                                       &nClose);
+    if (nResult != S_OK)
+    {
+        std::cout << "Could not get DISPID of 'Close' from Writer.Document object: "
+                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
+        pDocument->Release();
+        return nResult;
+    }
+
     VARIANT aImageFileName;
     aImageFileName.vt = VT_BSTR;
     aImageFileName.bstrVal = SysAllocString(sImageFile.data());
@@ -1870,6 +1882,18 @@ static HRESULT tryRenderDrawInCollaboraOffice(LPMONIKER pmkLinkSrc, REFIID riid,
         std::cout << "Could not invoke 'SavePreviewPngAs' of Writer.Document object: "
                   << WindowsErrorStringFromHRESULT(nResult) << "\n";
         SysFreeString(aImageFileName.bstrVal);
+        pDocument->Release();
+        return nResult;
+    }
+
+    DISPPARAMS aCloseArguments[] = { NULL, NULL, 0, 0 };
+    VARIANT aCloseResult;
+    nResult = pDocument->Invoke(nClose, IID_NULL, GetUserDefaultLCID(), DISPATCH_METHOD,
+                                aCloseArguments, &aCloseResult, NULL, NULL);
+    if (nResult != S_OK)
+    {
+        std::cout << "Could not invoke 'Close' of Writer.Document object: "
+                  << WindowsErrorStringFromHRESULT(nResult) << "\n";
         pDocument->Release();
         return nResult;
     }
