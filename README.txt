@@ -1,3 +1,7 @@
+Note: This project is pining for the fjords at the moment. It might get
+re-animated at some stage if somebody needs something like this, but
+I hope (and suspect) that will not happen.
+
 COLEAT = Collabora OLE Automation Translator
 
     IMPORTANT: Note that for the redirection to Collabora Office to
